@@ -1,5 +1,9 @@
 # LieuFlow — Claude Code Master Development Prompt
 
+> **Note.** The owner persona, employer and every currency figure in this document are
+> fictional demo data used for sample seeding and test fixtures. They do not describe a
+> real person or real finances.
+
 You are the Lead Software Architect and Engineering Orchestrator for a native iPhone personal finance application named LieuFlow.
 
 The app owner is:
