@@ -113,3 +113,14 @@ failing at unlock time.
 - [ ] app builds and all app tests pass, zero new warnings
 - [ ] `grep -rE "import (SwiftUI|SwiftData|CoreData|UIKit)" Packages/FlowPlanDomain/Sources/` finds nothing
 - [ ] Face ID is optional, off by default, and the app is fully usable with it disabled
+
+### ADDENDUM — first-run name, no demo persona baked in
+*(Recorded late: this addendum was written on the feat/home-dashboard branch and lost when only
+four paths were restored after that branch's missed merge. Implemented directly by Agent 1.)*
+
+- `AppState.userName` defaults to `""`, not a persona name.
+- The greeting handles an empty name: "Good morning" with no trailing comma; only a set name
+  produces "Good morning, {name}".
+- Settings → Profile writes the name through to `appState.userName`.
+- The demo persona (`SampleData.personaName`) is applied **only** when sample data is loaded and
+  cleared when it is erased. Seeding a name into a real install is a defect.
