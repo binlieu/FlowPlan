@@ -4,10 +4,16 @@ struct MonthNavigationBar: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 16) {
             Button(action: appState.goToPreviousMonth) {
                 Image(systemName: "chevron.left")
-                    .frame(minWidth: 44, minHeight: 44)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Palette.ink)
+                    .frame(width: 44, height: 44)
+                    .overlay {
+                        Rectangle().stroke(Palette.hairline, lineWidth: 1)
+                    }
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel("Previous month")
 
@@ -16,9 +22,11 @@ struct MonthNavigationBar: View {
             Menu {
                 Button("Go to current month", action: appState.goToCurrentMonth)
             } label: {
-                Text(monthTitle)
-                    .font(.headline)
+                Text(monthTitle.uppercased())
+                    .smallCapsTypography()
+                    .foregroundStyle(Palette.ink)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityLabel(monthTitle)
             .accessibilityHint("Offers an option to go to the current month")
@@ -27,12 +35,19 @@ struct MonthNavigationBar: View {
 
             Button(action: appState.goToNextMonth) {
                 Image(systemName: "chevron.right")
-                    .frame(minWidth: 44, minHeight: 44)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Palette.ink)
+                    .frame(width: 44, height: 44)
+                    .overlay {
+                        Rectangle().stroke(Palette.hairline, lineWidth: 1)
+                    }
+                    .contentShape(Rectangle())
             }
             .disabled(!appState.canGoForward)
             .accessibilityLabel("Next month")
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
     }
 
     private var monthTitle: String {

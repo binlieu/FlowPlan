@@ -5,6 +5,7 @@ struct UpcomingBillsSection: View {
     @Environment(AppState.self) private var appState
     @Environment(FinanceRepository.self) private var repository
     @Environment(ProjectionStore.self) private var projectionStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let onSeeAll: () -> Void
 
@@ -17,27 +18,33 @@ struct UpcomingBillsSection: View {
     var body: some View {
         Section {
             if upcomingBills.isEmpty {
-                EmptyStateView(
-                    symbol: "calendar.badge.checkmark",
-                    title: "No bills remaining",
-                    message: "There are no unpaid bill occurrences left this month."
-                )
-                .listRowSeparator(.hidden)
+                emptyState
+                    .padding(.horizontal, 20)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             } else {
                 ForEach(upcomingBills) { occurrence in
                     billRow(occurrence)
+                        .padding(.horizontal, 20)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Palette.background)
+                        .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button {
                                 markAsPaid(occurrence)
                             } label: {
                                 Label("Mark as paid", systemImage: "checkmark.circle")
                             }
-                            .tint(.green)
+                            .tint(Palette.accent)
                         }
                 }
             }
         } header: {
             sectionHeader
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
+                .textCase(nil)
         }
         .alert(item: $presentedError) { error in
             Alert(
@@ -49,36 +56,127 @@ struct UpcomingBillsSection: View {
     }
 
     private var sectionHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Upcoming Bills")
-                .font(.headline)
-                .foregroundStyle(.primary)
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Upcoming")
+                .sectionHeadingTypography()
+                .foregroundStyle(Palette.ink)
 
-            Spacer()
+            Spacer(minLength: 8)
 
-            Button("See all", action: onSeeAll)
-                .font(.subheadline.weight(.semibold))
+            Button("View All", action: onSeeAll)
+                .font(.subheadline.weight(.bold))
+                .fontWidth(.condensed)
+                .foregroundStyle(Palette.accent)
                 .textCase(nil)
         }
     }
 
-    private func billRow(_ occurrence: BillOccurrence) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(occurrence.bill.name)
-                    .font(.body.weight(.medium))
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("No bills remaining")
+                .font(.headline)
+                .foregroundStyle(Palette.ink)
 
-                Text(occurrence.date, format: .dateTime.month(.abbreviated).day())
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text("There are no unpaid bill occurrences left this month.")
+                .font(Typography.supporting)
+                .foregroundStyle(Palette.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(Palette.surface)
+        .overlay {
+            Rectangle().stroke(Palette.hairline, lineWidth: 1)
+        }
+    }
+
+    @ViewBuilder
+    private func billRow(_ occurrence: BillOccurrence) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            accessibilityBillRow(occurrence)
+        } else {
+            standardBillRow(occurrence)
+        }
+    }
+
+    private func standardBillRow(_ occurrence: BillOccurrence) -> some View {
+        HStack(alignment: .center, spacing: 14) {
+            monogram(for: occurrence)
+
+            billDescription(for: occurrence)
 
             Spacer(minLength: 8)
 
-            AmountText(amount: occurrence.bill.amount, style: .secondary)
+            amountAndStatus(for: occurrence, alignment: .trailing)
         }
-        .padding(.vertical, 4)
+        .padding(14)
+        .background(Palette.surface)
+        .overlay {
+            Rectangle().stroke(Palette.hairline, lineWidth: 1)
+        }
         .accessibilityElement(children: .combine)
+    }
+
+    private func accessibilityBillRow(_ occurrence: BillOccurrence) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            monogram(for: occurrence)
+
+            VStack(alignment: .leading, spacing: 12) {
+                billDescription(for: occurrence)
+                amountAndStatus(for: occurrence, alignment: .leading)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Palette.surface)
+        .overlay {
+            Rectangle().stroke(Palette.hairline, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func monogram(for occurrence: BillOccurrence) -> some View {
+        Text(occurrence.monogram)
+            .smallCapsTypography()
+            .foregroundStyle(Palette.accent)
+            .frame(width: 54, height: 54)
+            .overlay {
+                Rectangle().stroke(Palette.hairline, lineWidth: 1)
+            }
+            .accessibilityHidden(true)
+    }
+
+    private func billDescription(for occurrence: BillOccurrence) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(occurrence.bill.name)
+                .font(.body.weight(.medium))
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(occurrence.date, format: .dateTime.month(.abbreviated).day())
+                .font(Typography.supporting)
+                .foregroundStyle(Palette.inkSecondary)
+        }
+    }
+
+    private func amountAndStatus(
+        for occurrence: BillOccurrence,
+        alignment: HorizontalAlignment
+    ) -> some View {
+        VStack(alignment: alignment, spacing: 5) {
+            Text(money(occurrence.bill.amount))
+                .font(.headline.weight(.bold))
+                .fontWidth(.condensed)
+                .monospacedDigit()
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: true, vertical: true)
+                .accessibilityLabel(accessibleMoney(occurrence.bill.amount))
+
+            Text(status(for: occurrence.bill))
+                .smallCapsTypography()
+                .foregroundStyle(Palette.accent)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var upcomingBills: [BillOccurrence] {
@@ -113,6 +211,24 @@ struct UpcomingBillsSection: View {
         return Array(occurrences.prefix(5))
     }
 
+    private func status(for bill: PlannedBill) -> String {
+        if bill.isAutoPay {
+            return "AUTO PAY"
+        }
+        if bill.amountType == .estimated {
+            return "ESTIMATED"
+        }
+        return "UPCOMING"
+    }
+
+    private func money(_ amount: Decimal) -> String {
+        MoneyFormatter.string(amount, currencyCode: appState.currencyCode)
+    }
+
+    private func accessibleMoney(_ amount: Decimal) -> String {
+        MoneyFormatter.accessibleString(amount, currencyCode: appState.currencyCode)
+    }
+
     private func markAsPaid(_ occurrence: BillOccurrence) {
         do {
             try repository.markBillPaid(
@@ -136,6 +252,12 @@ struct UpcomingBillsSection: View {
         var id: String {
             "\(bill.id.uuidString)-\(date.timeIntervalSinceReferenceDate)"
         }
+
+        var monogram: String {
+            let letters = bill.name.filter(\.isLetter)
+            let source = letters.isEmpty ? bill.name : letters
+            return String(source.prefix(2)).uppercased()
+        }
     }
 
     private struct PresentedError: Identifiable {
@@ -145,21 +267,26 @@ struct UpcomingBillsSection: View {
 }
 
 #if DEBUG
-#Preview("Light") {
+#Preview("Upcoming — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
         List {
             UpcomingBillsSection()
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Palette.background)
     }
 }
 
-#Preview("Dark") {
+#Preview("Upcoming — Accessibility") {
     FlowPlanPreviewHost(colorScheme: .dark) {
         List {
             UpcomingBillsSection()
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Palette.background)
     }
+    .dynamicTypeSize(.accessibility5)
 }
 #endif

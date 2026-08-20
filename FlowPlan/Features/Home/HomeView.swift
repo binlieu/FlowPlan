@@ -1,19 +1,13 @@
 import SwiftUI
-import FlowPlanDomain
 
 struct HomeView: View {
     @Environment(AppState.self) private var appState
-    @Environment(FinanceRepository.self) private var repository
     @Environment(ProjectionStore.self) private var projectionStore
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let onSeeAllBills: () -> Void
     let onSeeAllTransactions: () -> Void
 
-    @State private var isPresentingAddTransaction = false
-
     private let contentHorizontalPadding: CGFloat = 20
-    private let bottomContentClearance: CGFloat = 80
 
     init(
         onSeeAllBills: @escaping () -> Void = {},
@@ -27,67 +21,51 @@ struct HomeView: View {
         List {
             greetingAndMonth
                 .padding(.horizontal, contentHorizontalPadding)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .padding(.bottom, 20)
+                .homeListRow()
 
-            ProjectionHeroCard(
+            AvailableThisMonthCard(
                 projection: projectionStore.projection,
                 onOpenPlan: onSeeAllBills
             )
-                .padding(.horizontal, contentHorizontalPadding)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+            .padding(.horizontal, contentHorizontalPadding)
+            .padding(.bottom, 28)
+            .homeListRow()
 
-            dashboardStats
-                .padding(.horizontal, contentHorizontalPadding)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+            if !isFirstRun {
+                CashFlowBar(projection: projectionStore.projection)
+                    .padding(.horizontal, contentHorizontalPadding)
+                    .padding(.bottom, 28)
+                    .homeListRow()
 
-            if shouldShowIncomePlanPrompt {
-                EmptyStateView(
-                    symbol: "dollarsign.circle",
-                    title: "Income plan needed",
-                    message: "Add your expected income to improve your month-end projection."
-                )
-                .listRowSeparator(.hidden)
+                EstimatedSavingsCard(projection: projectionStore.projection)
+                    .padding(.horizontal, contentHorizontalPadding)
+                    .padding(.bottom, 28)
+                    .homeListRow()
+
+                MonthSpendingCard(projection: projectionStore.projection)
+                    .padding(.horizontal, contentHorizontalPadding)
+                    .padding(.bottom, 28)
+                    .homeListRow()
             }
-
-            SafeToSpendCard(projection: projectionStore.projection)
-                .padding(.horizontal, contentHorizontalPadding)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
 
             UpcomingBillsSection(onSeeAll: onSeeAllBills)
-            RecentTransactionsSection(onSeeAll: onSeeAllTransactions)
+
+            QuickAddRow()
+                .padding(.horizontal, contentHorizontalPadding)
+                .padding(.top, 24)
+                .padding(.bottom, 36)
+                .homeListRow()
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain)
+        .listSectionSpacing(28)
         .scrollContentBackground(.hidden)
-        .contentMargins(.top, 0, for: .scrollContent)
-        .background(Color(.systemGroupedBackground))
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            Color.clear
-                .frame(height: bottomContentClearance)
-                .accessibilityHidden(true)
-        }
+        .contentMargins(.top, 24, for: .scrollContent)
+        .background(Palette.background)
+        .foregroundStyle(Palette.ink)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    isPresentingAddTransaction = true
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel("Add transaction")
-            }
-        }
-        .sheet(isPresented: $isPresentingAddTransaction) {
-            AddTransactionView()
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .refreshable {
             projectionStore.refresh()
         }
@@ -97,66 +75,43 @@ struct HomeView: View {
     }
 
     private var greetingAndMonth: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("\(greeting), \(appState.userName)")
-                .font(.title2.weight(.bold))
+        VStack(alignment: .leading, spacing: 10) {
+            Text(greeting)
+                .greetingTypography()
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("KNOW WHERE YOUR MONEY GOES")
+                .smallCapsTypography()
+                .foregroundStyle(Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             MonthNavigationBar()
+                .padding(.top, 20)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var dashboardStats: some View {
-        LazyVGrid(columns: gridColumns, spacing: 12) {
-            StatTile(
-                title: "Income",
-                symbol: "arrow.down.circle",
-                amount: projectionStore.projection.totalExpectedIncome
-            )
-            StatTile(
-                title: "Spent",
-                symbol: "arrow.up.circle",
-                amount: projectionStore.projection.expensesPaid
-            )
-            StatTile(
-                title: "Bills Remaining",
-                symbol: "calendar.badge.clock",
-                amount: projectionStore.projection.remainingBills
-            )
-            StatTile(
-                title: "Savings",
-                symbol: "banknote",
-                amount: projectionStore.projection.savingsCompleted,
-                secondaryAmount: projectionStore.projection.savingsTarget
-            )
-        }
-    }
-
-    private var gridColumns: [GridItem] {
-        let minimumWidth: CGFloat = dynamicTypeSize.isAccessibilitySize ? 240 : 145
-        return [GridItem(.adaptive(minimum: minimumWidth), spacing: 12)]
-    }
-
     private var greeting: String {
-        switch Calendar.current.component(.hour, from: Date()) {
-        case 0..<12:
-            return "Good morning"
-        case 12..<17:
-            return "Good afternoon"
-        default:
-            return "Good evening"
-        }
+        let name = appState.userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "Good morning" : "Good morning, \(name)"
     }
 
-    private var shouldShowIncomePlanPrompt: Bool {
-        !projectionStore.projection.completeness.hasPlannedIncome
-            && !projectionStore.projection.completeness.hasNoPlanningInputs
+    private var isFirstRun: Bool {
+        projectionStore.projection.completeness.hasNoPlanningInputs
+    }
+}
+
+private extension View {
+    func homeListRow() -> some View {
+        listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
     }
 }
 
 #if DEBUG
-#Preview("Light") {
+#Preview("Home — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
         NavigationStack {
             HomeView()
@@ -164,7 +119,7 @@ struct HomeView: View {
     }
 }
 
-#Preview("Dark") {
+#Preview("Home — Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
         NavigationStack {
             HomeView()
@@ -172,33 +127,20 @@ struct HomeView: View {
     }
 }
 
-#Preview("Long Name — Smallest Dynamic Type") {
-    FlowPlanPreviewHost(colorScheme: .light) {
-        HomeViewPreview(userName: "Alexandria Catherine Montgomery-Wellington")
+#Preview("Home — Empty First Run") {
+    FlowPlanPreviewHost(colorScheme: .light, seedSampleData: false) {
+        NavigationStack {
+            HomeView()
+        }
     }
-    .dynamicTypeSize(.xSmall)
 }
 
-#Preview("Long Name — Largest Dynamic Type") {
+#Preview("Home — Largest Dynamic Type") {
     FlowPlanPreviewHost(colorScheme: .dark) {
-        HomeViewPreview(userName: "Alexandria Catherine Montgomery-Wellington")
+        NavigationStack {
+            HomeView()
+        }
     }
     .dynamicTypeSize(.accessibility5)
-}
-
-@MainActor
-private struct HomeViewPreview: View {
-    @Environment(AppState.self) private var appState
-
-    let userName: String
-
-    var body: some View {
-        NavigationStack {
-            HomeView()
-        }
-        .onAppear {
-            appState.userName = userName
-        }
-    }
 }
 #endif
