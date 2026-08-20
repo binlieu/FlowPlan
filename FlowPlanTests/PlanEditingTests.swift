@@ -38,32 +38,40 @@ func raisingSalaryRaisesPlannedBalanceByExactlyTwoHundredFifty() throws {
 
 @Test
 @MainActor
-func raisingSavingsGoalLowersProjectedBalanceByExactlyFiveHundred() throws {
+func committingSavingsSliderTargetMovesPlannedBalanceAndCardTotalBySameAmount() throws {
     let environment = try PlanEditingEnvironment(startingBalance: 4_000)
     let goalID = UUID()
+    let originalTarget: Decimal = 1_000
+    let updatedTarget: Decimal = 1_500
 
     try environment.repository.addSavingsGoal(
         SavingsGoalEntity(
             id: goalID,
             name: "Emergency Fund",
             targetAmount: 20_000,
-            monthlyTarget: 1_000
+            monthlyTarget: originalTarget
         )
     )
     environment.projectionStore.refresh()
-    let before = environment.projectionStore.projection.projectedEndOfMonthBalance
+    let before = environment.projectionStore.projection
 
+    // This is the persistence and refresh path used when the savings slider commits.
     try environment.repository.updateSavingsGoal(
         SavingsGoalEntity(
             id: goalID,
             name: "Emergency Fund",
             targetAmount: 20_000,
-            monthlyTarget: 1_500
+            monthlyTarget: updatedTarget
         )
     )
     environment.projectionStore.refresh()
+    let after = environment.projectionStore.projection
+    let targetIncrease = updatedTarget - originalTarget
 
-    #expect(environment.projectionStore.projection.projectedEndOfMonthBalance == before - 500)
+    #expect(after.projectedEndOfMonthBalance == before.projectedEndOfMonthBalance - targetIncrease)
+    #expect(after.plannedEndOfMonthBalance == before.plannedEndOfMonthBalance - targetIncrease)
+    #expect(MonthlyProjectionCard.total(for: after) == MonthlyProjectionCard.total(for: before) - targetIncrease)
+    expectProjectionCardReconciles(after)
 }
 
 @Test
@@ -184,9 +192,64 @@ func editingAlreadyOverspentBudgetDoesNotMoveProjection() throws {
 
 @Test
 @MainActor
-func projectionCardRowsAndTotalMatchMonthlyProjectionExactly() throws {
-    let environment = try PlanEditingEnvironment(startingBalance: 1_200)
+func projectionCardReconcilesWithZeroStartingBalance() throws {
+    let environment = try PlanEditingEnvironment()
+    try addCompletePlan(to: environment)
+    environment.projectionStore.refresh()
 
+    let projection = environment.projectionStore.projection
+    let rows = MonthlyProjectionCard.rows(for: projection)
+
+    #expect(rows.first == ProjectionCardRow(
+        id: "startingBalance",
+        label: "Starting balance",
+        amount: .zero,
+        direction: .addition
+    ))
+    expectProjectionCardReconciles(projection)
+}
+
+@Test
+@MainActor
+func projectionCardReconcilesWithNonZeroStartingBalance() throws {
+    let environment = try PlanEditingEnvironment(startingBalance: 1_200)
+    try addCompletePlan(to: environment)
+    environment.projectionStore.refresh()
+
+    let projection = environment.projectionStore.projection
+    let rows = MonthlyProjectionCard.rows(for: projection)
+
+    #expect(rows.map(\.label) == [
+        "Starting balance",
+        "Expected income",
+        "Recurring bills",
+        "Planned spending",
+        "Savings goal"
+    ])
+    #expect(rows.map(\.amount) == [
+        projection.startingBalance,
+        projection.plannedIncomeTotal,
+        projection.plannedBillsTotal,
+        projection.plannedSpendingTotal,
+        projection.savingsTarget
+    ])
+    expectProjectionCardReconciles(projection)
+}
+
+@Test
+@MainActor
+func projectionCardReconcilesForMonthWithNoPlan() throws {
+    let environment = try PlanEditingEnvironment()
+    let projection = environment.projectionStore.projection
+    let rows = MonthlyProjectionCard.rows(for: projection)
+
+    #expect(rows.count == 5)
+    #expect(rows.allSatisfy { $0.amount == .zero })
+    expectProjectionCardReconciles(projection)
+}
+
+@MainActor
+private func addCompletePlan(to environment: PlanEditingEnvironment) throws {
     try environment.repository.addIncomeSource(
         IncomeSourceEntity(
             name: "Salary",
@@ -215,24 +278,17 @@ func projectionCardRowsAndTotalMatchMonthlyProjectionExactly() throws {
             monthlyTarget: 1_000
         )
     )
-    environment.projectionStore.refresh()
+}
 
-    let projection = environment.projectionStore.projection
+private func expectProjectionCardReconciles(
+    _ projection: MonthlyProjection,
+    sourceLocation: SourceLocation = #_sourceLocation
+) {
     let rows = MonthlyProjectionCard.rows(for: projection)
+    let displayedRowsTotal = rows.reduce(Decimal.zero) { $0 + $1.displayedAmount }
+    let displayedCardTotal = MonthlyProjectionCard.total(for: projection)
 
-    #expect(rows.map(\.label) == [
-        "Expected income",
-        "Recurring bills",
-        "Planned spending",
-        "Savings goal"
-    ])
-    #expect(rows.map(\.amount) == [
-        projection.plannedIncomeTotal,
-        projection.plannedBillsTotal,
-        projection.plannedSpendingTotal,
-        projection.savingsTarget
-    ])
-    #expect(MonthlyProjectionCard.total(for: projection) == projection.plannedEndOfMonthBalance)
+    #expect(displayedRowsTotal == displayedCardTotal, sourceLocation: sourceLocation)
 }
 
 @MainActor

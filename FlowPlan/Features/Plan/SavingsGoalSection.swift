@@ -15,6 +15,7 @@ struct SavingsGoalSection: View {
     let onPreviewTarget: (Decimal?) -> Void
 
     @State private var sliderValue = 0.0
+    @State private var sliderUpperBound = 4_000.0
     @State private var isDragging = false
     @State private var presentedError: PresentedError?
 
@@ -139,6 +140,7 @@ struct SavingsGoalSection: View {
             ) { editing in
                 isDragging = editing
                 if !editing {
+                    sliderUpperBound = Self.upperBound(for: sliderTarget)
                     commitSliderTarget()
                 }
             }
@@ -165,8 +167,10 @@ struct SavingsGoalSection: View {
         return min(1, max(0, NSDecimalNumber(decimal: ratio).doubleValue))
     }
 
-    private var sliderUpperBound: Double {
-        max(10_000, sliderValue)
+    private static func upperBound(for savingsTarget: Decimal) -> Double {
+        let savingsTarget = NSDecimalNumber(decimal: savingsTarget).doubleValue
+        let unroundedUpperBound = max(4_000, savingsTarget * 2)
+        return (unroundedUpperBound / 50).rounded(.up) * 50
     }
 
     private var sliderTarget: Decimal {
@@ -175,6 +179,7 @@ struct SavingsGoalSection: View {
 
     private func synchronizeSlider() {
         sliderValue = NSDecimalNumber(decimal: projection.savingsTarget).doubleValue
+        sliderUpperBound = Self.upperBound(for: projection.savingsTarget)
     }
 
     private func decimalTarget(from value: Double) -> Decimal {

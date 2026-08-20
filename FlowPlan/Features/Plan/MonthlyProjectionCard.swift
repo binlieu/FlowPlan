@@ -45,6 +45,12 @@ struct MonthlyProjectionCard: View {
     static func rows(for projection: MonthlyProjection) -> [ProjectionCardRow] {
         [
             ProjectionCardRow(
+                id: "startingBalance",
+                label: "Starting balance",
+                amount: projection.startingBalance,
+                direction: .addition
+            ),
+            ProjectionCardRow(
                 id: "plannedIncome",
                 label: "Expected income",
                 amount: projection.plannedIncomeTotal,
@@ -129,6 +135,15 @@ struct ProjectionCardRow: Identifiable, Equatable {
     let label: String
     let amount: Decimal
     let direction: Direction
+
+    var displayedAmount: Decimal {
+        switch direction {
+        case .addition:
+            amount
+        case .deduction:
+            -amount
+        }
+    }
 }
 
 #if DEBUG
