@@ -17,17 +17,19 @@ struct EstimatedSavingsCard: View {
                 VStack(alignment: .leading, spacing: 18) {
                     summary
 
-                    Divider()
-                        .overlay(Palette.hairline)
+                    if !isShortfall {
+                        Divider()
+                            .overlay(Palette.hairline)
 
-                    goalFooter
+                        goalFooter
+                    }
                 }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(cardAccessibilityLabel)
-        .accessibilityHint("Shows how estimated savings was calculated")
+        .accessibilityHint(cardAccessibilityHint)
         .navigationDestination(isPresented: $isShowingProjection) {
             ProjectionDetailView(projection: projection)
         }
@@ -35,7 +37,9 @@ struct EstimatedSavingsCard: View {
 
     @ViewBuilder
     private var summary: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+        if isShortfall {
+            summaryText
+        } else if dynamicTypeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 18) {
                 summaryText
                 savingsRing
@@ -52,18 +56,18 @@ struct EstimatedSavingsCard: View {
 
     private var summaryText: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ESTIMATED SAVINGS")
+            Text(summaryLabel)
                 .smallCapsTypography()
                 .foregroundStyle(Palette.accent)
 
-            Text(projectedAmount)
+            Text(summaryAmount)
                 .largeAmountTypography()
                 .monospacedDigit()
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel(accessibleProjectedAmount)
 
-            Text("Based on your current income, recurring bills, and planned spending.")
+            Text(summaryCopy)
                 .font(Typography.supporting)
                 .foregroundStyle(Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -95,13 +99,13 @@ struct EstimatedSavingsCard: View {
     }
 
     private var goalLabel: some View {
-        Text("GOAL")
+        Text(isGoalMet ? "GOAL MET" : "GOAL")
             .smallCapsTypography()
             .foregroundStyle(Palette.inkSecondary)
     }
 
     private var goalValue: some View {
-        Text("\(projectedAmount) / \(targetAmount)")
+        Text(goalFigure)
             .font(.headline.weight(.bold))
             .fontWidth(.condensed)
             .monospacedDigit()
@@ -110,8 +114,11 @@ struct EstimatedSavingsCard: View {
             .accessibilityLabel(goalAccessibilityValue)
     }
 
-    private var projectedAmount: String {
-        money(projection.projectedEndOfMonthBalance)
+    private var summaryAmount: String {
+        let amount = isShortfall
+            ? magnitude(of: projection.projectedEndOfMonthBalance)
+            : projection.projectedEndOfMonthBalance
+        return money(amount)
     }
 
     private var targetAmount: String {
@@ -119,7 +126,11 @@ struct EstimatedSavingsCard: View {
     }
 
     private var accessibleProjectedAmount: String {
-        "Estimated savings, \(accessibleMoney(projection.projectedEndOfMonthBalance))"
+        if isShortfall {
+            return "Projected shortfall, \(accessibleMoney(magnitude(of: projection.projectedEndOfMonthBalance)))"
+        }
+
+        return "Estimated savings, \(accessibleMoney(projection.projectedEndOfMonthBalance))"
     }
 
     private var goalAccessibilityValue: String {
@@ -127,11 +138,54 @@ struct EstimatedSavingsCard: View {
             return "No savings goal set"
         }
 
-        return "\(accessibleMoney(projection.projectedEndOfMonthBalance)) of \(accessibleMoney(projection.savingsTarget)) goal"
+        let cappedProjection = min(projection.projectedEndOfMonthBalance, projection.savingsTarget)
+        let status = isGoalMet ? ", goal met" : ""
+        return "\(accessibleMoney(cappedProjection)) of \(accessibleMoney(projection.savingsTarget)) goal\(status)"
     }
 
     private var cardAccessibilityLabel: String {
-        "Estimated savings, \(accessibleMoney(projection.projectedEndOfMonthBalance)). \(goalAccessibilityValue)."
+        if isShortfall {
+            return "Projected shortfall, \(accessibleMoney(magnitude(of: projection.projectedEndOfMonthBalance))). "
+                + "You're projected to be \(accessibleMoney(magnitude(of: projection.projectedEndOfMonthBalance))) short this month."
+        }
+
+        return "Estimated savings, \(accessibleMoney(projection.projectedEndOfMonthBalance)). \(goalAccessibilityValue)."
+    }
+
+    private var cardAccessibilityHint: String {
+        isShortfall
+            ? "Shows how the projected shortfall was calculated"
+            : "Shows how estimated savings was calculated"
+    }
+
+    private var summaryLabel: String {
+        isShortfall ? "PROJECTED SHORTFALL" : "ESTIMATED SAVINGS"
+    }
+
+    private var summaryCopy: String {
+        if isShortfall {
+            return "You're projected to be \(money(magnitude(of: projection.projectedEndOfMonthBalance))) short this month."
+        }
+
+        return "Based on your current income, recurring bills, and planned spending."
+    }
+
+    private var goalFigure: String {
+        guard projection.savingsTarget > .zero else {
+            return "No goal set"
+        }
+
+        let cappedProjection = min(projection.projectedEndOfMonthBalance, projection.savingsTarget)
+        return "\(money(cappedProjection)) of \(targetAmount)"
+    }
+
+    private var isShortfall: Bool {
+        projection.projectedEndOfMonthBalance < .zero
+    }
+
+    private var isGoalMet: Bool {
+        projection.savingsTarget > .zero
+            && projection.projectedEndOfMonthBalance >= projection.savingsTarget
     }
 
     private var goalProgress: CGFloat {
@@ -150,6 +204,10 @@ struct EstimatedSavingsCard: View {
 
     private func accessibleMoney(_ amount: Decimal) -> String {
         MoneyFormatter.accessibleString(amount, currencyCode: appState.currencyCode)
+    }
+
+    private func magnitude(of amount: Decimal) -> Decimal {
+        amount < .zero ? -amount : amount
     }
 }
 

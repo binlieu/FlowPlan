@@ -302,7 +302,11 @@ private struct QACorrectnessEnvironment {
             userDefaults: defaults,
             now: { Self.date(day: 20, calendar: calendar) }
         )
-        let projectionStore = ProjectionStore(repository: repository, appState: appState)
+        let projectionStore = ProjectionStore(
+            repository: repository,
+            appState: appState,
+            modelContext: container.mainContext
+        )
         self.projectionStore = projectionStore
         transactionsViewModel = TransactionsViewModel(
             repository: repository,

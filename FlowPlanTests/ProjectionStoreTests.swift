@@ -19,7 +19,11 @@ func refreshAfterUnbudgetedExpenseMovesProjectionByExactlyMinusSixHundred() thro
     )
 
     try repository.setStartingBalance(2_000, for: month)
-    let store = ProjectionStore(repository: repository, appState: appState)
+    let store = ProjectionStore(
+        repository: repository,
+        appState: appState,
+        modelContext: context
+    )
     let originalBalance = store.projection.projectedEndOfMonthBalance
 
     try repository.addTransaction(
@@ -51,7 +55,11 @@ func simulateDoesNotPersistOrMutateStoredProjection() throws {
     )
 
     try repository.setStartingBalance(2_000, for: month)
-    let store = ProjectionStore(repository: repository, appState: appState)
+    let store = ProjectionStore(
+        repository: repository,
+        appState: appState,
+        modelContext: context
+    )
     let storedProjection = store.projection
     let transactionCount = try context.fetchCount(FetchDescriptor<TransactionEntity>())
     let scenarioTransaction = TransactionSnapshot(

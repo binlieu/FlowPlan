@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppLockView: View {
     @Bindable var gate: BiometricGate
+    @AccessibilityFocusState private var isUnlockFocused: Bool
 
     var body: some View {
         VStack(spacing: 24) {
@@ -45,6 +46,7 @@ struct AppLockView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(gate.isAuthenticating)
+            .accessibilityFocused($isUnlockFocused)
 
             Spacer()
         }
@@ -52,5 +54,10 @@ struct AppLockView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Palette.background)
         .foregroundStyle(Palette.ink)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
+        .onAppear {
+            isUnlockFocused = true
+        }
     }
 }

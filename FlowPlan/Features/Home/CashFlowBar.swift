@@ -29,7 +29,8 @@ struct CashFlowBar: View {
                     .accessibilityHidden(true)
 
                 HatchedSegment(
-                    accessibilityValue: accessibleEstimatedSavings
+                    accessibilityLabel: projectedBalanceLegend.label,
+                    accessibilityValue: accessibleProjectedBalance
                 )
             }
             .frame(height: 26)
@@ -51,13 +52,13 @@ struct CashFlowBar: View {
             VStack(alignment: .leading, spacing: 10) {
                 legendItem(expensesLegend)
                 legendItem(savingsLegend)
-                legendItem(estimatedSavingsLegend)
+                legendItem(projectedBalanceLegend)
             }
         } else {
             HStack(alignment: .top, spacing: 12) {
                 legendItem(expensesLegend)
                 legendItem(savingsLegend)
-                legendItem(estimatedSavingsLegend)
+                legendItem(projectedBalanceLegend)
             }
         }
     }
@@ -94,7 +95,7 @@ struct CashFlowBar: View {
                 .fill(color)
                 .frame(width: 16, height: 16)
         case .hatched:
-            HatchedSegment(accessibilityValue: "")
+            HatchedSegment(accessibilityLabel: item.label, accessibilityValue: "")
                 .frame(width: 16, height: 16)
         }
     }
@@ -108,11 +109,17 @@ struct CashFlowBar: View {
     }
 
     private var accessibilitySummary: String {
-        "Expenses \(accessibleMoney(projection.expensesPaid)); savings \(accessibleMoney(projection.savingsCompleted)); estimated savings \(accessibleEstimatedSavings)."
+        "Expenses \(accessibleMoney(projection.expensesPaid)); "
+            + "savings \(accessibleMoney(projection.savingsCompleted)); "
+            + "\(projectedBalanceLegend.label.lowercased()) \(accessibleProjectedBalance)."
     }
 
-    private var accessibleEstimatedSavings: String {
-        accessibleMoney(projection.projectedEndOfMonthBalance)
+    private var accessibleProjectedBalance: String {
+        accessibleMoney(
+            isShortfall
+                ? magnitude(of: projection.projectedEndOfMonthBalance)
+                : projection.projectedEndOfMonthBalance
+        )
     }
 
     private var expensesLegend: LegendItemModel {
@@ -131,12 +138,20 @@ struct CashFlowBar: View {
         )
     }
 
-    private var estimatedSavingsLegend: LegendItemModel {
+    private var projectedBalanceLegend: LegendItemModel {
         LegendItemModel(
-            label: "Estimated savings",
-            value: money(projection.projectedEndOfMonthBalance),
+            label: isShortfall ? "Projected shortfall" : "Estimated savings",
+            value: money(
+                isShortfall
+                    ? magnitude(of: projection.projectedEndOfMonthBalance)
+                    : projection.projectedEndOfMonthBalance
+            ),
             kind: .hatched
         )
+    }
+
+    private var isShortfall: Bool {
+        projection.projectedEndOfMonthBalance < .zero
     }
 
     private func money(_ amount: Decimal) -> String {
@@ -149,6 +164,10 @@ struct CashFlowBar: View {
 
     private func accessibleMoney(_ amount: Decimal) -> String {
         MoneyFormatter.accessibleString(amount, currencyCode: appState.currencyCode)
+    }
+
+    private func magnitude(of amount: Decimal) -> Decimal {
+        amount < .zero ? -amount : amount
     }
 
     private func chartWeight(_ amount: Decimal) -> CGFloat {
@@ -221,6 +240,7 @@ struct ProportionalSegmentsLayout: Layout {
 }
 
 private struct HatchedSegment: View {
+    let accessibilityLabel: String
     let accessibilityValue: String
 
     var body: some View {
@@ -235,7 +255,7 @@ private struct HatchedSegment: View {
             Rectangle().stroke(Palette.hairline, lineWidth: 1)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Estimated savings hatched segment")
+        .accessibilityLabel("\(accessibilityLabel) hatched segment")
         .accessibilityValue(accessibilityValue)
     }
 }

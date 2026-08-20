@@ -98,3 +98,25 @@ QA report.
 - [ ] app builds for the iPhone 17 simulator, no new warnings; all app tests pass
 - [ ] a negative projection never renders as "savings" anywhere
 - [ ] `grep -rn "USD\|en_US" Packages/FlowPlanDomain/Sources/` finds nothing
+
+---
+
+## SCOPE AUTHORISATION (revised)
+
+`FlowPlan/App/RootView.swift` and `FlowPlan/Features/Transactions/TransactionRow.swift` are
+authorised, along with `docs/DECISIONS.md`.
+
+More generally, the allow-list above was the wrong shape for a fix pass — it was written from a
+guess about which files hold each defect. **Replace it with a deny-list:** you may touch anything
+under `FlowPlan/`, `FlowPlanTests/`, the three named `FlowPlanDomain` files, and the two docs.
+
+Do NOT touch:
+- `Packages/FlowPlanDomain/Sources/FlowPlanDomain/Calculations/MonthlyProjectionEngine.swift`
+- `Packages/FlowPlanDomain/Sources/FlowPlanDomain/Models/ProjectionModels.swift`
+- `Packages/FlowPlanDomain/Sources/FlowPlanDomain/Support/**`
+- `FlowPlan/Data/**`
+- `FlowPlan.xcodeproj`
+- `docs/QA_REPORT.md`
+
+If a fix still needs something on the deny-list, stop and say so — that is the right call and you
+made it correctly twice.

@@ -21,8 +21,9 @@ struct RootView: View {
     var body: some View {
         ZStack {
             tabs
+                .accessibilityHidden(isAppLocked)
 
-            if appState.isFaceIDEnabled, isFaceIDAvailable, biometricGate.isLocked {
+            if isAppLocked {
                 AppLockView(gate: biometricGate)
                     .transition(.opacity)
                     .zIndex(1)
@@ -58,6 +59,10 @@ struct RootView: View {
 
     private var isFaceIDAvailable: Bool {
         biometricAvailability.isAvailable && biometricAvailability.biometry == .faceID
+    }
+
+    private var isAppLocked: Bool {
+        appState.isFaceIDEnabled && isFaceIDAvailable && biometricGate.isLocked
     }
 
     private var tabs: some View {
@@ -177,7 +182,11 @@ struct FlowPlanPreviewHost<Content: View>: View {
             calendar: FlowPlanPreviewData.calendar,
             now: { FlowPlanPreviewData.referenceDate }
         )
-        let projectionStore = ProjectionStore(repository: repository, appState: state)
+        let projectionStore = ProjectionStore(
+            repository: repository,
+            appState: state,
+            modelContext: container.mainContext
+        )
 
         modelContainer = container
         self.colorScheme = colorScheme

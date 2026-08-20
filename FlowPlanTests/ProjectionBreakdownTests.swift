@@ -108,7 +108,11 @@ private struct ProjectionBreakdownTestHarness {
         self.container = container
         self.context = context
         self.repository = repository
-        self.store = ProjectionStore(repository: repository, appState: appState)
+        self.store = ProjectionStore(
+            repository: repository,
+            appState: appState,
+            modelContext: context
+        )
         self.calendar = calendar
     }
 

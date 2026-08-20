@@ -7,15 +7,21 @@ struct HomeView: View {
     let onSeeAllBills: () -> Void
     let onSeeAllTransactions: () -> Void
 
+    private let now: () -> Date
+    private let calendar: Calendar
     private let contentHorizontalPadding: CGFloat = 20
     private let bottomContentClearance: CGFloat = 80
 
     init(
         onSeeAllBills: @escaping () -> Void = {},
-        onSeeAllTransactions: @escaping () -> Void = {}
+        onSeeAllTransactions: @escaping () -> Void = {},
+        calendar: Calendar = .current,
+        now: @escaping () -> Date = Date.init
     ) {
         self.onSeeAllBills = onSeeAllBills
         self.onSeeAllTransactions = onSeeAllTransactions
+        self.calendar = calendar
+        self.now = now
     }
 
     var body: some View {
@@ -25,8 +31,16 @@ struct HomeView: View {
                 .padding(.bottom, 20)
                 .homeListRow()
 
+            if let loadErrorMessage = projectionStore.loadErrorMessage {
+                staleDataBanner(loadErrorMessage)
+                    .padding(.horizontal, contentHorizontalPadding)
+                    .padding(.bottom, 20)
+                    .homeListRow()
+            }
+
             AvailableThisMonthCard(
                 projection: projectionStore.projection,
+                completeness: projectionStore.completeness,
                 onOpenPlan: onSeeAllBills
             )
             .padding(.horizontal, contentHorizontalPadding)
@@ -99,12 +113,44 @@ struct HomeView: View {
     }
 
     private var greeting: String {
-        let name = appState.userName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "Good morning" : "Good morning, \(name)"
+        Self.greeting(
+            name: appState.userName,
+            at: now(),
+            calendar: calendar
+        )
     }
 
     private var isFirstRun: Bool {
-        projectionStore.projection.completeness.hasNoPlanningInputs
+        projectionStore.completeness.hasNoPlanningInputs
+    }
+
+    private func staleDataBanner(_ message: String) -> some View {
+        Label(message, systemImage: "exclamationmark.triangle.fill")
+            .font(Typography.supporting.weight(.semibold))
+            .foregroundStyle(Palette.ink)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(Palette.surface)
+            .overlay {
+                Rectangle().stroke(Palette.accent, lineWidth: 1)
+            }
+            .accessibilityLabel("Data load warning. \(message)")
+    }
+
+    static func greeting(name: String, at date: Date, calendar: Calendar) -> String {
+        let salutation: String
+        switch calendar.component(.hour, from: date) {
+        case 0..<12:
+            salutation = "Good morning"
+        case 12..<17:
+            salutation = "Good afternoon"
+        default:
+            salutation = "Good evening"
+        }
+
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedName.isEmpty ? salutation : "\(salutation), \(trimmedName)"
     }
 }
 

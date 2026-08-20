@@ -44,6 +44,8 @@ struct ExpectedIncomeSection: View {
                 .font(.subheadline.weight(.bold))
                 .fontWidth(.condensed)
                 .foregroundStyle(Palette.accent)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
     }
 

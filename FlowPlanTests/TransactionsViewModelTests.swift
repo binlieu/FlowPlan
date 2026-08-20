@@ -225,7 +225,11 @@ private struct TransactionsTestEnvironment {
             try repository.setStartingBalance(startingBalance, for: month)
         }
 
-        let projectionStore = ProjectionStore(repository: repository, appState: appState)
+        let projectionStore = ProjectionStore(
+            repository: repository,
+            appState: appState,
+            modelContext: container.mainContext
+        )
         self.repository = repository
         self.projectionStore = projectionStore
         viewModel = TransactionsViewModel(
