@@ -20,7 +20,7 @@ struct RootView: View {
             .environment(appState)
             .environment(repository)
             .environment(projectionStore)
-            .tabItem { Label("Home", systemImage: "house.fill") }
+            .tabItem { Label("HOME", systemImage: "house") }
             .tag(AppTab.home)
 
             NavigationStack {
@@ -29,12 +29,12 @@ struct RootView: View {
             .environment(appState)
             .environment(repository)
             .environment(projectionStore)
-            .tabItem { Label("Transactions", systemImage: "list.bullet.rectangle") }
+            .tabItem { Label("ACTIVITY", systemImage: "arrow.left.arrow.right") }
             .tag(AppTab.transactions)
 
             NavigationStack {
                 placeholder(
-                    symbol: "calendar",
+                    symbol: "list.clipboard",
                     title: "Plan",
                     message: "Planning tools are coming in a later step."
                 )
@@ -43,7 +43,7 @@ struct RootView: View {
             .environment(appState)
             .environment(repository)
             .environment(projectionStore)
-            .tabItem { Label("Plan", systemImage: "calendar") }
+            .tabItem { Label("PLAN", systemImage: "list.clipboard") }
             .tag(AppTab.plan)
 
             NavigationStack {
@@ -57,12 +57,12 @@ struct RootView: View {
             .environment(appState)
             .environment(repository)
             .environment(projectionStore)
-            .tabItem { Label("Insights", systemImage: "chart.line.uptrend.xyaxis") }
+            .tabItem { Label("INSIGHTS", systemImage: "chart.line.uptrend.xyaxis") }
             .tag(AppTab.insights)
 
             NavigationStack {
                 placeholder(
-                    symbol: "gearshape",
+                    symbol: "slider.horizontal.3",
                     title: "Settings",
                     message: "Settings are coming in a later step."
                 )
@@ -71,9 +71,12 @@ struct RootView: View {
             .environment(appState)
             .environment(repository)
             .environment(projectionStore)
-            .tabItem { Label("Settings", systemImage: "gearshape") }
+            .tabItem { Label("SETTINGS", systemImage: "slider.horizontal.3") }
             .tag(AppTab.settings)
         }
+        .tint(Palette.accent)
+        .toolbarBackground(Palette.surface, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 
     private func placeholder(symbol: String, title: String, message: String) -> some View {
@@ -102,12 +105,15 @@ struct FlowPlanPreviewHost<Content: View>: View {
 
     init(
         colorScheme: ColorScheme? = nil,
+        seedSampleData: Bool = true,
         @ViewBuilder content: () -> Content
     ) {
         let container: ModelContainer
         do {
             container = try PersistenceController.inMemory()
-            try SampleData.seed(into: container.mainContext, calendar: FlowPlanPreviewData.calendar)
+            if seedSampleData {
+                try SampleData.seed(into: container.mainContext, calendar: FlowPlanPreviewData.calendar)
+            }
         } catch {
             preconditionFailure("Unable to build preview data: \(error.localizedDescription)")
         }

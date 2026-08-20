@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct StatTile: View {
+    @Environment(AppState.self) private var appState
     @ScaledMetric(relativeTo: .subheadline) private var titleAreaHeight: CGFloat = 40
 
     let title: String
@@ -21,31 +22,48 @@ struct StatTile: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: symbol)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(minHeight: titleAreaHeight, alignment: .topLeading)
+        TickCard(contentPadding: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                Label(title.uppercased(), systemImage: symbol)
+                    .smallCapsTypography()
+                    .foregroundStyle(Palette.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: titleAreaHeight, alignment: .topLeading)
 
-            AmountText(amount: amount, style: .primary)
+                Text(formattedAmount)
+                    .valueTypography()
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.ink)
+                    .accessibilityLabel(accessibleAmount)
 
-            Spacer(minLength: 0)
+                Spacer(minLength: 0)
 
-            if let secondaryAmount {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("of")
-                    AmountText(amount: secondaryAmount, style: .secondary)
+                if let secondaryAmount {
+                    Text("OF \(formattedSecondaryAmount(secondaryAmount))")
+                        .smallCapsTypography()
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.inkSecondary)
+                        .accessibilityLabel("Of \(accessibleSecondaryAmount(secondaryAmount))")
                 }
-                .foregroundStyle(.secondary)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding()
-        .background(
-            Color(.secondarySystemGroupedBackground),
-            in: RoundedRectangle(cornerRadius: 16)
-        )
+    }
+
+    private var formattedAmount: String {
+        MoneyFormatter.string(amount, currencyCode: appState.currencyCode)
+    }
+
+    private var accessibleAmount: String {
+        MoneyFormatter.accessibleString(amount, currencyCode: appState.currencyCode)
+    }
+
+    private func formattedSecondaryAmount(_ amount: Decimal) -> String {
+        MoneyFormatter.string(amount, currencyCode: appState.currencyCode)
+    }
+
+    private func accessibleSecondaryAmount(_ amount: Decimal) -> String {
+        MoneyFormatter.accessibleString(amount, currencyCode: appState.currencyCode)
     }
 }
 
@@ -68,7 +86,7 @@ struct StatTile: View {
             }
         }
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(Palette.background)
     }
 }
 
@@ -90,7 +108,7 @@ struct StatTile: View {
             }
         }
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(Palette.background)
     }
 }
 #endif
