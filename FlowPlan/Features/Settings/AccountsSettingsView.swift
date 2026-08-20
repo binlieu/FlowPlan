@@ -25,7 +25,9 @@ struct AccountsSettingsView: View {
                         .onSubmit(addAccount)
 
                     Button("Add", action: addAccount)
+                        .foregroundStyle(Palette.onAccentFill)
                         .buttonStyle(.borderedProminent)
+                        .tint(Palette.accentFill)
                         .disabled(!canAddAccount)
                 }
             } header: {

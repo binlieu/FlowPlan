@@ -141,22 +141,26 @@ private struct TransactionsContent: View {
                 isConfirmingDelete = true
             } label: {
                 Label("Delete", systemImage: "trash")
+                    .foregroundStyle(Palette.onAccentFill)
             }
+            .tint(Palette.destructiveFill)
 
             Button {
                 editor = TransactionEditorPresentation(transaction: transaction)
             } label: {
                 Label("Edit", systemImage: "pencil")
+                    .foregroundStyle(Palette.onAccentFill)
             }
-            .tint(.blue)
+            .tint(Palette.neutralFill)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
                 editor = TransactionEditorPresentation(duplicatedTransaction: transaction)
             } label: {
                 Label("Duplicate", systemImage: "plus.square.on.square")
+                    .foregroundStyle(Palette.onAccentFill)
             }
-            .tint(.indigo)
+            .tint(Palette.neutralFill)
         }
     }
 

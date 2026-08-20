@@ -29,7 +29,9 @@ struct EmptyStateView: View {
         } actions: {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
+                    .foregroundStyle(Palette.onAccentFill)
                     .buttonStyle(.borderedProminent)
+                    .tint(Palette.accentFill)
             }
         }
     }

@@ -93,21 +93,28 @@ struct CategoriesSettingsView: View {
                 }
                 .swipeActions(edge: .trailing) {
                     if category != kind.fallbackName {
-                        Button("Delete", role: .destructive) {
+                        Button(role: .destructive) {
                             categoryPendingDeletion = EditableCategory(
                                 kind: kind,
                                 originalName: category
                             )
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                                .foregroundStyle(Palette.onAccentFill)
                         }
+                        .tint(Palette.destructiveFill)
                     }
 
                     if category != kind.fallbackName {
-                        Button("Edit") {
+                        Button {
                             editingCategory = EditableCategory(kind: kind, originalName: category)
                             categoryKind = kind
                             categoryName = category
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                                .foregroundStyle(Palette.onAccentFill)
                         }
-                        .tint(Palette.accent)
+                        .tint(Palette.neutralFill)
                     }
                 }
             }

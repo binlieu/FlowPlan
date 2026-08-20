@@ -114,8 +114,9 @@ struct ExpectedIncomeSection: View {
                                 markAsReceived(occurrence, amount: occurrence.amount)
                             } label: {
                                 Label("Mark as received", systemImage: "checkmark.circle")
+                                    .foregroundStyle(Palette.onAccentFill)
                             }
-                            .tint(Palette.accent)
+                            .tint(Palette.accentFill)
                             .accessibilityLabel("Mark \(occurrence.name) as received")
                         }
                 }
@@ -408,8 +409,9 @@ private struct IncomeReceiptConfirmationSheet: View {
                 Button("Mark as received", action: confirm)
                     .font(.headline)
                     .frame(maxWidth: .infinity)
+                    .foregroundStyle(Palette.onAccentFill)
                     .buttonStyle(.borderedProminent)
-                    .tint(Palette.accent)
+                    .tint(Palette.accentFill)
                     .controlSize(.large)
                     .disabled(parsedAmount.map { $0 <= .zero } ?? true || isSaving)
             }

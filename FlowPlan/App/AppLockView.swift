@@ -43,7 +43,9 @@ struct AppLockView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
+            .foregroundStyle(Palette.onAccentFill)
             .buttonStyle(.borderedProminent)
+            .tint(Palette.accentFill)
             .controlSize(.large)
             .disabled(gate.isAuthenticating)
             .accessibilityFocused($isUnlockFocused)
