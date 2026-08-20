@@ -85,11 +85,12 @@ struct MonthSpendingCard: View {
                 .smallCapsTypography()
                 .foregroundStyle(Palette.inkSecondary)
 
-            Text(money(amount))
+            Text(compactMoney(amount))
                 .valueTypography()
                 .monospacedDigit()
                 .foregroundStyle(color)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .accessibilityLabel(accessibleMoney(amount))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,6 +165,14 @@ struct MonthSpendingCard: View {
 
     private func money(_ amount: Decimal) -> String {
         MoneyFormatter.string(amount, currencyCode: appState.currencyCode)
+    }
+
+    private func compactMoney(_ amount: Decimal) -> String {
+        MoneyFormatter.string(
+            amount,
+            currencyCode: appState.currencyCode,
+            style: .compact
+        )
     }
 
     private func accessibleMoney(_ amount: Decimal) -> String {

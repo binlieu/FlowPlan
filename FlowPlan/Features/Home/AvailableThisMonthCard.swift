@@ -97,7 +97,8 @@ struct AvailableThisMonthCard: View {
                 .valueTypography()
                 .monospacedDigit()
                 .foregroundStyle(metric.color)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .accessibilityLabel(metric.accessibleValue)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -108,7 +109,7 @@ struct AvailableThisMonthCard: View {
     private var incomeMetric: AvailableMetric {
         AvailableMetric(
             label: "INCOME",
-            displayValue: "+\(money(projection.totalExpectedIncome))",
+            displayValue: compactMoney(projection.totalExpectedIncome, signed: true),
             accessibleValue: "Income, plus \(accessibleMoney(projection.totalExpectedIncome))",
             color: Palette.accent
         )
@@ -117,7 +118,7 @@ struct AvailableThisMonthCard: View {
     private var expensesMetric: AvailableMetric {
         AvailableMetric(
             label: "EXPENSES",
-            displayValue: "-\(money(projection.expensesPaid))",
+            displayValue: compactMoney(-projection.expensesPaid, signed: true),
             accessibleValue: "Expenses, minus \(accessibleMoney(projection.expensesPaid))",
             color: Palette.ink
         )
@@ -126,7 +127,7 @@ struct AvailableThisMonthCard: View {
     private var savingsMetric: AvailableMetric {
         AvailableMetric(
             label: "SAVINGS",
-            displayValue: "+\(money(projection.savingsCompleted))",
+            displayValue: compactMoney(projection.savingsCompleted, signed: true),
             accessibleValue: "Savings, plus \(accessibleMoney(projection.savingsCompleted))",
             color: Palette.accent
         )
@@ -152,6 +153,15 @@ struct AvailableThisMonthCard: View {
 
     private func money(_ amount: Decimal) -> String {
         MoneyFormatter.string(amount, currencyCode: appState.currencyCode)
+    }
+
+    private func compactMoney(_ amount: Decimal, signed: Bool = false) -> String {
+        MoneyFormatter.string(
+            amount,
+            currencyCode: appState.currencyCode,
+            signed: signed,
+            style: .compact
+        )
     }
 
     private func accessibleMoney(_ amount: Decimal) -> String {

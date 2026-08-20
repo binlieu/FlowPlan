@@ -8,6 +8,7 @@ struct HomeView: View {
     let onSeeAllTransactions: () -> Void
 
     private let contentHorizontalPadding: CGFloat = 20
+    private let bottomContentClearance: CGFloat = 80
 
     init(
         onSeeAllBills: @escaping () -> Void = {},
@@ -62,6 +63,11 @@ struct HomeView: View {
         .scrollContentBackground(.hidden)
         .contentMargins(.top, 24, for: .scrollContent)
         .background(Palette.background)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Color.clear
+                .frame(height: bottomContentClearance)
+                .accessibilityHidden(true)
+        }
         .foregroundStyle(Palette.ink)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)

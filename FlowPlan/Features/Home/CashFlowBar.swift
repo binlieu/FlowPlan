@@ -70,7 +70,8 @@ struct CashFlowBar: View {
                 Text(item.label)
                     .font(.subheadline)
                     .foregroundStyle(Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
             }
 
             Text(item.value)
@@ -79,9 +80,10 @@ struct CashFlowBar: View {
                 .monospacedDigit()
                 .foregroundStyle(Palette.ink)
                 .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : 23)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder
@@ -138,7 +140,11 @@ struct CashFlowBar: View {
     }
 
     private func money(_ amount: Decimal) -> String {
-        MoneyFormatter.string(amount, currencyCode: appState.currencyCode)
+        MoneyFormatter.string(
+            amount,
+            currencyCode: appState.currencyCode,
+            style: .compact
+        )
     }
 
     private func accessibleMoney(_ amount: Decimal) -> String {
