@@ -12,11 +12,10 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            DesignSystemScreenHeader(
-                "Settings",
-                subtitle: "Profile, preferences & data"
+            ScreenHeader(
+                title: "Settings",
+                subtitle: "PROFILE, PREFERENCES & DATA"
             )
-            .designSystemScreenHeaderRow()
 
             profileSection
             preferencesSection
@@ -26,6 +25,7 @@ struct SettingsView: View {
             aboutSection
         }
         .designSystemForm()
+        .contentMargins(.top, 0, for: .scrollContent)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)

@@ -11,6 +11,7 @@ struct HomeView: View {
     private let now: () -> Date
     private let calendar: Calendar
     private let contentHorizontalPadding: CGFloat = 20
+    private let quickAddTopPadding: CGFloat = 24
     private let bottomContentClearance: CGFloat = 80
 
     init(
@@ -34,10 +35,18 @@ struct HomeView: View {
         ).isEmpty
 
         List {
-            greetingAndMonth
-                .padding(.horizontal, contentHorizontalPadding)
-                .padding(.bottom, 20)
-                .homeListRow()
+            VStack(alignment: .leading, spacing: 0) {
+                ScreenHeader(
+                    title: greeting,
+                    subtitle: "KNOW WHERE YOUR MONEY GOES"
+                )
+
+                MonthNavigationBar()
+                    .padding(.horizontal, contentHorizontalPadding)
+                    .padding(.top, 20)
+            }
+            .padding(.bottom, 20)
+            .homeListRow()
 
             if let loadErrorMessage = projectionStore.loadErrorMessage {
                 staleDataBanner(loadErrorMessage)
@@ -87,14 +96,14 @@ struct HomeView: View {
 
             QuickAddRow()
                 .padding(.horizontal, contentHorizontalPadding)
-                .padding(.top, 24)
+                .padding(.top, quickAddTopPadding)
                 .padding(.bottom, 36)
                 .homeListRow()
         }
         .listStyle(.plain)
         .listSectionSpacing(28)
         .scrollContentBackground(.hidden)
-        .contentMargins(.top, 24, for: .scrollContent)
+        .contentMargins(.top, 0, for: .scrollContent)
         .background(Palette.background)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Color.clear
@@ -111,24 +120,6 @@ struct HomeView: View {
         .onChange(of: appState.selectedMonth) {
             projectionStore.refresh()
         }
-    }
-
-    private var greetingAndMonth: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(greeting)
-                .greetingTypography()
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text("KNOW WHERE YOUR MONEY GOES")
-                .smallCapsTypography()
-                .foregroundStyle(Palette.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            MonthNavigationBar()
-                .padding(.top, 20)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var greeting: String {

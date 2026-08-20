@@ -10,43 +10,49 @@ struct InsightsView: View {
 
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                MonthNavigationBar()
+                ScreenHeader(title: "Insights")
 
-                if projectionStore.currentTransactions.isEmpty {
-                    EmptyStateView(
-                        symbol: "chart.bar.xaxis",
-                        title: "No activity this month",
-                        message: "Add an income or expense transaction to see monthly insights."
-                    )
-                    .frame(minHeight: 360)
-                } else {
-                    SectionCard(title: "Income vs expenses") {
-                        IncomeVsExpensesChart(
-                            currentMonth: appState.selectedMonth,
-                            currentTransactions: projectionStore.currentTransactions,
-                            previousTransactions: projectionStore.previousTransactions,
-                            currencyCode: appState.currencyCode
+                Group {
+                    MonthNavigationBar()
+
+                    if projectionStore.currentTransactions.isEmpty {
+                        EmptyStateView(
+                            symbol: "chart.bar.xaxis",
+                            title: "No activity this month",
+                            message: "Add an income or expense transaction to see monthly insights."
                         )
+                        .frame(minHeight: 360)
+                    } else {
+                        SectionCard(title: "Income vs expenses") {
+                            IncomeVsExpensesChart(
+                                currentMonth: appState.selectedMonth,
+                                currentTransactions: projectionStore.currentTransactions,
+                                previousTransactions: projectionStore.previousTransactions,
+                                currencyCode: appState.currencyCode
+                            )
+                        }
+
+                        SectionCard(title: "Spending by category") {
+                            SpendingByCategoryChart(
+                                transactions: projectionStore.currentTransactions,
+                                currencyCode: appState.currencyCode
+                            )
+                        }
+
+                        savingsRateRow
+
+                        SmartInsightsSection(insights: projectionStore.insights)
                     }
-
-                    SectionCard(title: "Spending by category") {
-                        SpendingByCategoryChart(
-                            transactions: projectionStore.currentTransactions,
-                            currencyCode: appState.currencyCode
-                        )
-                    }
-
-                    savingsRateRow
-
-                    SmartInsightsSection(insights: projectionStore.insights)
                 }
+                .padding(.horizontal, 20)
             }
-            .padding(20)
+            .padding(.bottom, 20)
         }
         .background(Palette.background)
         .foregroundStyle(Palette.ink)
-        .navigationTitle("Insights")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
         .refreshable {
             projectionStore.refresh()
         }
