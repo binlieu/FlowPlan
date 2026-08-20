@@ -132,6 +132,7 @@ final class TransactionsViewModel {
 
     private(set) var sections: [TransactionDaySection] = []
     private(set) var availableCategories: [String] = []
+    private(set) var availableAccounts: [String] = []
 
     var isNarrowingResults: Bool {
         filter.isActive || !trimmedSearchText.isEmpty
@@ -142,6 +143,7 @@ final class TransactionsViewModel {
     @ObservationIgnored private let calendar: Calendar
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var transactions: [TransactionSnapshot] = []
+    @ObservationIgnored private var accountNamesByTransactionID: [UUID: String] = [:]
 
     init(
         repository: FinanceRepository,
@@ -157,7 +159,9 @@ final class TransactionsViewModel {
 
     func load(month: MonthKey) {
         transactions = repository.transactions(in: month)
+        accountNamesByTransactionID = repository.transactionAccountNames(in: month)
         availableCategories = categories(in: month)
+        availableAccounts = accounts()
         rebuildSections()
     }
 
@@ -183,14 +187,16 @@ final class TransactionsViewModel {
                     incomeID: settlement.sourceID,
                     occurrence: settlement.occurrenceDate,
                     amount: amount,
-                    on: date
+                    on: date,
+                    account: account
                 )
             case .bill:
                 try repository.markBillPaid(
                     billID: settlement.sourceID,
                     occurrence: settlement.occurrenceDate,
                     amount: amount,
-                    on: date
+                    on: date,
+                    account: account
                 )
             }
         } else {
@@ -264,6 +270,16 @@ final class TransactionsViewModel {
         filter = updatedFilter
     }
 
+    func selectAccount(_ account: String?) {
+        var updatedFilter = filter
+        updatedFilter.account = account
+        filter = updatedFilter
+    }
+
+    func account(for transaction: TransactionSnapshot) -> String {
+        accountNamesByTransactionID[transaction.id] ?? ""
+    }
+
     func clearFilters() {
         filter.clear()
     }
@@ -291,9 +307,29 @@ final class TransactionsViewModel {
         }
     }
 
+    private func accounts() -> [String] {
+        var namesByIdentity: [String: String] = [:]
+        let names = repository.accounts().map(\.name) + Array(accountNamesByTransactionID.values)
+
+        for name in names {
+            let trimmedName = AccountName.trimmed(name)
+            let identity = AccountName.identity(trimmedName)
+            if !identity.isEmpty, namesByIdentity[identity] == nil {
+                namesByIdentity[identity] = trimmedName
+            }
+        }
+
+        return namesByIdentity.values.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
+    }
+
     private func rebuildSections() {
         let matchingTransactions = transactions.filter { transaction in
-            filter.matches(transaction) && matchesSearch(transaction)
+            filter.matches(
+                transaction,
+                account: accountNamesByTransactionID[transaction.id] ?? ""
+            ) && matchesSearch(transaction)
         }
         let grouped = Dictionary(grouping: matchingTransactions) { transaction in
             calendar.startOfDay(for: transaction.date)

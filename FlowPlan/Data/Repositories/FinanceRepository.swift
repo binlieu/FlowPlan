@@ -5,6 +5,8 @@ import SwiftData
 import FlowPlanDomain
 
 enum FinanceRepositoryError: Error, Equatable {
+    case duplicateAccountName
+    case emptyAccountName
     case dataLoadFailed
     case invalidBudgetScope
     case invalidBillOccurrence
@@ -55,6 +57,12 @@ final class FinanceRepository {
         self.userDefaults = userDefaults
         self.now = now
         self.shouldFailReads = shouldFailReads
+
+        do {
+            try seedAccountsFromTransactions()
+        } catch {
+            Self.logger.error("Unable to seed account names from existing transactions.")
+        }
     }
 
     func projectionInput(
@@ -111,6 +119,10 @@ final class FinanceRepository {
     }
 
     private func transactionValues(in month: MonthKey) throws -> [TransactionSnapshot] {
+        try transactionEntities(in: month).map { $0.toDomain() }
+    }
+
+    private func transactionEntities(in month: MonthKey) throws -> [TransactionEntity] {
         let startDate = month.startDate(calendar: calendar)
         let monthEnd = month.endDate(calendar: calendar)
         guard let endExclusiveDate = calendar.date(byAdding: .second, value: 1, to: monthEnd) else {
@@ -124,7 +136,75 @@ final class FinanceRepository {
             predicate: predicate,
             sortBy: [SortDescriptor(\TransactionEntity.date, order: .reverse)]
         )
-        return try fetchOrThrow(descriptor).map { $0.toDomain() }
+        return try fetchOrThrow(descriptor)
+    }
+
+    func transactionAccountNames(in month: MonthKey) -> [UUID: String] {
+        read(or: [:]) {
+            Dictionary(
+                uniqueKeysWithValues: try transactionEntities(in: month).map {
+                    ($0.id, $0.account)
+                }
+            )
+        }
+    }
+
+    func accounts() -> [Account] {
+        read(or: []) {
+            let descriptor = FetchDescriptor<AccountEntity>(
+                sortBy: [SortDescriptor(\AccountEntity.name)]
+            )
+            return try fetchOrThrow(descriptor)
+                .map { $0.toValue() }
+                .sorted {
+                    $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+                }
+        }
+    }
+
+    func addAccount(named name: String) throws {
+        let trimmedName = AccountName.trimmed(name)
+        guard !trimmedName.isEmpty else {
+            throw FinanceRepositoryError.emptyAccountName
+        }
+
+        let identity = AccountName.identity(trimmedName)
+        let existingAccounts = try fetchOrThrow(FetchDescriptor<AccountEntity>())
+        guard !existingAccounts.contains(where: { AccountName.identity($0.name) == identity }) else {
+            throw FinanceRepositoryError.duplicateAccountName
+        }
+
+        context.insert(AccountEntity(name: trimmedName, createdAt: now()))
+        try context.save()
+    }
+
+    func deleteAccount(_ account: Account) throws {
+        let stored: AccountEntity = try existing(id: account.id)
+        let identity = AccountName.identity(stored.name)
+        let timestamp = now()
+        let transactions = try fetchOrThrow(FetchDescriptor<TransactionEntity>())
+
+        // Deleting an account only removes its label. Financial transactions are never deleted.
+        for transaction in transactions where AccountName.identity(transaction.account) == identity {
+            transaction.account = ""
+            transaction.updatedAt = timestamp
+        }
+
+        context.delete(stored)
+        try context.save()
+    }
+
+    func transactionCount(forAccount account: Account) -> Int {
+        transactionCount(forAccount: account.name)
+    }
+
+    func transactionCount(forAccount accountName: String) -> Int {
+        read(or: 0) {
+            let identity = AccountName.identity(accountName)
+            return try fetchOrThrow(FetchDescriptor<TransactionEntity>()).count {
+                AccountName.identity($0.account) == identity
+            }
+        }
     }
 
     func incomeSources() -> [PlannedIncome] {
@@ -522,7 +602,8 @@ final class FinanceRepository {
         billID: UUID,
         occurrence: Date,
         amount: Decimal,
-        on date: Date
+        on date: Date,
+        account: String = ""
     ) throws {
         guard amount > .zero else {
             throw FinanceRepositoryError.nonPositiveAmount
@@ -556,6 +637,7 @@ final class FinanceRepository {
             type: .expense,
             category: try canonicalCategory(bill.category),
             detail: bill.name,
+            account: AccountName.trimmed(account),
             settlesBillID: billID,
             createdAt: timestamp,
             updatedAt: timestamp
@@ -564,7 +646,12 @@ final class FinanceRepository {
         try context.save()
     }
 
-    func markIncomeReceived(incomeID: UUID, amount: Decimal, on date: Date) throws {
+    func markIncomeReceived(
+        incomeID: UUID,
+        amount: Decimal,
+        on date: Date,
+        account: String = ""
+    ) throws {
         guard amount > .zero else {
             throw FinanceRepositoryError.nonPositiveAmount
         }
@@ -583,7 +670,8 @@ final class FinanceRepository {
             incomeID: incomeID,
             occurrence: occurrences[settlementCount],
             amount: amount,
-            on: date
+            on: date,
+            account: account
         )
     }
 
@@ -591,7 +679,8 @@ final class FinanceRepository {
         incomeID: UUID,
         occurrence: Date,
         amount: Decimal,
-        on date: Date
+        on date: Date,
+        account: String = ""
     ) throws {
         guard amount > .zero else {
             throw FinanceRepositoryError.nonPositiveAmount
@@ -625,6 +714,7 @@ final class FinanceRepository {
             type: .income,
             category: "Income",
             detail: source.name,
+            account: AccountName.trimmed(account),
             settlesIncomeID: incomeID,
             createdAt: timestamp,
             updatedAt: timestamp
@@ -734,6 +824,37 @@ final class FinanceRepository {
             .folding(options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
     }
 
+    private func seedAccountsFromTransactions() throws {
+        let transactions = try fetchOrThrow(
+            FetchDescriptor<TransactionEntity>(
+                sortBy: [SortDescriptor(\TransactionEntity.createdAt)]
+            )
+        )
+        let accounts = try fetchOrThrow(FetchDescriptor<AccountEntity>())
+        var knownIdentities = Set(accounts.map { AccountName.identity($0.name) })
+        var insertedAccount = false
+
+        for transaction in transactions {
+            let name = AccountName.trimmed(transaction.account)
+            let identity = AccountName.identity(name)
+            guard !identity.isEmpty, knownIdentities.insert(identity).inserted else {
+                continue
+            }
+
+            context.insert(
+                AccountEntity(
+                    name: name,
+                    createdAt: transaction.createdAt
+                )
+            )
+            insertedAccount = true
+        }
+
+        if insertedAccount {
+            try context.save()
+        }
+    }
+
     private func transactionsLinkedToBill(_ id: UUID) throws -> [TransactionEntity] {
         let predicate = #Predicate<TransactionEntity> { transaction in
             transaction.settlesBillID == id
@@ -808,6 +929,7 @@ extension IncomeSourceEntity: IdentifiedPersistentModel {}
 extension RecurringBillEntity: IdentifiedPersistentModel {}
 extension BudgetEntity: IdentifiedPersistentModel {}
 extension SavingsGoalEntity: IdentifiedPersistentModel {}
+extension AccountEntity: IdentifiedPersistentModel {}
 
 private extension Decimal {
     var positiveMagnitude: Decimal {

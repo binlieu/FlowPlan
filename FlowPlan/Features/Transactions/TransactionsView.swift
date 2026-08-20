@@ -129,7 +129,10 @@ private struct TransactionsContent: View {
         Button {
             editor = TransactionEditorPresentation(transaction: transaction)
         } label: {
-            TransactionRow(transaction: transaction)
+            TransactionRow(
+                transaction: transaction,
+                account: viewModel.account(for: transaction)
+            )
         }
         .buttonStyle(.plain)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -224,6 +227,26 @@ private struct TransactionsContent: View {
                 }
             }
 
+            Menu("Accounts") {
+                if viewModel.availableAccounts.isEmpty {
+                    Text("No accounts available")
+                } else {
+                    ForEach(viewModel.availableAccounts, id: \.self) { account in
+                        Button {
+                            viewModel.selectAccount(
+                                viewModel.filter.account == account ? nil : account
+                            )
+                        } label: {
+                            if viewModel.filter.account == account {
+                                Label(account, systemImage: "checkmark")
+                            } else {
+                                Text(account)
+                            }
+                        }
+                    }
+                }
+            }
+
             if viewModel.filter.isActive {
                 Divider()
                 Button("Clear Filters", role: .destructive) {
@@ -254,6 +277,12 @@ private struct TransactionsContent: View {
                 ForEach(viewModel.filter.categories.sorted(), id: \.self) { category in
                     filterChip(category) {
                         viewModel.removeCategoryFilter(category)
+                    }
+                }
+
+                if let account = viewModel.filter.account {
+                    filterChip(account) {
+                        viewModel.selectAccount(nil)
                     }
                 }
 

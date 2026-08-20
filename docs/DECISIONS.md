@@ -163,9 +163,9 @@ retroactively.
 
 ---
 
-## D-014 — Debt and Accounts are deferred, not rejected
-**Decision.** The design handoff treats **Debt** and **Accounts** as first-class concepts. Neither
-is modelled for the MVP. Both are recorded here as deliberate post-MVP work.
+## D-014 — Accounts shipped; Debt remains deferred
+**Decision.** The design handoff treats **Debt** and **Accounts** as first-class concepts.
+Accounts shipped as a managed list of transaction labels. Debt remains deliberate post-MVP work.
 
 **Why.** Debt is not a UI addition — it changes the projection engine. The handoff's own rule
 ("the mortgage payment sits in Monthly Bills, so only the payments outside bills enter the
@@ -173,13 +173,13 @@ projection") is a second reconciliation rule layered on top of the bill-settleme
 Two interacting no-double-counting rules in the highest-risk code in the product is not something
 to add before the MVP's acceptance criteria are met and covered by tests.
 
-Accounts are lower risk — an entity, a picker, a per-row subtitle and a settings screen, with no
-engine change. They are deferred with Debt only to keep the remaining MVP scope stable, and can
-be pulled forward cheaply if wanted.
+Accounts were pulled forward as the lower-risk slice: an entity, a picker, a per-row subtitle,
+filtering and a settings screen. Account deletion clears matching labels without deleting
+transactions. It does not change balances or the projection engine.
 
-**Consequence.** `TransactionSnapshot` already carries an `account` string, so per-transaction
-account display is possible today without a schema change. A future `AccountEntity` would upgrade
-that string to a relationship.
+**Consequence.** `TransactionEntity.account` remains the source-of-truth string so existing labels
+stay valid and no relationship migration is required. `AccountEntity` manages available names and
+is seeded from distinct existing transaction labels. Only Debt remains deferred.
 
 ---
 

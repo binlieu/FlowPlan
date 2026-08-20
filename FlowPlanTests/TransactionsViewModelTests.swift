@@ -53,6 +53,42 @@ func transactionFilteringByTypeAndCategoryReturnsExpectedSubsets() throws {
 
 @Test
 @MainActor
+func transactionFilteringByAccountReturnsExpectedSubset() throws {
+    let environment = try TransactionsTestEnvironment()
+    let checkingID = UUID()
+    let savingsID = UUID()
+
+    try environment.repository.addTransaction(
+        environment.transaction(
+            id: checkingID,
+            day: 3,
+            amount: 50,
+            type: .expense,
+            category: "Other",
+            detail: "Checking purchase",
+            account: "Checking"
+        )
+    )
+    try environment.repository.addTransaction(
+        environment.transaction(
+            id: savingsID,
+            day: 4,
+            amount: 75,
+            type: .expense,
+            category: "Other",
+            detail: "Savings purchase",
+            account: "Savings"
+        )
+    )
+    environment.viewModel.load(month: environment.month)
+
+    environment.viewModel.filter = TransactionFilter(account: "checking")
+
+    #expect(environment.visibleTransactionIDs == [checkingID])
+}
+
+@Test
+@MainActor
 func transactionSearchMatchesDescriptionAndCategoryCaseInsensitively() throws {
     let environment = try TransactionsTestEnvironment()
     let descriptionMatchID = UUID()
@@ -250,7 +286,8 @@ private struct TransactionsTestEnvironment {
         amount: Decimal,
         type: TransactionType,
         category: String,
-        detail: String
+        detail: String,
+        account: String = ""
     ) -> TransactionEntity {
         TransactionEntity(
             id: id,
@@ -258,7 +295,8 @@ private struct TransactionsTestEnvironment {
             amount: amount,
             type: type,
             category: category,
-            detail: detail
+            detail: detail,
+            account: account
         )
     }
 
