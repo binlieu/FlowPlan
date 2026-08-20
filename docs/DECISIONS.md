@@ -1,4 +1,4 @@
-# LieuFlow — Decision Log
+# FlowPlan — Decision Log
 
 Records **why**, so agents do not relitigate settled architecture. Newest last.
 
@@ -6,7 +6,7 @@ Records **why**, so agents do not relitigate settled architecture. Newest last.
 
 ## D-001 — The projection engine is a separate pure Swift package
 **Decision.** `MonthlyProjectionEngine` and all financial domain types live in
-`Packages/LieuFlowDomain`, a local SPM package importing `Foundation` only.
+`Packages/FlowPlanDomain`, a local SPM package importing `Foundation` only.
 
 **Why.** The owner's hard constraint is that the engine carry zero SwiftUI and zero database
 dependencies. A folder convention is enforced by opinion; a module boundary is enforced by the
@@ -26,7 +26,7 @@ entities to domain value types explicitly. That mapping is the price paid, and i
 target is iOS 18 on Xcode 26.6 / Swift 6.3.3, comfortably past the iOS 17 floor. SwiftData
 removes a large amount of boilerplate for a local-first app of this size.
 
-**Consequence.** Entities are confined to `LieuFlow/Data/Persistence`. Because the domain is a
+**Consequence.** Entities are confined to `FlowPlan/Data/Persistence`. Because the domain is a
 separate module (D-001), replacing the store later touches one folder.
 
 ---
@@ -42,7 +42,7 @@ install base than targeting iOS 26 would.
 
 ## D-004 — Hand-written `project.pbxproj` with file-system-synchronized groups
 **Decision.** No XcodeGen, no Tuist. `project.pbxproj` is committed, uses `objectVersion = 77`
-and `PBXFileSystemSynchronizedRootGroup` for `LieuFlow/` and `LieuFlowTests/`.
+and `PBXFileSystemSynchronizedRootGroup` for `FlowPlan/` and `FlowPlanTests/`.
 
 **Why.** Neither generator was installed, and adding one would put a build-time dependency
 between an agent and a working build. Synchronized groups mean **any file added to those

@@ -1,4 +1,4 @@
-# LieuFlow — Architecture
+# FlowPlan — Architecture
 
 > Every layer below exists to answer one question:
 > **"What will my financial situation look like at the end of this month?"**
@@ -6,16 +6,16 @@
 ## 1. Module map
 
 ```
-LieuFlow/                          repo root
-├── Packages/LieuFlowDomain/       ← PURE SWIFT. Foundation only. No UI, no storage.
-│   └── Sources/LieuFlowDomain/
+FlowPlan/                          repo root
+├── Packages/FlowPlanDomain/       ← PURE SWIFT. Foundation only. No UI, no storage.
+│   └── Sources/FlowPlanDomain/
 │       ├── Models/                value types: PlannedIncome, PlannedBill, BudgetAllocation,
 │       │                          SavingsPlan, TransactionSnapshot, MonthlyProjection…
 │       ├── Calculations/          MonthlyProjectionEngine, InsightsEngine
 │       └── Support/               MonthKey, RecurrenceRule, Money formatting helpers
 │
-├── LieuFlow/                      app target (iOS 18+)
-│   ├── App/                       LieuFlowApp, RootView, AppState, MonthSelection
+├── FlowPlan/                      app target (iOS 18+)
+│   ├── App/                       FlowPlanApp, RootView, AppState, MonthSelection
 │   ├── Data/
 │   │   ├── Persistence/           SwiftData @Model entities + ModelContainer setup
 │   │   ├── Repositories/          entity ⇄ domain-value mapping, CRUD
@@ -24,7 +24,7 @@ LieuFlow/                          repo root
 │   ├── Shared/                    Components, Extensions, Formatting
 │   └── Resources/                 Assets.xcassets
 │
-└── LieuFlowTests/                 app-level tests (repositories, mapping, view models)
+└── FlowPlanTests/                 app-level tests (repositories, mapping, view models)
 ```
 
 Dependency direction is one-way and enforced by module boundaries:
@@ -32,12 +32,12 @@ Dependency direction is one-way and enforced by module boundaries:
 ```
 Features ──▶ Repositories ──▶ SwiftData entities
     │              │
-    └──────────────┴──▶ LieuFlowDomain   (nothing in the domain depends on anything above it)
+    └──────────────┴──▶ FlowPlanDomain   (nothing in the domain depends on anything above it)
 ```
 
 ## 2. The purity rule (non-negotiable)
 
-`LieuFlowDomain` imports **`Foundation` and nothing else**. No SwiftUI, SwiftData, CoreData,
+`FlowPlanDomain` imports **`Foundation` and nothing else**. No SwiftUI, SwiftData, CoreData,
 UIKit, Combine or Observation. No `Date()` inside the engine — the caller injects
 `referenceDate`, which is what makes month-boundary behaviour testable.
 
@@ -118,7 +118,7 @@ frequencies clamp to the last day of short months (anchor Jan 31 → Feb 28/29 �
 
 SwiftData, chosen because the toolchain floor (iOS 18) supports it comfortably and it removes
 a large amount of Core Data boilerplate. `@Model` entities live **only** in
-`LieuFlow/Data/Persistence` and are never handed to a view or to the engine. Repositories map
+`FlowPlan/Data/Persistence` and are never handed to a view or to the engine. Repositories map
 entities to domain value types on the way out and apply edits on the way in. Swapping SwiftData
 for another store therefore touches one folder.
 

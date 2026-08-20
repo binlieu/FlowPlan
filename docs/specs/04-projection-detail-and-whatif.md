@@ -5,15 +5,15 @@ Make the headline number trustworthy: a screen that shows exactly how it was cal
 simulator that tests a hypothetical purchase against the **same engine**.
 
 ## Scope — touch ONLY these
-- `LieuFlow/Features/Projection/ProjectionDetailView.swift` (create)
-- `LieuFlow/Features/Projection/ProjectionBreakdownRow.swift` (create)
-- `LieuFlow/Features/Projection/ProjectionCompletenessView.swift` (create)
-- `LieuFlow/Features/Projection/WhatIfView.swift` (create)
-- `LieuFlow/Features/Home/ProjectionHeroCard.swift` (edit: replace the spec-03 placeholder
+- `FlowPlan/Features/Projection/ProjectionDetailView.swift` (create)
+- `FlowPlan/Features/Projection/ProjectionBreakdownRow.swift` (create)
+- `FlowPlan/Features/Projection/ProjectionCompletenessView.swift` (create)
+- `FlowPlan/Features/Projection/WhatIfView.swift` (create)
+- `FlowPlan/Features/Home/ProjectionHeroCard.swift` (edit: replace the spec-03 placeholder
   destination with the real `ProjectionDetailView`)
-- `LieuFlowTests/ProjectionBreakdownTests.swift` (create)
+- `FlowPlanTests/ProjectionBreakdownTests.swift` (create)
 
-Do NOT modify `Packages/LieuFlowDomain/**`, `LieuFlow/Data/**`, `AppState`, `ProjectionStore`,
+Do NOT modify `Packages/FlowPlanDomain/**`, `FlowPlan/Data/**`, `AppState`, `ProjectionStore`,
 the Xcode project, or `docs/`.
 
 ## What to do
@@ -100,6 +100,6 @@ App-layer tests against an in-memory container:
 ## Done when
 - [ ] build succeeds for the iPhone 17 simulator
 - [ ] all tests pass
-- [ ] `grep -rn "projectedEndOfMonthBalance -\|- 1200\|impact =" LieuFlow/Features/Projection/` shows
+- [ ] `grep -rn "projectedEndOfMonthBalance -\|- 1200\|impact =" FlowPlan/Features/Projection/` shows
       no hand-rolled arithmetic — every figure is read from the engine's output
 - [ ] tapping the hero card reaches the breakdown, and the breakdown's total matches the card

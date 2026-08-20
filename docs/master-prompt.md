@@ -1,10 +1,10 @@
-# LieuFlow — Claude Code Master Development Prompt
+# FlowPlan — Claude Code Master Development Prompt
 
 > **Note.** The owner persona, employer and every currency figure in this document are
 > fictional demo data used for sample seeding and test fixtures. They do not describe a
 > real person or real finances.
 
-You are the Lead Software Architect and Engineering Orchestrator for a native iPhone personal finance application named LieuFlow.
+You are the Lead Software Architect and Engineering Orchestrator for a native iPhone personal finance application named FlowPlan.
 
 The app owner is:
 
@@ -12,7 +12,7 @@ The app owner is:
 
 App name:
 
-**LieuFlow**
+**FlowPlan**
 
 Tagline:
 
@@ -22,7 +22,7 @@ The most important product feature is:
 
 **PROJECTED END OF MONTH**
 
-This is the signature feature of LieuFlow.
+This is the signature feature of FlowPlan.
 
 The user should be able to open the app and immediately understand:
 
@@ -214,7 +214,7 @@ If this is a new project, establish the architecture described below.
 
 ## 5. TECHNOLOGY REQUIREMENTS
 
-Build LieuFlow as a native iPhone application.
+Build FlowPlan as a native iPhone application.
 
 Primary technologies:
 
@@ -254,7 +254,7 @@ Do not hard-code layouts to one device.
 
 ## 7. PRODUCT PHILOSOPHY
 
-LieuFlow is NOT accounting software.
+FlowPlan is NOT accounting software.
 
 It is a personal monthly financial planning application.
 
@@ -293,7 +293,7 @@ Avoid turning the app into a spreadsheet.
 
 **PROJECTED END OF MONTH**
 
-This is the centerpiece of LieuFlow.
+This is the centerpiece of FlowPlan.
 
 Create a dedicated calculation engine.
 
@@ -1147,10 +1147,10 @@ Use a clean feature-oriented architecture.
 A reasonable structure may look like:
 
 ```text
-LieuFlow/
+FlowPlan/
 │
 ├── App/
-│   ├── LieuFlowApp.swift
+│   ├── FlowPlanApp.swift
 │   ├── AppState.swift
 │   └── RootView.swift
 │
@@ -1886,7 +1886,7 @@ Maintain README.md.
 
 Include:
 
-* what LieuFlow does
+* what FlowPlan does
 * architecture
 * required Xcode version
 * minimum iOS version
@@ -1909,7 +1909,7 @@ PROJECT_STATUS.md
 Format:
 
 ```text
-# LieuFlow Project Status
+# FlowPlan Project Status
 
 ## Completed
 
@@ -2086,7 +2086,7 @@ A feature is complete only when:
 
 ## 60. MVP DEFINITION OF DONE
 
-LieuFlow MVP is ready when the user can:
+FlowPlan MVP is ready when the user can:
 
 1. launch the app
 2. select a month
@@ -2139,7 +2139,7 @@ Without requiring a refresh, the dashboard must recalculate the Projected End-of
 
 Alex should be able to tap the projection and see exactly why the value changed.
 
-This workflow represents the core value proposition of LieuFlow.
+This workflow represents the core value proposition of FlowPlan.
 
 If this experience is not excellent, the application is not finished.
 
@@ -2211,7 +2211,7 @@ Every major feature should ultimately support this question:
 
 > "What will my financial situation look like at the end of this month?"
 
-LieuFlow should not merely tell Alex what happened.
+FlowPlan should not merely tell Alex what happened.
 
 It should help Alex understand:
 
@@ -2223,7 +2223,7 @@ How much can I save?
 Where will I end the month?
 ```
 
-That is what differentiates LieuFlow from a basic expense tracker.
+That is what differentiates FlowPlan from a basic expense tracker.
 
 Build the application around that idea.
 

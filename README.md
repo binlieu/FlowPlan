@@ -1,8 +1,8 @@
-# LieuFlow
+# FlowPlan
 
 **Know where your money goes.**
 
-LieuFlow is a native iPhone personal finance app built around one question:
+FlowPlan is a native iPhone personal finance app built around one question:
 
 > *Based on everything I know right now, how much money will I have left at the end of this month?*
 
@@ -22,21 +22,21 @@ tap it, and recalculates the instant anything relevant changes.
 ## Getting started
 
 ```bash
-open LieuFlow.xcodeproj
+open FlowPlan.xcodeproj
 ```
 
-Select the **LieuFlow** scheme and any iPhone simulator, then run. Sample data for August 2026
+Select the **FlowPlan** scheme and any iPhone simulator, then run. Sample data for August 2026
 can be switched on in Settings; it is off by default and never touches production behaviour.
 
 ## Architecture
 
 ```
-Packages/LieuFlowDomain/   pure Swift financial core — Foundation only
-LieuFlow/App/              app entry, AppState (selected month, preferences), ProjectionStore
-LieuFlow/Data/             SwiftData entities, repositories, seed data
-LieuFlow/Features/         Home · Projection · Transactions · Plan · Insights · Settings
-LieuFlow/Shared/           reusable components, formatting, extensions
-LieuFlowTests/             repository, mapping and store tests
+Packages/FlowPlanDomain/   pure Swift financial core — Foundation only
+FlowPlan/App/              app entry, AppState (selected month, preferences), ProjectionStore
+FlowPlan/Data/             SwiftData entities, repositories, seed data
+FlowPlan/Features/         Home · Projection · Transactions · Plan · Insights · Settings
+FlowPlan/Shared/           reusable components, formatting, extensions
+FlowPlanTests/             repository, mapping and store tests
 ```
 
 The financial engine lives in a **separate Swift package that imports `Foundation` and nothing
@@ -57,12 +57,12 @@ Why things are the way they are: [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ```bash
 # financial core — fast, no simulator
-cd Packages/LieuFlowDomain && swift test
+cd Packages/FlowPlanDomain && swift test
 ```
 
 ```bash
 # app target
-xcodebuild -scheme LieuFlow -destination 'platform=iOS Simulator,name=iPhone 17' test
+xcodebuild -scheme FlowPlan -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
 
 ## Features

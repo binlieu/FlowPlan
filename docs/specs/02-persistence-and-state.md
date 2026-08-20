@@ -5,32 +5,32 @@ Give the app a real local-first store and a single place where the projection is
 so every screen built later just renders published state. No SwiftUI screens in this task.
 
 ## Scope — touch ONLY these (create them)
-- `LieuFlow/Data/Persistence/Entities.swift`
-- `LieuFlow/Data/Persistence/PersistenceController.swift`
-- `LieuFlow/Data/Repositories/FinanceRepository.swift`
-- `LieuFlow/Data/Seed/SampleData.swift`
-- `LieuFlow/App/AppState.swift`
-- `LieuFlow/App/ProjectionStore.swift`
-- `LieuFlow/Shared/Formatting/MoneyFormatter.swift`
-- `LieuFlow/Shared/Extensions/Decimal+LieuFlow.swift`
-- `LieuFlowTests/RepositoryTests.swift`
-- `LieuFlowTests/ProjectionStoreTests.swift`
-- `LieuFlowTests/SeedDataTests.swift`
+- `FlowPlan/Data/Persistence/Entities.swift`
+- `FlowPlan/Data/Persistence/PersistenceController.swift`
+- `FlowPlan/Data/Repositories/FinanceRepository.swift`
+- `FlowPlan/Data/Seed/SampleData.swift`
+- `FlowPlan/App/AppState.swift`
+- `FlowPlan/App/ProjectionStore.swift`
+- `FlowPlan/Shared/Formatting/MoneyFormatter.swift`
+- `FlowPlan/Shared/Extensions/Decimal+FlowPlan.swift`
+- `FlowPlanTests/RepositoryTests.swift`
+- `FlowPlanTests/ProjectionStoreTests.swift`
+- `FlowPlanTests/SeedDataTests.swift`
 
-You MAY replace `LieuFlow/App/LieuFlowApp.swift` and `LieuFlow/App/RootView.swift`
+You MAY replace `FlowPlan/App/FlowPlanApp.swift` and `FlowPlan/App/RootView.swift`
 (they are two-line placeholders) to install the `ModelContainer` and the environment objects.
 `RootView` should stay a placeholder view — a `TabView` with five empty `Text` tabs is enough;
 the real screens land in a later task.
 
-Do NOT modify `Packages/LieuFlowDomain/**`, `LieuFlow.xcodeproj`, or anything in `docs/`.
+Do NOT modify `Packages/FlowPlanDomain/**`, `FlowPlan.xcodeproj`, or anything in `docs/`.
 Do NOT add dependencies. Do NOT build any feature screens.
 
 ## Context — the domain module is already implemented
-`import LieuFlowDomain` gives you `MonthKey`, `RecurrenceRule`, `RecurrenceFrequency`,
+`import FlowPlanDomain` gives you `MonthKey`, `RecurrenceRule`, `RecurrenceFrequency`,
 `TransactionType`, `BillAmountType`, `PlannedIncome`, `PlannedBill`, `BudgetAllocation`,
 `SavingsPlan`, `TransactionSnapshot`, `ProjectionInput`, `ProjectionConfiguration`,
 `MonthlyProjection`, `WhatIfScenario`, `MonthlyProjectionEngine`.
-**Read the actual sources in `Packages/LieuFlowDomain/Sources/LieuFlowDomain/` first and match
+**Read the actual sources in `Packages/FlowPlanDomain/Sources/FlowPlanDomain/` first and match
 the real initialisers.** Do not guess signatures, and do not change that package.
 
 ## What to do
@@ -135,7 +135,7 @@ Seeding is **opt-in and idempotent**: it runs only when `AppState.isSampleDataEn
 and `isSeeded` is false, and it must be trivially disabled. It must never run in a test unless
 the test asks for it.
 
-### 7. `MoneyFormatter.swift` and `Decimal+LieuFlow.swift`
+### 7. `MoneyFormatter.swift` and `Decimal+FlowPlan.swift`
 - `MoneyFormatter.string(_ amount: Decimal, currencyCode: String, signed: Bool = false) -> String`
   built on `amount.formatted(.currency(code:))`. Never concatenate `"$"`. Do not assume 2 dp.
 - `func accessibleString(_ amount: Decimal, currencyCode: String) -> String` — a spoken form for
@@ -155,8 +155,8 @@ Swift Testing. Use `PersistenceController.inMemory()` — never the on-disk stor
 - seeding is idempotent (running twice yields one set of rows) and produces the brief's numbers
 
 ## Done when
-- [ ] `xcodebuild -scheme LieuFlow -destination 'platform=iOS Simulator,name=iPhone 17' build` succeeds
-- [ ] `xcodebuild -scheme LieuFlow -destination 'platform=iOS Simulator,name=iPhone 17' test` passes
+- [ ] `xcodebuild -scheme FlowPlan -destination 'platform=iOS Simulator,name=iPhone 17' build` succeeds
+- [ ] `xcodebuild -scheme FlowPlan -destination 'platform=iOS Simulator,name=iPhone 17' test` passes
 - [ ] zero new warnings
-- [ ] `grep -rn "import SwiftUI" LieuFlow/Data/` finds nothing
+- [ ] `grep -rn "import SwiftUI" FlowPlan/Data/` finds nothing
 - [ ] no financial value is written to `UserDefaults` or to any log

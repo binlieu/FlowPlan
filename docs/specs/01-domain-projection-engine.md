@@ -1,17 +1,17 @@
-# Codex task spec — 01 — LieuFlowDomain: models + MonthlyProjectionEngine
+# Codex task spec — 01 — FlowPlanDomain: models + MonthlyProjectionEngine
 
 ## Goal
-Implement the pure-Swift financial core of LieuFlow: value-type domain models, a recurrence
+Implement the pure-Swift financial core of FlowPlan: value-type domain models, a recurrence
 rule, and `MonthlyProjectionEngine`, plus a thorough test suite. `swift test` must pass.
 
 ## Scope — touch ONLY these
-- `Packages/LieuFlowDomain/Sources/LieuFlowDomain/**`
-- `Packages/LieuFlowDomain/Tests/LieuFlowDomainTests/**`
+- `Packages/FlowPlanDomain/Sources/FlowPlanDomain/**`
+- `Packages/FlowPlanDomain/Tests/FlowPlanDomainTests/**`
 
-Delete `Sources/LieuFlowDomain/Support/Placeholder.swift` and
-`Tests/LieuFlowDomainTests/PlaceholderTests.swift` — they are scaffolding anchors.
+Delete `Sources/FlowPlanDomain/Support/Placeholder.swift` and
+`Tests/FlowPlanDomainTests/PlaceholderTests.swift` — they are scaffolding anchors.
 
-Do NOT modify `Package.swift`, the Xcode project, the `LieuFlow/` app target, or any doc.
+Do NOT modify `Package.swift`, the Xcode project, the `FlowPlan/` app target, or any doc.
 Do NOT add dependencies.
 
 ## HARD CONSTRAINT — purity
@@ -275,7 +275,7 @@ public struct MonthlyProjectionEngine: Sendable {
 ```
 `simulate` must call `project` twice against derived inputs. Do not re-derive any arithmetic.
 
-## Tests — `Packages/LieuFlowDomain/Tests/LieuFlowDomainTests/`
+## Tests — `Packages/FlowPlanDomain/Tests/FlowPlanDomainTests/`
 Use **Swift Testing** (`import Testing`, `@Test`, `#expect`), not XCTest. Split into files:
 `MonthKeyTests.swift`, `RecurrenceRuleTests.swift`, `MonthlyProjectionEngineTests.swift`,
 `ReconciliationTests.swift`, `SafeToSpendTests.swift`, `WhatIfTests.swift`, and a shared
@@ -308,8 +308,8 @@ Must cover, at minimum:
 - What-If: a 1_200 purchase yields `impact == -1_200` and does not mutate the base projection.
 
 ## Done when
-- [ ] `cd Packages/LieuFlowDomain && swift build` succeeds with zero warnings.
-- [ ] `cd Packages/LieuFlowDomain && swift test` passes, 45+ tests.
+- [ ] `cd Packages/FlowPlanDomain && swift build` succeeds with zero warnings.
+- [ ] `cd Packages/FlowPlanDomain && swift test` passes, 45+ tests.
 - [ ] `grep -rE "import (SwiftUI|SwiftData|CoreData|UIKit|Combine|Observation)" Sources/` finds nothing.
 - [ ] `grep -rn "Date()" Sources/` finds nothing (reference date is always injected).
 - [ ] No `Double` or `Float` anywhere in money paths.

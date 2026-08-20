@@ -1,24 +1,24 @@
 # Codex task spec — 06 — Plan screen (income, bills, budgets, savings)
 
 ## Goal
-The place where the user tells LieuFlow what they *expect*. Every edit here must move the
+The place where the user tells FlowPlan what they *expect*. Every edit here must move the
 Projected End of Month immediately.
 
 ## Scope — touch ONLY these
-- `LieuFlow/Features/Plan/PlanView.swift` (create)
-- `LieuFlow/Features/Plan/IncomeSection.swift` (create)
-- `LieuFlow/Features/Plan/BillsSection.swift` (create)
-- `LieuFlow/Features/Plan/BudgetsSection.swift` (create)
-- `LieuFlow/Features/Plan/SavingsSection.swift` (create)
-- `LieuFlow/Features/Plan/EditIncomeView.swift` (create)
-- `LieuFlow/Features/Plan/EditBillView.swift` (create)
-- `LieuFlow/Features/Plan/EditBudgetView.swift` (create)
-- `LieuFlow/Features/Plan/EditSavingsGoalView.swift` (create)
-- `LieuFlow/Features/Plan/RecurrencePicker.swift` (create)
-- `LieuFlow/App/RootView.swift` (edit: wire the Plan tab)
-- `LieuFlowTests/PlanEditingTests.swift` (create)
+- `FlowPlan/Features/Plan/PlanView.swift` (create)
+- `FlowPlan/Features/Plan/IncomeSection.swift` (create)
+- `FlowPlan/Features/Plan/BillsSection.swift` (create)
+- `FlowPlan/Features/Plan/BudgetsSection.swift` (create)
+- `FlowPlan/Features/Plan/SavingsSection.swift` (create)
+- `FlowPlan/Features/Plan/EditIncomeView.swift` (create)
+- `FlowPlan/Features/Plan/EditBillView.swift` (create)
+- `FlowPlan/Features/Plan/EditBudgetView.swift` (create)
+- `FlowPlan/Features/Plan/EditSavingsGoalView.swift` (create)
+- `FlowPlan/Features/Plan/RecurrencePicker.swift` (create)
+- `FlowPlan/App/RootView.swift` (edit: wire the Plan tab)
+- `FlowPlanTests/PlanEditingTests.swift` (create)
 
-Do NOT modify `Packages/LieuFlowDomain/**`, `LieuFlow/Data/**`, `AppState`, `ProjectionStore`,
+Do NOT modify `Packages/FlowPlanDomain/**`, `FlowPlan/Data/**`, `AppState`, `ProjectionStore`,
 anything under `Features/Home`, `Features/Projection`, `Features/Transactions`, the Xcode
 project, or `docs/`.
 

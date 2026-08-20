@@ -1,11 +1,11 @@
-# LieuFlow — Project Analysis (Phase 1, Discovery)
+# FlowPlan — Project Analysis (Phase 1, Discovery)
 
 Date: 2026-08-19
 Author: Claude Lead / Architect (Agent 1)
 
 ## 1. Starting state
 
-The repository was **empty**. `/Volumes/Storage/Development/LieuFlow` contained no files,
+The repository was **empty**. `/Volumes/Storage/Development/FlowPlan` contained no files,
 no git repository, no Xcode project, no design assets, no README.
 
 There was therefore **no existing work to preserve** and no existing architecture, persistence
@@ -33,7 +33,7 @@ revertable.
   persistence decision in the master prompt (§6) resolves to SwiftData, not Core Data.
 - **No project generator is installed.** Rather than adding XcodeGen or Tuist as a build-time
   dependency, `project.pbxproj` is hand-written using Xcode 16+ **file-system-synchronized
-  root groups**. Any file dropped into `LieuFlow/` or `LieuFlowTests/` is compiled
+  root groups**. Any file dropped into `FlowPlan/` or `FlowPlanTests/` is compiled
   automatically, so implementation agents never have to edit the project file — which removes
   the single most common source of merge conflicts in multi-agent iOS work.
 - **The test loop can be fast.** Because the financial core lives in a local Swift package, it
@@ -45,10 +45,10 @@ revertable.
 See `ARCHITECTURE.md`. In summary:
 
 ```
-Packages/LieuFlowDomain   pure Foundation. Models, recurrence, MonthlyProjectionEngine.
-LieuFlow/Data             SwiftData @Model entities + repositories that map to domain values.
-LieuFlow/Features         SwiftUI screens. Render state, dispatch intent, no arithmetic.
-LieuFlow/Shared           components, formatting, extensions.
+Packages/FlowPlanDomain   pure Foundation. Models, recurrence, MonthlyProjectionEngine.
+FlowPlan/Data             SwiftData @Model entities + repositories that map to domain values.
+FlowPlan/Features         SwiftUI screens. Render state, dispatch intent, no arithmetic.
+FlowPlan/Shared           components, formatting, extensions.
 ```
 
 The domain package is the enforcement mechanism for the owner's hard constraint that the

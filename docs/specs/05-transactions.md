@@ -5,17 +5,17 @@ Fast one-handed transaction entry and a clean month-scoped list, with every writ
 into the projection immediately.
 
 ## Scope — touch ONLY these
-- `LieuFlow/Features/Transactions/TransactionsView.swift` (create)
-- `LieuFlow/Features/Transactions/TransactionRow.swift` (create)
-- `LieuFlow/Features/Transactions/AddTransactionView.swift` (create)
-- `LieuFlow/Features/Transactions/TransactionFilter.swift` (create)
-- `LieuFlow/Features/Transactions/TransactionsViewModel.swift` (create)
-- `LieuFlow/App/RootView.swift` (edit: wire the Transactions tab to `TransactionsView`)
-- `LieuFlow/Features/Home/HomeView.swift` (edit: the `+` toolbar button and the "See all" link
+- `FlowPlan/Features/Transactions/TransactionsView.swift` (create)
+- `FlowPlan/Features/Transactions/TransactionRow.swift` (create)
+- `FlowPlan/Features/Transactions/AddTransactionView.swift` (create)
+- `FlowPlan/Features/Transactions/TransactionFilter.swift` (create)
+- `FlowPlan/Features/Transactions/TransactionsViewModel.swift` (create)
+- `FlowPlan/App/RootView.swift` (edit: wire the Transactions tab to `TransactionsView`)
+- `FlowPlan/Features/Home/HomeView.swift` (edit: the `+` toolbar button and the "See all" link
   now present `AddTransactionView` / route to `TransactionsView`)
-- `LieuFlowTests/TransactionsViewModelTests.swift` (create)
+- `FlowPlanTests/TransactionsViewModelTests.swift` (create)
 
-Do NOT modify `Packages/LieuFlowDomain/**`, `LieuFlow/Data/**`, `AppState`, `ProjectionStore`,
+Do NOT modify `Packages/FlowPlanDomain/**`, `FlowPlan/Data/**`, `AppState`, `ProjectionStore`,
 `ProjectionHeroCard`, the Xcode project, or `docs/`.
 
 ## What to do
@@ -67,5 +67,5 @@ touches SwiftData directly and never calls the engine.
 
 ## Done when
 - [ ] build succeeds, all tests pass, zero new warnings
-- [ ] `grep -rn "Double(" LieuFlow/Features/Transactions/` finds nothing in a money path
+- [ ] `grep -rn "Double(" FlowPlan/Features/Transactions/` finds nothing in a money path
 - [ ] adding, editing and deleting all update the Home projection without a manual refresh

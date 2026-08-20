@@ -1,4 +1,4 @@
-# LieuFlow Project Status
+# FlowPlan Project Status
 
 Updated: 2026-08-19
 
@@ -8,7 +8,7 @@ Updated: 2026-08-19
 - [x] Environment discovery — `PROJECT_ANALYSIS.md`
 - [x] Architecture defined — `ARCHITECTURE.md`, `DECISIONS.md`
 - [x] Xcode project scaffolded (hand-written pbxproj, file-system-synchronized groups)
-- [x] `LieuFlowDomain` pure Swift package wired into the app target
+- [x] `FlowPlanDomain` pure Swift package wired into the app target
 - [x] First green build on iOS Simulator
 
 ## In Progress
@@ -31,7 +31,7 @@ None recorded yet.
 
 ## Build Status
 
-PASS — `xcodebuild -scheme LieuFlow -destination 'platform=iOS Simulator,name=iPhone 17' build`
+PASS — `xcodebuild -scheme FlowPlan -destination 'platform=iOS Simulator,name=iPhone 17' build`
 
 ## Test Status
 

@@ -4,28 +4,28 @@
 Close the MVP: lightweight deterministic insights, real preferences, and an optional Face ID lock.
 
 ## Scope — touch ONLY these
-- `Packages/LieuFlowDomain/Sources/LieuFlowDomain/Calculations/InsightsEngine.swift` (create)
-- `Packages/LieuFlowDomain/Sources/LieuFlowDomain/Models/Insight.swift` (create)
-- `Packages/LieuFlowDomain/Tests/LieuFlowDomainTests/InsightsEngineTests.swift` (create)
-- `LieuFlow/Features/Insights/InsightsView.swift` (create)
-- `LieuFlow/Features/Insights/SpendingByCategoryChart.swift` (create)
-- `LieuFlow/Features/Insights/IncomeVsExpensesChart.swift` (create)
-- `LieuFlow/Features/Insights/SmartInsightsSection.swift` (create)
-- `LieuFlow/Features/Settings/SettingsView.swift` (create)
-- `LieuFlow/Features/Settings/CategoriesSettingsView.swift` (create)
-- `LieuFlow/Features/Settings/DataSettingsView.swift` (create)
-- `LieuFlow/App/AppLockView.swift` (create)
-- `LieuFlow/App/BiometricAuthenticator.swift` (create)
-- `LieuFlow/App/RootView.swift` (edit: wire Insights and Settings tabs, and the lock gate)
-- `LieuFlowTests/BiometricGateTests.swift` (create)
+- `Packages/FlowPlanDomain/Sources/FlowPlanDomain/Calculations/InsightsEngine.swift` (create)
+- `Packages/FlowPlanDomain/Sources/FlowPlanDomain/Models/Insight.swift` (create)
+- `Packages/FlowPlanDomain/Tests/FlowPlanDomainTests/InsightsEngineTests.swift` (create)
+- `FlowPlan/Features/Insights/InsightsView.swift` (create)
+- `FlowPlan/Features/Insights/SpendingByCategoryChart.swift` (create)
+- `FlowPlan/Features/Insights/IncomeVsExpensesChart.swift` (create)
+- `FlowPlan/Features/Insights/SmartInsightsSection.swift` (create)
+- `FlowPlan/Features/Settings/SettingsView.swift` (create)
+- `FlowPlan/Features/Settings/CategoriesSettingsView.swift` (create)
+- `FlowPlan/Features/Settings/DataSettingsView.swift` (create)
+- `FlowPlan/App/AppLockView.swift` (create)
+- `FlowPlan/App/BiometricAuthenticator.swift` (create)
+- `FlowPlan/App/RootView.swift` (edit: wire Insights and Settings tabs, and the lock gate)
+- `FlowPlanTests/BiometricGateTests.swift` (create)
 
-Do NOT modify the projection engine, `LieuFlow/Data/**`, or anything under `Features/Home`,
+Do NOT modify the projection engine, `FlowPlan/Data/**`, or anything under `Features/Home`,
 `Features/Projection`, `Features/Transactions`, `Features/Plan`.
 
 ## What to do
 
 ### `InsightsEngine` — still pure Foundation
-Same purity rule as the rest of `LieuFlowDomain`: `Foundation` only, no `Date()`, all `Sendable`.
+Same purity rule as the rest of `FlowPlanDomain`: `Foundation` only, no `Date()`, all `Sendable`.
 
 ```swift
 public struct Insight: Identifiable, Hashable, Sendable {
@@ -89,7 +89,7 @@ Grouped `Form`:
 `BiometricAuthenticator` wraps `LocalAuthentication`:
 - `canEvaluate` reports availability and the biometry type
 - `authenticate(reason:) async -> Result<Void, BiometricError>`; the reason string is
-  "Unlock LieuFlow to view your finances"
+  "Unlock FlowPlan to view your finances"
 - errors are mapped to a small enum — never surface a raw `NSError` to the UI
 - **no custom cryptography, no secrets in `UserDefaults`.** The lock is an access gate over
   local data, and the code must say so in a comment rather than implying encryption.
@@ -109,7 +109,7 @@ failing at unlock time.
   authenticator — never the real `LAContext` in a test.
 
 ## Done when
-- [ ] `cd Packages/LieuFlowDomain && swift test` still passes, including the new insights tests
+- [ ] `cd Packages/FlowPlanDomain && swift test` still passes, including the new insights tests
 - [ ] app builds and all app tests pass, zero new warnings
-- [ ] `grep -rE "import (SwiftUI|SwiftData|CoreData|UIKit)" Packages/LieuFlowDomain/Sources/` finds nothing
+- [ ] `grep -rE "import (SwiftUI|SwiftData|CoreData|UIKit)" Packages/FlowPlanDomain/Sources/` finds nothing
 - [ ] Face ID is optional, off by default, and the app is fully usable with it disabled

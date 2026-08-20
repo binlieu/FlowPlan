@@ -5,21 +5,21 @@ Build the reusable SwiftUI components and the Home screen, with **Projected End 
 the unmistakable visual hero.
 
 ## Scope — touch ONLY these (create them)
-- `LieuFlow/Shared/Components/MonthNavigationBar.swift`
-- `LieuFlow/Shared/Components/AmountText.swift`
-- `LieuFlow/Shared/Components/SectionCard.swift`
-- `LieuFlow/Shared/Components/StatTile.swift`
-- `LieuFlow/Shared/Components/EmptyStateView.swift`
-- `LieuFlow/Shared/Components/ProjectionStatusBadge.swift`
-- `LieuFlow/Features/Home/HomeView.swift`
-- `LieuFlow/Features/Home/ProjectionHeroCard.swift`
-- `LieuFlow/Features/Home/UpcomingBillsSection.swift`
-- `LieuFlow/Features/Home/RecentTransactionsSection.swift`
-- `LieuFlow/Features/Home/SafeToSpendCard.swift`
-- `LieuFlow/App/RootView.swift` (replace the placeholder with the real `TabView`)
+- `FlowPlan/Shared/Components/MonthNavigationBar.swift`
+- `FlowPlan/Shared/Components/AmountText.swift`
+- `FlowPlan/Shared/Components/SectionCard.swift`
+- `FlowPlan/Shared/Components/StatTile.swift`
+- `FlowPlan/Shared/Components/EmptyStateView.swift`
+- `FlowPlan/Shared/Components/ProjectionStatusBadge.swift`
+- `FlowPlan/Features/Home/HomeView.swift`
+- `FlowPlan/Features/Home/ProjectionHeroCard.swift`
+- `FlowPlan/Features/Home/UpcomingBillsSection.swift`
+- `FlowPlan/Features/Home/RecentTransactionsSection.swift`
+- `FlowPlan/Features/Home/SafeToSpendCard.swift`
+- `FlowPlan/App/RootView.swift` (replace the placeholder with the real `TabView`)
 
-Do NOT modify `Packages/LieuFlowDomain/**`, `LieuFlow/Data/**`, `LieuFlow/App/AppState.swift`,
-`LieuFlow/App/ProjectionStore.swift`, the Xcode project, or `docs/`.
+Do NOT modify `Packages/FlowPlanDomain/**`, `FlowPlan/Data/**`, `FlowPlan/App/AppState.swift`,
+`FlowPlan/App/ProjectionStore.swift`, the Xcode project, or `docs/`.
 Read those files to learn the API; do not change them.
 
 ## Ground rules
@@ -125,8 +125,8 @@ Every file gets a `#Preview` driven by an in-memory container with sample data, 
 and dark. Include a preview of the hero card in all four `ProjectionStatus` states.
 
 ## Done when
-- [ ] `xcodebuild -scheme LieuFlow -destination 'platform=iOS Simulator,name=iPhone 17' build` succeeds
+- [ ] `xcodebuild -scheme FlowPlan -destination 'platform=iOS Simulator,name=iPhone 17' build` succeeds
 - [ ] existing tests still pass
 - [ ] zero new warnings
-- [ ] `grep -rn "Color(red:\|#colorLiteral\|Color(hex" LieuFlow/` finds nothing
+- [ ] `grep -rn "Color(red:\|#colorLiteral\|Color(hex" FlowPlan/` finds nothing
 - [ ] no arithmetic on money inside any `body`

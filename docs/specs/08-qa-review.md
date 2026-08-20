@@ -60,7 +60,7 @@ it under "Fixes applied" in the report. Anything larger is reported, not fixed.
 ## Deliverable — `docs/QA_REPORT.md`
 
 ```markdown
-# LieuFlow QA Report — <date>
+# FlowPlan QA Report — <date>
 
 ## Summary
 <3–5 sentences: overall health, and whether the MVP acceptance test in master-prompt §61 holds>
