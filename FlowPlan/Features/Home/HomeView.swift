@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(AppState.self) private var appState
+    @Environment(FinanceRepository.self) private var repository
     @Environment(ProjectionStore.self) private var projectionStore
 
     let onSeeAllBills: () -> Void
@@ -25,6 +26,13 @@ struct HomeView: View {
     }
 
     var body: some View {
+        let _ = projectionStore.dataVersion
+        let hasOrphanedDebt = !OrphanedDebtDetector.orphanedDebts(
+            in: repository.debts(),
+            bills: repository.bills(),
+            calendar: calendar
+        ).isEmpty
+
         List {
             greetingAndMonth
                 .padding(.horizontal, contentHorizontalPadding)
@@ -41,6 +49,7 @@ struct HomeView: View {
             AvailableThisMonthCard(
                 projection: projectionStore.projection,
                 completeness: projectionStore.completeness,
+                hasOrphanedDebt: hasOrphanedDebt,
                 onOpenPlan: onSeeAllBills
             )
             .padding(.horizontal, contentHorizontalPadding)

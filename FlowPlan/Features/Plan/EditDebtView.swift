@@ -47,6 +47,9 @@ struct EditDebtView: View {
     }
 
     var body: some View {
+        let _ = projectionStore.dataVersion
+        let bills = repository.bills()
+
         NavigationStack {
             Form {
                 Section("Debt") {
@@ -115,9 +118,23 @@ struct EditDebtView: View {
 
                     Toggle("Payment is in Monthly Bills", isOn: $isPaidThroughBills)
 
-                    Text("The payment is already listed as a bill, so it is not counted again.")
+                    if isOrphaned(bills: bills) {
+                        Label {
+                            Text(OrphanedDebtDetector.warningMessage)
+                        } icon: {
+                            Image(systemName: "exclamationmark.triangle")
+                        }
                         .font(Typography.supporting)
-                        .foregroundStyle(Palette.inkSecondary)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(
+                            "Debt payment warning. \(OrphanedDebtDetector.warningMessage)"
+                        )
+                    } else {
+                        Text("The payment is already listed as a bill, so it is not counted again.")
+                            .font(Typography.supporting)
+                            .foregroundStyle(Palette.inkSecondary)
+                    }
                 }
 
                 Section {
@@ -202,6 +219,17 @@ struct EditDebtView: View {
             && balanceValidationMessage == nil
             && aprValidationMessage == nil
             && paymentValidationMessage == nil
+    }
+
+    private func isOrphaned(bills: [PlannedBill]) -> Bool {
+        OrphanedDebtDetector.isOrphaned(
+            name: trimmedName,
+            monthlyPayment: parsedPayment,
+            dueDay: dueDay,
+            isActive: isActive,
+            isPaidThroughBills: isPaidThroughBills,
+            bills: bills
+        )
     }
 
     private var nameValidationMessage: String? {

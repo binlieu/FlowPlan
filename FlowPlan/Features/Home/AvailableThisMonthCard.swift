@@ -9,6 +9,7 @@ struct AvailableThisMonthCard: View {
 
     let projection: MonthlyProjection
     let completeness: ProjectionCompleteness
+    let hasOrphanedDebt: Bool
     let onOpenPlan: () -> Void
 
     @State private var startingBalanceText = ""
@@ -20,10 +21,12 @@ struct AvailableThisMonthCard: View {
     init(
         projection: MonthlyProjection,
         completeness: ProjectionCompleteness? = nil,
+        hasOrphanedDebt: Bool = false,
         onOpenPlan: @escaping () -> Void = {}
     ) {
         self.projection = projection
         self.completeness = completeness ?? projection.completeness
+        self.hasOrphanedDebt = hasOrphanedDebt
         self.onOpenPlan = onOpenPlan
     }
 
@@ -56,6 +59,10 @@ struct AvailableThisMonthCard: View {
                 .accessibilityLabel(accessibleAvailableAmount)
 
             zeroBalanceExplanation
+
+            if hasOrphanedDebt {
+                orphanedDebtWarning
+            }
 
             Divider()
                 .overlay(Palette.hairline)
@@ -95,6 +102,10 @@ struct AvailableThisMonthCard: View {
                 .font(Typography.body)
                 .foregroundStyle(Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            if hasOrphanedDebt {
+                orphanedDebtWarning
+            }
 
             HStack(spacing: 12) {
                 TextField("Starting balance", text: $startingBalanceText)
@@ -136,6 +147,30 @@ struct AvailableThisMonthCard: View {
                 .buttonStyle(.plain)
                 .frame(minWidth: 44, minHeight: 44, alignment: .leading)
         }
+    }
+
+    private var orphanedDebtWarning: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(OrphanedDebtDetector.warningMessage)
+                    .font(Typography.supporting)
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("Review in Plan", action: onOpenPlan)
+                    .font(Typography.supporting.weight(.semibold))
+                    .foregroundStyle(Palette.accent)
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44, alignment: .leading)
+                    .accessibilityHint("Opens Plan to review the debt")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Debt payment warning")
     }
 
     @ViewBuilder
