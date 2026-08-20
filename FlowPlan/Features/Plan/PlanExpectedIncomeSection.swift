@@ -92,21 +92,10 @@ struct PlanExpectedIncomeSection: View {
     }
 
     private var totalRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-            Text("TOTAL EXPECTED INCOME")
-                .smallCapsTypography()
-                .foregroundStyle(Palette.inkSecondary)
-
-            Spacer(minLength: 12)
-
-            Text(signedMoney(plannedTotal))
-                .valueTypography()
-                .monospacedDigit()
-                .foregroundStyle(Palette.ink)
-        }
-        .padding(16)
-        .background(Palette.accentLight)
-        .accessibilityElement(children: .combine)
+        PlanTotalRow(
+            label: "TOTAL EXPECTED INCOME",
+            amount: plannedTotal
+        )
     }
 
     private func subtitle(for source: PlannedIncome) -> String {

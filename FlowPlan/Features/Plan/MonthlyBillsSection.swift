@@ -116,21 +116,11 @@ struct MonthlyBillsSection: View {
     private var totalRow: some View {
         let content = Self.totalRowContent(plannedTotal: plannedTotal)
 
-        return HStack(alignment: .firstTextBaseline, spacing: 16) {
-            Text(content.label)
-                .smallCapsTypography()
-                .foregroundStyle(Palette.inkSecondary)
-
-            Spacer(minLength: 12)
-
-            Text(Self.formattedTotal(content.amount, currencyCode: appState.currencyCode))
-                .valueTypography()
-                .monospacedDigit()
-                .foregroundStyle(Palette.ink)
-        }
-        .padding(16)
-        .background(Palette.accentLight)
-        .accessibilityElement(children: .combine)
+        return PlanTotalRow(
+            label: content.label,
+            amount: content.amount,
+            signed: false
+        )
     }
 
     static func totalRowContent(plannedTotal: Decimal) -> TotalRowContent {
