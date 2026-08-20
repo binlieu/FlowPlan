@@ -2,6 +2,11 @@ import SwiftUI
 import FlowPlanDomain
 
 struct StartingBalanceSection: View {
+    enum ExplicitBalanceAction: Equatable {
+        case useRolledOverAmount
+        case clear
+    }
+
     @Environment(AppState.self) private var appState
     @Environment(FinanceRepository.self) private var repository
     @Environment(ProjectionStore.self) private var projectionStore
@@ -12,6 +17,7 @@ struct StartingBalanceSection: View {
     @State private var presentedError: String?
     @State private var isSaving = false
     @State private var hasEditedAmount = false
+    @State private var isShowingClearConfirmation = false
 
     @FocusState private var isAmountFocused: Bool
 
@@ -39,13 +45,7 @@ struct StartingBalanceSection: View {
 
                 balanceExplanation
 
-                if balanceSource == .explicit {
-                    Button("Use rolled-over amount", action: useRolledOverAmount)
-                        .font(Typography.supporting.weight(.semibold))
-                        .buttonStyle(.plain)
-                        .foregroundStyle(Palette.accent)
-                        .accessibilityHint("Deletes this month's explicit starting balance")
-                }
+                balanceAction
 
                 if let presentedError {
                     Text(presentedError)
@@ -71,29 +71,76 @@ struct StartingBalanceSection: View {
                 commit()
             }
         }
+        .alert("Clear starting balance?", isPresented: $isShowingClearConfirmation) {
+            Button("Clear", role: .destructive, action: removeExplicitBalance)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes this month's starting balance. This month's projection will use zero.")
+        }
         .disabled(isSaving)
     }
 
     @ViewBuilder
     private var balanceExplanation: some View {
-        switch balanceSource {
-        case .explicit, .unset:
-            Text("What you had available at the start of the month.")
-                .font(Typography.supporting)
-                .foregroundStyle(Palette.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        case .rolledOver(let previousMonth):
-            Text(
-                "Rolled over from \(monthName(previousMonth)) · "
-                    + MoneyFormatter.string(
-                        resolvedAmount,
-                        currencyCode: appState.currencyCode
-                    )
+        if appState.carryBalanceForward {
+            switch balanceSource {
+            case .explicit, .unset:
+                explanationText("What you had available at the start of the month.")
+            case .rolledOver(let previousMonth):
+                explanationText(
+                    "Rolled over from \(monthName(previousMonth)) · "
+                        + MoneyFormatter.string(
+                            resolvedAmount,
+                            currencyCode: appState.currencyCode
+                        )
+                )
+            }
+        } else {
+            explanationText(Self.standaloneExplanation(source: balanceSource))
+        }
+    }
+
+    @ViewBuilder
+    private var balanceAction: some View {
+        switch Self.availableAction(
+            carryBalanceForward: appState.carryBalanceForward,
+            source: balanceSource
+        ) {
+        case .useRolledOverAmount:
+            balanceActionButton(
+                "Use rolled-over amount",
+                accessibilityHint: "Deletes this month's explicit starting balance",
+                action: removeExplicitBalance
             )
+        case .clear:
+            balanceActionButton(
+                "Clear",
+                accessibilityHint: "Removes this month's starting balance after confirmation"
+            ) {
+                isShowingClearConfirmation = true
+            }
+        case nil:
+            EmptyView()
+        }
+    }
+
+    private func explanationText(_ text: String) -> some View {
+        Text(text)
             .font(Typography.supporting)
             .foregroundStyle(Palette.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
-        }
+    }
+
+    private func balanceActionButton(
+        _ title: String,
+        accessibilityHint: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(title, action: action)
+            .font(Typography.supporting.weight(.semibold))
+            .buttonStyle(.plain)
+            .foregroundStyle(Palette.accent)
+            .accessibilityHint(accessibilityHint)
     }
 
     private var amountBinding: Binding<String> {
@@ -108,7 +155,7 @@ struct StartingBalanceSection: View {
 
     private func loadBalance() {
         let resolution = repository.startingBalanceResolution(for: appState.selectedMonth)
-        amountText = PlanAmountParser.text(resolution.amount)
+        amountText = Self.displayText(for: resolution)
         resolvedAmount = resolution.amount
         balanceSource = resolution.source
         hasEditedAmount = false
@@ -144,7 +191,7 @@ struct StartingBalanceSection: View {
         }
     }
 
-    private func useRolledOverAmount() {
+    private func removeExplicitBalance() {
         guard !isSaving else {
             return
         }
@@ -166,6 +213,39 @@ struct StartingBalanceSection: View {
                 error: error
             ).inlineMessage
         }
+    }
+
+    static func availableAction(
+        carryBalanceForward: Bool,
+        source: StartingBalanceResolution.Source
+    ) -> ExplicitBalanceAction? {
+        guard source == .explicit else {
+            return nil
+        }
+
+        return carryBalanceForward ? .useRolledOverAmount : .clear
+    }
+
+    static func standaloneExplanation(source: StartingBalanceResolution.Source) -> String {
+        var explanation = "What you had available at the start of the month. "
+            + "Each month is entered separately because Carry balance forward is off."
+
+        if source == .unset {
+            explanation += " Enter this month's starting balance so your projection is accurate."
+        }
+
+        return explanation
+    }
+
+    static func displayText(
+        for resolution: StartingBalanceResolution,
+        locale: Locale = .current
+    ) -> String {
+        guard resolution.source != .unset else {
+            return ""
+        }
+
+        return PlanAmountParser.text(resolution.amount, locale: locale)
     }
 
     private func monthName(_ month: MonthKey) -> String {

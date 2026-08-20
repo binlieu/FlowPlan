@@ -136,6 +136,44 @@ func disabledCarryBalanceForwardRestoresExplicitOrZeroBehavior() throws {
 
 @Test
 @MainActor
+func disabledCarryForwardKeepsEnteredStartingBalanceScopedToItsMonth() throws {
+    let environment = try BalanceRolloverTestEnvironment(carryBalanceForward: false)
+    let month = MonthKey(year: 2026, month: 8)
+
+    try environment.repository.setStartingBalance(725, for: month)
+
+    let currentResolution = environment.repository.startingBalanceResolution(for: month)
+    let nextResolution = environment.repository.startingBalanceResolution(for: month.next)
+
+    #expect(currentResolution.amount == 725)
+    #expect(currentResolution.source == .explicit)
+    #expect(nextResolution.amount == .zero)
+    #expect(nextResolution.source == .unset)
+}
+
+@Test
+@MainActor
+func clearingStartingBalanceWithCarryForwardDisabledRestoresUnsetZeroProjection() throws {
+    let environment = try BalanceRolloverTestEnvironment(carryBalanceForward: false)
+    let month = MonthKey(year: 2026, month: 8)
+
+    try environment.repository.setStartingBalance(725, for: month)
+    try environment.repository.deleteStartingBalance(for: month)
+
+    let resolution = environment.repository.startingBalanceResolution(for: month)
+    let projectionInput = environment.repository.projectionInput(
+        for: month,
+        referenceDate: environment.date(in: month, day: 20),
+        configuration: .default
+    )
+
+    #expect(resolution.amount == .zero)
+    #expect(resolution.source == .unset)
+    #expect(projectionInput.startingBalance == .zero)
+}
+
+@Test
+@MainActor
 func resolvingLongRolloverChainUsesBoundedFetches() throws {
     var fetchCount = 0
     let environment = try BalanceRolloverTestEnvironment(
