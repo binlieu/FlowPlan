@@ -17,7 +17,7 @@ struct EditBudgetView: View {
     @State private var didLoadStoredScope = false
     @State private var isSaving = false
     @State private var isShowingDeleteConfirmation = false
-    @State private var presentedError: PresentedError?
+    @State private var presentedError: WriteErrorPresentation?
     @State private var hasAttemptedSave = false
 
     init(budget: BudgetAllocation? = nil) {
@@ -97,7 +97,7 @@ struct EditBudgetView: View {
             }
             .alert(item: $presentedError) { error in
                 Alert(
-                    title: Text("Unable to save budget"),
+                    title: Text(error.title),
                     message: Text(error.message),
                     dismissButton: .default(Text("OK"))
                 )
@@ -205,7 +205,7 @@ struct EditBudgetView: View {
 
             finish()
         } catch {
-            showSaveError()
+            showError(.save, error: error)
         }
     }
 
@@ -244,7 +244,7 @@ struct EditBudgetView: View {
             try repository.deleteBudget(id: budget.id)
             finish()
         } catch {
-            showSaveError()
+            showError(.delete, error: error)
         }
     }
 
@@ -253,15 +253,12 @@ struct EditBudgetView: View {
         dismiss()
     }
 
-    private func showSaveError() {
+    private func showError(_ operation: WriteOperation, error: Error) {
         isSaving = false
-        presentedError = PresentedError(
-            message: "The budget could not be saved. Please try again."
+        presentedError = WriteErrorPresentation(
+            operation: operation,
+            subject: "budget",
+            error: error
         )
-    }
-
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
     }
 }

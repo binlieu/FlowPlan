@@ -31,7 +31,7 @@ struct AddTransactionView: View {
     @State private var newCategory = ""
     @State private var isAddingNewAccount = false
     @State private var newAccount = ""
-    @State private var presentedError: PresentedError?
+    @State private var presentedError: WriteErrorPresentation?
     @State private var isSaving = false
     @State private var didConfigureInitialDate = false
     @State private var didLoadStoredDetails = false
@@ -119,7 +119,7 @@ struct AddTransactionView: View {
             }
             .alert(item: $presentedError) { error in
                 Alert(
-                    title: Text("Unable to save"),
+                    title: Text(error.title),
                     message: Text(error.message),
                     dismissButton: .default(Text("OK"))
                 )
@@ -556,8 +556,10 @@ struct AddTransactionView: View {
             newAccount = ""
             isAddingNewAccount = false
         } catch {
-            presentedError = PresentedError(
-                message: "The account could not be added. Please try again."
+            presentedError = WriteErrorPresentation(
+                operation: .add,
+                subject: "account",
+                error: error
             )
         }
     }
@@ -716,7 +718,12 @@ struct AddTransactionView: View {
             dismiss()
         } catch {
             isSaving = false
-            presentedError = PresentedError(message: message(for: error))
+            presentedError = WriteErrorPresentation(
+                operation: .save,
+                subject: "transaction",
+                error: error,
+                guidance: message(for: error)
+            )
         }
     }
 
@@ -762,12 +769,7 @@ struct AddTransactionView: View {
             return "Transactions linked to planned income or bills cannot be edited here."
         }
 
-        return "The transaction could not be saved. Please try again."
-    }
-
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
+        return "Please try again."
     }
 }
 

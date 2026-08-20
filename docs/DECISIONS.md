@@ -201,23 +201,27 @@ and this log rather than referenced by image.
 
 ---
 
-## D-016 — Cross-cutting persistence and formatting issues are deferred as strategies
-**Decision.** QA 1.5 and 1.6 will be addressed through one repository-wide transaction and
-rollback strategy, not through isolated save-path patches. Decimal-to-floating-point conversion
-remains permitted for chart and layout geometry; the savings slider's trapping
-`Int(value.rounded())` path is clamped at the conversion boundary. QA 2.5, QA 2.8, and any
-remaining minor presentation findings are deferred.
+## D-016 — Repository rollback is complete; atomic budget overrides remain deferred
+**Decision.** QA 1.5 is fixed: every `FinanceRepository` mutation commits through one write
+boundary that rolls back the model context before rethrowing any failure. QA 1.6 remains deferred
+until month-only budget creation can be expressed as one atomic repository operation.
+Decimal-to-floating-point conversion remains permitted for chart and layout geometry; the savings
+slider's trapping `Int(value.rounded())` path is clamped at the conversion boundary. QA 2.5,
+QA 2.8, and any remaining minor presentation findings are deferred.
 
-**Why.** Rollback and atomicity are consistency properties of the repository as a whole. Fixing
-only the two observed paths would leave identical failure modes elsewhere and create a false
-sense of safety. Chart APIs require floating-point geometry, so those conversions are legitimate
-presentation boundaries; only the unguarded integer conversion could trap. The remaining insight
-pace and compact-currency work needs an explicit product rule rather than an incidental copy or
-formatter change.
+**Why.** Rollback is a consistency property of the repository as a whole. The shared boundary
+prevents one failed write from leaving managed objects that poison later saves. Atomic creation of
+a complete month override still spans several individually committed repository calls and needs a
+separate batch operation. Chart APIs require floating-point geometry, so those conversions are
+legitimate presentation boundaries; only the unguarded integer conversion could trap. The
+remaining insight pace and compact-currency work needs an explicit product rule rather than an
+incidental copy or formatter change.
 
-**Consequence.** Follow-up work must introduce and test transaction semantics across every
-repository mutation before closing QA 1.5 or 1.6. Chart geometry stays unchanged, the slider is
-bounded safely, and the deferred QA findings remain listed in `PROJECT_STATUS.md`.
+**Consequence.** A rejected or failed repository write is rolled back before another operation can
+save it, and editor errors identify the failed operation while retaining the underlying failure.
+QA 1.6 still requires transaction semantics for the multi-step month override. Chart geometry
+stays unchanged, the slider is bounded safely, and the other deferred QA findings remain listed in
+`PROJECT_STATUS.md`.
 
 ---
 

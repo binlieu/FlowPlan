@@ -20,7 +20,7 @@ struct EditSavingsGoalView: View {
     @State private var didLoadStoredGoal = false
     @State private var isSaving = false
     @State private var isShowingDeleteConfirmation = false
-    @State private var presentedError: PresentedError?
+    @State private var presentedError: WriteErrorPresentation?
     @State private var hasAttemptedSave = false
 
     init(plan: SavingsPlan? = nil) {
@@ -117,7 +117,7 @@ struct EditSavingsGoalView: View {
             }
             .alert(item: $presentedError) { error in
                 Alert(
-                    title: Text("Unable to save savings goal"),
+                    title: Text(error.title),
                     message: Text(error.message),
                     dismissButton: .default(Text("OK"))
                 )
@@ -221,7 +221,7 @@ struct EditSavingsGoalView: View {
 
             finish()
         } catch {
-            showSaveError()
+            showError(.save, error: error)
         }
     }
 
@@ -234,7 +234,7 @@ struct EditSavingsGoalView: View {
             try repository.deleteSavingsGoal(id: plan.id)
             finish()
         } catch {
-            showSaveError()
+            showError(.delete, error: error)
         }
     }
 
@@ -243,15 +243,12 @@ struct EditSavingsGoalView: View {
         dismiss()
     }
 
-    private func showSaveError() {
+    private func showError(_ operation: WriteOperation, error: Error) {
         isSaving = false
-        presentedError = PresentedError(
-            message: "The savings goal could not be saved. Please try again."
+        presentedError = WriteErrorPresentation(
+            operation: operation,
+            subject: "savings goal",
+            error: error
         )
-    }
-
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
     }
 }

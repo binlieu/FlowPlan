@@ -84,6 +84,42 @@ func debtCanBeUpdatedAndDeletedWithoutDeletingItsPayment() throws {
 
 @Test
 @MainActor
+func debtCanBeDeletedWhenPaymentExceedsItsRemainingBalance() throws {
+    let environment = try DebtRepositoryEnvironment()
+    let debtID = UUID()
+    try environment.repository.addDebt(
+        DebtEntity(
+            id: debtID,
+            name: "Reported Debt",
+            currentBalance: 728,
+            annualInterestRate: .zero,
+            monthlyPayment: 672,
+            category: "Debt",
+            isPaidThroughBills: false
+        )
+    )
+    try environment.repository.markDebtPaymentMade(
+        debtID: debtID,
+        amount: 672,
+        on: environment.date(day: 12)
+    )
+
+    let debtBeforeDelete = try #require(environment.repository.debts().first)
+    #expect(debtBeforeDelete.currentBalance == 56)
+    #expect(debtBeforeDelete.monthlyPayment > debtBeforeDelete.currentBalance)
+
+    try environment.repository.deleteDebt(id: debtID)
+
+    #expect(environment.repository.debts().isEmpty)
+    let preservedPayment = try #require(
+        environment.repository.transactions(in: environment.month).first
+    )
+    #expect(preservedPayment.amount == 672)
+    #expect(preservedPayment.settlesDebtID == nil)
+}
+
+@Test
+@MainActor
 func markingDebtPaymentReducesPrincipalAndCannotDuplicateTheMonth() throws {
     let environment = try DebtRepositoryEnvironment()
     let debtID = UUID()

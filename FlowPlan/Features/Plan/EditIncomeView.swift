@@ -15,7 +15,7 @@ struct EditIncomeView: View {
     @State private var isActive: Bool
     @State private var isSaving = false
     @State private var isShowingDeleteOptions = false
-    @State private var presentedError: PresentedError?
+    @State private var presentedError: WriteErrorPresentation?
     @State private var hasAttemptedSave = false
 
     init(source: PlannedIncome? = nil) {
@@ -103,7 +103,7 @@ struct EditIncomeView: View {
             }
             .alert(item: $presentedError) { error in
                 Alert(
-                    title: Text("Unable to save income"),
+                    title: Text(error.title),
                     message: Text(error.message),
                     dismissButton: .default(Text("OK"))
                 )
@@ -174,7 +174,7 @@ struct EditIncomeView: View {
 
             finish()
         } catch {
-            showSaveError()
+            showError(.save, error: error)
         }
     }
 
@@ -197,7 +197,7 @@ struct EditIncomeView: View {
             )
             finish()
         } catch {
-            showSaveError()
+            showError(.deactivate, error: error)
         }
     }
 
@@ -210,7 +210,7 @@ struct EditIncomeView: View {
             try repository.deleteIncomeSource(id: source.id)
             finish()
         } catch {
-            showSaveError()
+            showError(.delete, error: error)
         }
     }
 
@@ -219,16 +219,13 @@ struct EditIncomeView: View {
         dismiss()
     }
 
-    private func showSaveError() {
+    private func showError(_ operation: WriteOperation, error: Error) {
         isSaving = false
-        presentedError = PresentedError(
-            message: "The income source could not be saved. Please try again."
+        presentedError = WriteErrorPresentation(
+            operation: operation,
+            subject: "income source",
+            error: error
         )
-    }
-
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
     }
 }
 
