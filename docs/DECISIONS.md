@@ -160,3 +160,37 @@ occurrence rows are written to the store.
 thousands of rows that must then be migrated, deduplicated and reconciled when a rule changes.
 Computing on demand keeps the store small and makes editing a rule instantaneous and correct
 retroactively.
+
+---
+
+## D-014 — Debt and Accounts are deferred, not rejected
+**Decision.** The design handoff treats **Debt** and **Accounts** as first-class concepts. Neither
+is modelled for the MVP. Both are recorded here as deliberate post-MVP work.
+
+**Why.** Debt is not a UI addition — it changes the projection engine. The handoff's own rule
+("the mortgage payment sits in Monthly Bills, so only the payments outside bills enter the
+projection") is a second reconciliation rule layered on top of the bill-settlement rule in D-006.
+Two interacting no-double-counting rules in the highest-risk code in the product is not something
+to add before the MVP's acceptance criteria are met and covered by tests.
+
+Accounts are lower risk — an entity, a picker, a per-row subtitle and a settings screen, with no
+engine change. They are deferred with Debt only to keep the remaining MVP scope stable, and can
+be pulled forward cheaply if wanted.
+
+**Consequence.** `TransactionSnapshot` already carries an `account` string, so per-transaction
+account display is possible today without a schema change. A future `AccountEntity` would upgrade
+that string to a relationship.
+
+---
+
+## D-015 — Design handoff assets stay out of the repository
+**Decision.** `docs/design/` is git-ignored. The app icon is committed as a normal asset; the
+screen captures are not.
+
+**Why.** The captures contain the real owner name and employer, which were deliberately removed
+from the tree and from every commit in history before publishing. PNG content cannot be
+text-scrubbed the way the markdown was, so committing them would silently reverse that work.
+
+**Consequence.** The handoff is available locally to whoever has it. Anything from it that the
+implementation needs — palette, type treatment, component structure — is transcribed into specs
+and this log rather than referenced by image.

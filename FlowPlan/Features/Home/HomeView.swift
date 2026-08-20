@@ -86,19 +86,7 @@ struct HomeView: View {
             }
         }
         .sheet(isPresented: $isPresentingAddTransaction) {
-            // TODO(spec-05): AddTransactionView
-            NavigationStack {
-                Text("Add Transaction")
-                    .navigationTitle("Add Transaction")
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") {
-                                isPresentingAddTransaction = false
-                            }
-                        }
-                    }
-            }
-            .presentationDetents([.medium])
+            AddTransactionView()
         }
         .refreshable {
             projectionStore.refresh()
