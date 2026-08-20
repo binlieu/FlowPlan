@@ -11,6 +11,9 @@ public struct Debt: Identifiable, Hashable, Codable, Sendable {
     /// Day of the month the payment is due. Months with fewer days use their final day.
     public let dueDay: Int
 
+    /// Whether the payment is scheduled to leave the account automatically.
+    public let isAutoPay: Bool
+
     /// When true, Monthly Bills already includes this payment. The debt remains visible for
     /// tracking, but must not add another obligation to a projection.
     public let isPaidThroughBills: Bool
@@ -24,6 +27,7 @@ public struct Debt: Identifiable, Hashable, Codable, Sendable {
         monthlyPayment: Decimal,
         category: String,
         dueDay: Int = 1,
+        isAutoPay: Bool = false,
         isPaidThroughBills: Bool,
         isActive: Bool
     ) {
@@ -34,6 +38,7 @@ public struct Debt: Identifiable, Hashable, Codable, Sendable {
         self.monthlyPayment = monthlyPayment
         self.category = category
         self.dueDay = min(31, max(1, dueDay))
+        self.isAutoPay = isAutoPay
         self.isPaidThroughBills = isPaidThroughBills
         self.isActive = isActive
     }

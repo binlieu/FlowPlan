@@ -119,6 +119,35 @@ enum HomePaymentOccurrence: Identifiable, Hashable {
         debtOccurrence != nil
     }
 
+    var isPaidThroughBills: Bool {
+        debtOccurrence?.isPaidThroughBills ?? false
+    }
+
+    func isAutoPay(autoPayDebtIDs: Set<UUID>) -> Bool {
+        switch self {
+        case .bill(let occurrence):
+            return occurrence.bill.isAutoPay
+        case .debt(let occurrence):
+            return autoPayDebtIDs.contains(occurrence.debtID)
+        }
+    }
+
+    func dismissalID(calendar: Calendar) -> String {
+        switch self {
+        case .bill(let occurrence):
+            return occurrence.dismissalID(calendar: calendar)
+        case .debt(let occurrence):
+            let components = calendar.dateComponents(
+                [.year, .month, .day],
+                from: occurrence.date
+            )
+            let dateComponents = [components.year, components.month, components.day]
+                .map { String($0 ?? 0) }
+                .joined(separator: "-")
+            return "debt-\(occurrence.debtID.uuidString)-\(dateComponents)"
+        }
+    }
+
     func status(
         relativeTo referenceDate: Date,
         calendar: Calendar
@@ -264,6 +293,16 @@ struct OverdueAutopayPromptDismissalStore {
             : occurrences
     }
 
+    func undismissedOccurrences(
+        in occurrences: [HomePaymentOccurrence],
+        calendar: Calendar
+    ) -> [HomePaymentOccurrence] {
+        let dismissedSets = Set(userDefaults.stringArray(forKey: key) ?? [])
+        return dismissedSets.contains(signature(for: occurrences, calendar: calendar))
+            ? []
+            : occurrences
+    }
+
     func dismiss(_ occurrences: [BillOccurrence], calendar: Calendar) {
         guard !occurrences.isEmpty else {
             return
@@ -274,7 +313,27 @@ struct OverdueAutopayPromptDismissalStore {
         userDefaults.set(Array(dismissedSets).sorted(), forKey: key)
     }
 
+    func dismiss(_ occurrences: [HomePaymentOccurrence], calendar: Calendar) {
+        guard !occurrences.isEmpty else {
+            return
+        }
+
+        var dismissedSets = Set(userDefaults.stringArray(forKey: key) ?? [])
+        dismissedSets.insert(signature(for: occurrences, calendar: calendar))
+        userDefaults.set(Array(dismissedSets).sorted(), forKey: key)
+    }
+
     private func signature(for occurrences: [BillOccurrence], calendar: Calendar) -> String {
+        occurrences
+            .map { $0.dismissalID(calendar: calendar) }
+            .sorted()
+            .joined(separator: "|")
+    }
+
+    private func signature(
+        for occurrences: [HomePaymentOccurrence],
+        calendar: Calendar
+    ) -> String {
         occurrences
             .map { $0.dismissalID(calendar: calendar) }
             .sorted()
@@ -327,24 +386,38 @@ enum HomePaymentSettlementAction {
 
 @MainActor
 enum OverdueAutopaySettlementAction {
+    static func overdueAutopayOccurrences(
+        from occurrences: [HomePaymentOccurrence],
+        autoPayDebtIDs: Set<UUID>,
+        relativeTo referenceDate: Date,
+        calendar: Calendar
+    ) -> [HomePaymentOccurrence] {
+        HomePaymentOccurrence.sorted(
+            occurrences.filter { occurrence in
+                occurrence.isAutoPay(autoPayDebtIDs: autoPayDebtIDs)
+                    && !occurrence.isPaidThroughBills
+                    && occurrence.status(
+                        relativeTo: referenceDate,
+                        calendar: calendar
+                    ) == .overdue
+            },
+            relativeTo: referenceDate,
+            calendar: calendar
+        )
+    }
+
     @discardableResult
     static func markAllAsPaid(
-        from occurrences: [BillOccurrence],
+        from occurrences: [HomePaymentOccurrence],
+        autoPayDebtIDs: Set<UUID>,
         relativeTo referenceDate: Date,
         repository: FinanceRepository,
         projectionStore: ProjectionStore,
         calendar: Calendar
     ) -> BillSettlementError? {
-        let overdueAutopayOccurrences = BillOccurrenceProvider.sortedOccurrences(
-            occurrences.filter { occurrence in
-                occurrence.bill.isAutoPay
-                    && BillOccurrenceStatus.status(
-                        for: occurrence.bill,
-                        occurrenceDate: occurrence.date,
-                        relativeTo: referenceDate,
-                        calendar: calendar
-                    ) == .overdue
-            },
+        let overdueAutopayOccurrences = overdueAutopayOccurrences(
+            from: occurrences,
+            autoPayDebtIDs: autoPayDebtIDs,
             relativeTo: referenceDate,
             calendar: calendar
         )
@@ -358,17 +431,44 @@ enum OverdueAutopaySettlementAction {
         var settlementError: BillSettlementError?
         for occurrence in overdueAutopayOccurrences {
             do {
-                try repository.markBillPaid(
-                    billID: occurrence.bill.id,
-                    occurrence: occurrence.date,
-                    amount: occurrence.bill.amount,
-                    on: occurrence.date
-                )
+                switch occurrence {
+                case .bill(let billOccurrence):
+                    try repository.markBillPaid(
+                        billID: billOccurrence.bill.id,
+                        occurrence: billOccurrence.date,
+                        amount: billOccurrence.bill.amount,
+                        on: billOccurrence.date
+                    )
+                case .debt(let debtOccurrence):
+                    try repository.markDebtPaymentMade(
+                        debtID: debtOccurrence.debtID,
+                        amount: debtOccurrence.amount,
+                        on: debtOccurrence.date
+                    )
+                }
             } catch {
                 settlementError = .unableToRecord
             }
         }
 
         return settlementError
+    }
+
+    @discardableResult
+    static func markAllAsPaid(
+        from occurrences: [BillOccurrence],
+        relativeTo referenceDate: Date,
+        repository: FinanceRepository,
+        projectionStore: ProjectionStore,
+        calendar: Calendar
+    ) -> BillSettlementError? {
+        markAllAsPaid(
+            from: occurrences.map(HomePaymentOccurrence.bill),
+            autoPayDebtIDs: [],
+            relativeTo: referenceDate,
+            repository: repository,
+            projectionStore: projectionStore,
+            calendar: calendar
+        )
     }
 }

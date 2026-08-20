@@ -95,6 +95,10 @@ struct DebtSection: View {
 
                     Spacer(minLength: 8)
 
+                    if debt.isAutoPay {
+                        Chip(text: "AUTO PAY", style: .filledNeutral)
+                    }
+
                     debtStatus(debt)
                 }
 

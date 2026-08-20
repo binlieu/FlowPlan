@@ -15,7 +15,7 @@ struct UpcomingBillsSection: View {
 
     @State private var presentedError: BillSettlementError?
     @State private var dismissalRevision = 0
-    @State private var isSettlingAutopayBills = false
+    @State private var isSettlingAutopayPayments = false
 
     init(
         onSeeAll: @escaping () -> Void = {},
@@ -33,9 +33,7 @@ struct UpcomingBillsSection: View {
         let _ = projectionStore.dataVersion
 
         let occurrences = unsettledPaymentOccurrences
-        let promptOccurrences = overdueAutopayPromptOccurrences(
-            in: occurrences.compactMap(\.billOccurrence)
-        )
+        let promptOccurrences = overdueAutopayPromptOccurrences(in: occurrences)
 
         Section {
             if !promptOccurrences.isEmpty {
@@ -101,14 +99,14 @@ struct UpcomingBillsSection: View {
         }
     }
 
-    private func autopayPrompt(for occurrences: [BillOccurrence]) -> some View {
+    private func autopayPrompt(for occurrences: [HomePaymentOccurrence]) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "exclamationmark.circle")
                     .foregroundStyle(.red)
                     .accessibilityHidden(true)
 
-                Text("\(occurrences.count) autopay bills were due. Mark them paid?")
+                Text("\(occurrences.count) autopay payments were due. Mark them paid?")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -127,12 +125,12 @@ struct UpcomingBillsSection: View {
             }
 
             Button("Mark all as paid") {
-                markAllAutopayBillsAsPaid(occurrences)
+                markAllAutopayPaymentsAsPaid(occurrences)
             }
             .font(.subheadline.weight(.bold))
             .buttonStyle(.borderedProminent)
             .tint(Palette.accent)
-            .disabled(isSettlingAutopayBills)
+            .disabled(isSettlingAutopayPayments)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -335,23 +333,28 @@ struct UpcomingBillsSection: View {
     }
 
     private func overdueAutopayPromptOccurrences(
-        in occurrences: [BillOccurrence]
-    ) -> [BillOccurrence] {
+        in occurrences: [HomePaymentOccurrence]
+    ) -> [HomePaymentOccurrence] {
         _ = dismissalRevision
 
-        let referenceDate = now()
-        let overdueAutopayOccurrences = occurrences.filter { occurrence in
-            occurrence.bill.isAutoPay
-                && BillOccurrenceStatus.status(
-                    for: occurrence.bill,
-                    occurrenceDate: occurrence.date,
-                    relativeTo: referenceDate,
-                    calendar: calendar
-                ) == .overdue
-        }
+        let overdueAutopayOccurrences = OverdueAutopaySettlementAction
+            .overdueAutopayOccurrences(
+                from: occurrences,
+                autoPayDebtIDs: autoPayDebtIDs,
+                relativeTo: now(),
+                calendar: calendar
+            )
         return dismissalStore.undismissedOccurrences(
             in: overdueAutopayOccurrences,
             calendar: calendar
+        )
+    }
+
+    private var autoPayDebtIDs: Set<UUID> {
+        Set(
+            repository.debts()
+                .filter { $0.isAutoPay && !$0.isPaidThroughBills }
+                .map(\.id)
         )
     }
 
@@ -371,23 +374,24 @@ struct UpcomingBillsSection: View {
         )
     }
 
-    private func markAllAutopayBillsAsPaid(_ occurrences: [BillOccurrence]) {
-        guard !isSettlingAutopayBills else {
+    private func markAllAutopayPaymentsAsPaid(_ occurrences: [HomePaymentOccurrence]) {
+        guard !isSettlingAutopayPayments else {
             return
         }
 
-        isSettlingAutopayBills = true
+        isSettlingAutopayPayments = true
         presentedError = OverdueAutopaySettlementAction.markAllAsPaid(
             from: occurrences,
+            autoPayDebtIDs: autoPayDebtIDs,
             relativeTo: now(),
             repository: repository,
             projectionStore: projectionStore,
             calendar: calendar
         )
-        isSettlingAutopayBills = false
+        isSettlingAutopayPayments = false
     }
 
-    private func dismissPrompt(for occurrences: [BillOccurrence]) {
+    private func dismissPrompt(for occurrences: [HomePaymentOccurrence]) {
         dismissalStore.dismiss(occurrences, calendar: calendar)
         dismissalRevision += 1
     }

@@ -2,6 +2,35 @@ import Foundation
 import Testing
 import FlowPlanDomain
 
+@Test func debtAutopayChangesNoProjectionFigure() {
+    let debtID = Fixtures.id(70)
+    let manualDebt = Fixtures.debt(
+        id: debtID,
+        balance: 8_000,
+        annualInterestRate: 0.0649,
+        monthlyPayment: 505,
+        dueDay: 15
+    )
+    let autopayDebt = Fixtures.debt(
+        id: debtID,
+        balance: 8_000,
+        annualInterestRate: 0.0649,
+        monthlyPayment: 505,
+        dueDay: 15,
+        isAutoPay: true
+    )
+    let engine = MonthlyProjectionEngine()
+
+    let manualProjection = engine.project(
+        Fixtures.input(startingBalance: 2_000, debts: [manualDebt])
+    )
+    let autopayProjection = engine.project(
+        Fixtures.input(startingBalance: 2_000, debts: [autopayDebt])
+    )
+
+    #expect(autopayProjection == manualProjection)
+}
+
 @Test func debtPaidThroughBillsChangesNoProjectionFigure() {
     let engine = MonthlyProjectionEngine()
     let base = engine.project(Fixtures.input(startingBalance: 2_000))
