@@ -30,7 +30,11 @@ struct FlowPlanApp: App {
         }
 
         let repository = FinanceRepository(context: context)
-        let projectionStore = ProjectionStore(repository: repository, appState: state)
+        let projectionStore = ProjectionStore(
+            repository: repository,
+            appState: state,
+            modelContext: context
+        )
 
         modelContainer = container
         _appState = State(initialValue: state)

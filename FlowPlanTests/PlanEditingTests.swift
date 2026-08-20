@@ -324,7 +324,11 @@ private struct PlanEditingEnvironment {
         }
 
         self.repository = repository
-        projectionStore = ProjectionStore(repository: repository, appState: appState)
+        projectionStore = ProjectionStore(
+            repository: repository,
+            appState: appState,
+            modelContext: container.mainContext
+        )
     }
 
     func date(day: Int) -> Date {

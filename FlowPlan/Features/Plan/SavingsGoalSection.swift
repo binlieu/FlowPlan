@@ -17,7 +17,9 @@ struct SavingsGoalSection: View {
     @State private var sliderValue = 0.0
     @State private var sliderUpperBound = 4_000.0
     @State private var isDragging = false
+    @State private var isInactiveExpanded = false
     @State private var presentedError: PresentedError?
+    @State private var pendingDeletion: PendingGoalDeletion?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -40,6 +42,10 @@ struct SavingsGoalSection: View {
             .overlay {
                 Rectangle().stroke(Palette.hairline, lineWidth: 1)
             }
+
+            if !inactiveGoals.isEmpty {
+                inactiveGoalsGroup
+            }
         }
         .onAppear(perform: synchronizeSlider)
         .onChange(of: projection.savingsTarget) {
@@ -54,6 +60,31 @@ struct SavingsGoalSection: View {
                 message: Text(error.message),
                 dismissButton: .default(Text("OK"))
             )
+        }
+        .confirmationDialog(
+            "Delete inactive savings goal?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        pendingDeletion = nil
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let pendingDeletion {
+                    deleteInactiveGoal(id: pendingDeletion.id)
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                pendingDeletion = nil
+            }
+        } message: {
+            if let pendingDeletion {
+                Text("This permanently deletes \(pendingDeletion.name).")
+            }
         }
     }
 
@@ -72,11 +103,15 @@ struct SavingsGoalSection: View {
                 .font(.subheadline.weight(.bold))
                 .fontWidth(.condensed)
                 .foregroundStyle(Palette.accent)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             } else {
                 Button("Add", action: onAdd)
                     .font(.subheadline.weight(.bold))
                     .fontWidth(.condensed)
                     .foregroundStyle(Palette.accent)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
         }
     }
@@ -111,6 +146,73 @@ struct SavingsGoalSection: View {
         }
     }
 
+    private var inactiveGoalsGroup: some View {
+        DisclosureGroup(isExpanded: $isInactiveExpanded) {
+            VStack(spacing: 0) {
+                ForEach(Array(inactiveGoals.enumerated()), id: \.element.id) { index, goal in
+                    inactiveGoalRow(goal)
+
+                    if index < inactiveGoals.count - 1 {
+                        Divider()
+                    }
+                }
+            }
+            .padding(.top, 8)
+        } label: {
+            HStack {
+                Text("Inactive")
+                    .font(.headline)
+                    .foregroundStyle(Palette.ink)
+
+                Spacer()
+
+                Text("\(inactiveGoals.count)")
+                    .font(Typography.supporting.weight(.semibold))
+                    .foregroundStyle(Palette.inkSecondary)
+            }
+        }
+        .tint(Palette.accent)
+        .padding(16)
+        .background(Palette.surface)
+        .overlay {
+            Rectangle().stroke(Palette.hairline, lineWidth: 1)
+        }
+    }
+
+    private func inactiveGoalRow(_ goal: SavingsGoalEntity) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(goal.name)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Palette.ink)
+
+                Spacer(minLength: 12)
+
+                Text(money(goal.monthlyTarget))
+                    .font(.subheadline.weight(.semibold))
+                    .fontWidth(.condensed)
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.inkSecondary)
+            }
+
+            HStack(spacing: 12) {
+                Button("Reactivate") {
+                    reactivate(goal)
+                }
+                .buttonStyle(.bordered)
+                .tint(Palette.accent)
+                .frame(minHeight: 44)
+
+                Button("Delete", role: .destructive) {
+                    pendingDeletion = PendingGoalDeletion(id: goal.id, name: goal.name)
+                }
+                .buttonStyle(.bordered)
+                .frame(minHeight: 44)
+            }
+        }
+        .padding(.vertical, 12)
+    }
+
     private var slider: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
@@ -132,7 +234,7 @@ struct SavingsGoalSection: View {
                     get: { sliderValue },
                     set: { newValue in
                         sliderValue = newValue
-                        onPreviewTarget(decimalTarget(from: newValue))
+                        onPreviewTarget(Self.decimalTarget(from: newValue))
                     }
                 ),
                 in: 0...sliderUpperBound,
@@ -149,7 +251,7 @@ struct SavingsGoalSection: View {
             HStack {
                 Text(money(.zero))
                 Spacer()
-                Text(money(decimalTarget(from: sliderUpperBound)))
+                Text(money(Self.decimalTarget(from: sliderUpperBound)))
             }
             .font(.caption)
             .fontWidth(.condensed)
@@ -174,7 +276,7 @@ struct SavingsGoalSection: View {
     }
 
     private var sliderTarget: Decimal {
-        decimalTarget(from: sliderValue)
+        Self.decimalTarget(from: sliderValue)
     }
 
     private func synchronizeSlider() {
@@ -182,8 +284,19 @@ struct SavingsGoalSection: View {
         sliderUpperBound = Self.upperBound(for: projection.savingsTarget)
     }
 
-    private func decimalTarget(from value: Double) -> Decimal {
-        Decimal(Int(value.rounded()))
+    static func decimalTarget(from value: Double) -> Decimal {
+        let roundedValue = value.rounded()
+        guard roundedValue.isFinite else {
+            return roundedValue.sign == .minus ? .zero : Decimal(Int.max)
+        }
+        guard roundedValue > .zero else {
+            return .zero
+        }
+        guard roundedValue < Double(Int.max) else {
+            return Decimal(Int.max)
+        }
+
+        return Decimal(Int(roundedValue))
     }
 
     private func commitSliderTarget() {
@@ -218,6 +331,48 @@ struct SavingsGoalSection: View {
         }
     }
 
+    private var inactiveGoals: [SavingsGoalEntity] {
+        storedGoals
+            .filter { !$0.isActive }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    private func reactivate(_ goal: SavingsGoalEntity) {
+        do {
+            try repository.updateSavingsGoal(
+                SavingsGoalEntity(
+                    id: goal.id,
+                    name: goal.name,
+                    targetAmount: goal.targetAmount,
+                    monthlyTarget: goal.monthlyTarget,
+                    currentAmount: goal.currentAmount,
+                    targetDate: goal.targetDate,
+                    isActive: true,
+                    createdAt: goal.createdAt,
+                    updatedAt: goal.updatedAt
+                )
+            )
+            projectionStore.refresh()
+        } catch {
+            presentedError = PresentedError(
+                message: "The savings goal could not be reactivated. Please try again."
+            )
+        }
+    }
+
+    private func deleteInactiveGoal(id: UUID) {
+        pendingDeletion = nil
+
+        do {
+            try repository.deleteSavingsGoal(id: id)
+            projectionStore.refresh()
+        } catch {
+            presentedError = PresentedError(
+                message: "The savings goal could not be deleted. Please try again."
+            )
+        }
+    }
+
     private func money(_ amount: Decimal) -> String {
         MoneyFormatter.string(
             amount,
@@ -229,5 +384,10 @@ struct SavingsGoalSection: View {
     private struct PresentedError: Identifiable {
         let id = UUID()
         let message: String
+    }
+
+    private struct PendingGoalDeletion {
+        let id: UUID
+        let name: String
     }
 }

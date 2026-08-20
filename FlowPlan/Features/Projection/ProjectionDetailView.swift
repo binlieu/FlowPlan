@@ -3,6 +3,7 @@ import FlowPlanDomain
 
 struct ProjectionDetailView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ProjectionStore.self) private var projectionStore
 
     let projection: MonthlyProjection
 
@@ -14,7 +15,15 @@ struct ProjectionDetailView: View {
                 hero
                 breakdownSection
                 supportingFiguresSection
-                ProjectionCompletenessView(completeness: projection.completeness)
+                ProjectionCompletenessView(
+                    completeness: ProjectionCompleteness(
+                        hasStartingBalance: projectionStore.hasStartingBalance,
+                        hasPlannedIncome: projection.completeness.hasPlannedIncome,
+                        hasBills: projection.completeness.hasBills,
+                        hasSpendingBudget: projection.completeness.hasSpendingBudget,
+                        hasSavingsGoal: projection.completeness.hasSavingsGoal
+                    )
+                )
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)

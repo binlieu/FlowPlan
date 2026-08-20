@@ -2,6 +2,8 @@ import SwiftUI
 import FlowPlanDomain
 
 struct TransactionRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     let transaction: TransactionSnapshot
 
     var body: some View {
@@ -16,13 +18,16 @@ struct TransactionRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(primaryText)
                     .font(.body.weight(.medium))
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(transaction.category)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .layoutPriority(1)
 
             Spacer(minLength: 8)
 

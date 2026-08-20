@@ -194,3 +194,23 @@ text-scrubbed the way the markdown was, so committing them would silently revers
 **Consequence.** The handoff is available locally to whoever has it. Anything from it that the
 implementation needs — palette, type treatment, component structure — is transcribed into specs
 and this log rather than referenced by image.
+
+---
+
+## D-016 — Cross-cutting persistence and formatting issues are deferred as strategies
+**Decision.** QA 1.5 and 1.6 will be addressed through one repository-wide transaction and
+rollback strategy, not through isolated save-path patches. Decimal-to-floating-point conversion
+remains permitted for chart and layout geometry; the savings slider's trapping
+`Int(value.rounded())` path is clamped at the conversion boundary. QA 2.5, QA 2.8, and any
+remaining minor presentation findings are deferred.
+
+**Why.** Rollback and atomicity are consistency properties of the repository as a whole. Fixing
+only the two observed paths would leave identical failure modes elsewhere and create a false
+sense of safety. Chart APIs require floating-point geometry, so those conversions are legitimate
+presentation boundaries; only the unguarded integer conversion could trap. The remaining insight
+pace and compact-currency work needs an explicit product rule rather than an incidental copy or
+formatter change.
+
+**Consequence.** Follow-up work must introduce and test transaction semantics across every
+repository mutation before closing QA 1.5 or 1.6. Chart geometry stays unchanged, the slider is
+bounded safely, and the deferred QA findings remain listed in `PROJECT_STATUS.md`.

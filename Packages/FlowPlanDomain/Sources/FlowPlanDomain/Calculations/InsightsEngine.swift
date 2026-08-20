@@ -5,7 +5,6 @@ public struct InsightsEngine: Sendable {
 
     public func insights(
         for projection: MonthlyProjection,
-        previous: MonthlyProjection?,
         transactions: [TransactionSnapshot],
         previousTransactions: [TransactionSnapshot],
         bills: [PlannedBill]
@@ -24,7 +23,7 @@ public struct InsightsEngine: Sendable {
             results.append(savingsInsight)
         }
 
-        if previous != nil {
+        if !previousTransactions.isEmpty {
             results.append(
                 contentsOf: spendingInsights(
                     transactions: transactions,
@@ -49,15 +48,12 @@ public struct InsightsEngine: Sendable {
             return nil
         }
 
-        let direction = projection.varianceVsPlan > .zero ? "ahead of" : "behind"
-        let amount = formatCurrency(absoluteValue(projection.varianceVsPlan))
-        let month = monthName(projection.month.month)
-
         return Insight(
             id: "projection-vs-plan",
-            kind: .projection,
-            message: "You're projected to finish \(month) \(amount) \(direction) plan.",
-            symbolName: "chart.line.uptrend.xyaxis"
+            kind: .projection(
+                month: projection.month.month,
+                varianceFromPlan: projection.varianceVsPlan
+            )
         )
     }
 
@@ -71,11 +67,11 @@ public struct InsightsEngine: Sendable {
 
         return Insight(
             id: "income-remaining",
-            kind: .income,
-            message: "You've received \(formatCurrency(projection.incomeReceived)) of "
-                + "\(formatCurrency(projection.totalExpectedIncome)) expected income; "
-                + "\(formatCurrency(projection.remainingExpectedIncome)) remains.",
-            symbolName: "banknote"
+            kind: .income(
+                received: projection.incomeReceived,
+                expected: projection.totalExpectedIncome,
+                remaining: projection.remainingExpectedIncome
+            )
         )
     }
 
@@ -86,9 +82,7 @@ public struct InsightsEngine: Sendable {
 
         return Insight(
             id: "savings-pace",
-            kind: .savings,
-            message: "You're on track to save \(formatCurrency(projection.savingsTarget)) this month.",
-            symbolName: "target"
+            kind: .savings(monthlyTarget: projection.savingsTarget)
         )
     }
 
@@ -121,21 +115,17 @@ public struct InsightsEngine: Sendable {
                 let lhsMagnitude = absoluteValue(lhs.percentage)
                 let rhsMagnitude = absoluteValue(rhs.percentage)
                 if lhsMagnitude == rhsMagnitude {
-                    let locale = Locale(identifier: "en_US_POSIX")
-                    return lhs.category.lowercased(with: locale) < rhs.category.lowercased(with: locale)
+                    return lhs.category.lowercased() < rhs.category.lowercased()
                 }
                 return lhsMagnitude > rhsMagnitude
             }
             .map { change in
-                let direction = change.percentage > .zero ? "higher" : "lower"
-                let percentage = NSDecimalNumber(decimal: absoluteValue(change.percentage)).intValue
-                let category = insightCategoryName(change.category)
-
                 return Insight(
                     id: "spending-\(stableIDComponent(change.category))",
-                    kind: .spending,
-                    message: "Your \(category) spending is \(percentage)% \(direction) than last month.",
-                    symbolName: direction == "higher" ? "arrow.up.right" : "arrow.down.right"
+                    kind: .spending(
+                        category: change.category,
+                        percentageChange: change.percentage
+                    )
                 )
             }
     }
@@ -154,9 +144,7 @@ public struct InsightsEngine: Sendable {
         let total = subscriptions.map(\.amount).reduce(.zero, +)
         return Insight(
             id: "subscriptions-total",
-            kind: .subscriptions,
-            message: "Your subscriptions total \(formatCurrency(total))/month.",
-            symbolName: "repeat.circle"
+            kind: .subscriptions(monthlyTotal: total)
         )
     }
 
@@ -170,33 +158,9 @@ public struct InsightsEngine: Sendable {
             }
     }
 
-    private func formatCurrency(_ amount: Decimal) -> String {
-        amount.formatted(
-            Decimal.FormatStyle.Currency(code: "USD")
-                .precision(.fractionLength(0...2))
-                .locale(Locale(identifier: "en_US"))
-        )
-    }
-
-    private func monthName(_ month: Int) -> String {
-        let names = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ]
-        guard names.indices.contains(month - 1) else {
-            return "the month"
-        }
-        return names[month - 1]
-    }
-
-    private func insightCategoryName(_ category: String) -> String {
-        let lowercased = category.lowercased(with: Locale(identifier: "en_US_POSIX"))
-        return lowercased == "groceries" ? "grocery" : lowercased
-    }
-
     private func stableIDComponent(_ value: String) -> String {
         value
-            .lowercased(with: Locale(identifier: "en_US_POSIX"))
+            .lowercased()
             .replacingOccurrences(of: " ", with: "-")
     }
 

@@ -3,18 +3,14 @@ import FlowPlanDomain
 
 struct InsightsView: View {
     @Environment(AppState.self) private var appState
-    @Environment(FinanceRepository.self) private var repository
     @Environment(ProjectionStore.self) private var projectionStore
-
-    private let projectionEngine = MonthlyProjectionEngine()
-    private let insightsEngine = InsightsEngine()
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 MonthNavigationBar()
 
-                if currentTransactions.isEmpty {
+                if projectionStore.currentTransactions.isEmpty {
                     EmptyStateView(
                         symbol: "chart.bar.xaxis",
                         title: "No activity this month",
@@ -25,22 +21,22 @@ struct InsightsView: View {
                     SectionCard(title: "Income vs expenses") {
                         IncomeVsExpensesChart(
                             currentMonth: appState.selectedMonth,
-                            currentTransactions: currentTransactions,
-                            previousTransactions: previousTransactions,
+                            currentTransactions: projectionStore.currentTransactions,
+                            previousTransactions: projectionStore.previousTransactions,
                             currencyCode: appState.currencyCode
                         )
                     }
 
                     SectionCard(title: "Spending by category") {
                         SpendingByCategoryChart(
-                            transactions: currentTransactions,
+                            transactions: projectionStore.currentTransactions,
                             currencyCode: appState.currencyCode
                         )
                     }
 
                     savingsRateRow
 
-                    SmartInsightsSection(insights: insights)
+                    SmartInsightsSection(insights: projectionStore.insights)
                 }
             }
             .padding(20)
@@ -77,31 +73,4 @@ struct InsightsView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var currentTransactions: [TransactionSnapshot] {
-        repository.transactions(in: appState.selectedMonth)
-    }
-
-    private var previousTransactions: [TransactionSnapshot] {
-        repository.transactions(in: appState.selectedMonth.previous)
-    }
-
-    private var previousProjection: MonthlyProjection {
-        let month = appState.selectedMonth.previous
-        let input = repository.projectionInput(
-            for: month,
-            referenceDate: month.endDate(calendar: .current),
-            configuration: .default
-        )
-        return projectionEngine.project(input)
-    }
-
-    private var insights: [Insight] {
-        insightsEngine.insights(
-            for: projectionStore.projection,
-            previous: previousProjection,
-            transactions: currentTransactions,
-            previousTransactions: previousTransactions,
-            bills: repository.bills()
-        )
-    }
 }

@@ -6,23 +6,30 @@ struct AvailableThisMonthCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let projection: MonthlyProjection
+    let completeness: ProjectionCompleteness
     let onOpenPlan: () -> Void
 
     init(
         projection: MonthlyProjection,
+        completeness: ProjectionCompleteness? = nil,
         onOpenPlan: @escaping () -> Void = {}
     ) {
         self.projection = projection
+        self.completeness = completeness ?? projection.completeness
         self.onOpenPlan = onOpenPlan
     }
 
     var body: some View {
-        TickCard {
-            if projection.completeness.hasNoPlanningInputs {
+        if completeness.hasNoPlanningInputs {
+            TickCard {
                 firstRunContent
-            } else {
+            }
+        } else {
+            TickCard {
                 availableContent
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(heroAccessibilityLabel)
         }
     }
 
@@ -149,6 +156,14 @@ struct AvailableThisMonthCard: View {
 
     private var accessibleAvailableAmount: String {
         "Available this month, \(accessibleMoney(projection.currentAvailableBalance))"
+    }
+
+    private var heroAccessibilityLabel: String {
+        "Available this month, \(accessibleMoney(projection.currentAvailableBalance)). "
+            + "This is the current balance after received income, paid expenses, and completed savings. "
+            + "Expected income, \(accessibleMoney(projection.totalExpectedIncome)); "
+            + "expenses paid, \(accessibleMoney(projection.expensesPaid)); "
+            + "savings completed, \(accessibleMoney(projection.savingsCompleted))."
     }
 
     private func money(_ amount: Decimal) -> String {

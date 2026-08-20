@@ -44,19 +44,12 @@ struct SettingsView: View {
                 }
             }
 
-            Toggle("Face ID", isOn: binding(\.isFaceIDEnabled))
-                .disabled(!isFaceIDAvailable)
-
             Toggle("Haptic feedback", isOn: binding(\.isHapticsEnabled))
             Toggle("Notifications", isOn: $notificationsEnabled)
         } header: {
             Text("Preferences")
         } footer: {
-            if !isFaceIDAvailable {
-                Text(biometricAvailability.explanation)
-            } else {
-                Text("Notification scheduling is not enabled in this version.")
-            }
+            Text("Notification scheduling is not enabled in this version.")
         }
     }
 
