@@ -6,6 +6,8 @@ struct InsightsView: View {
     @Environment(ProjectionStore.self) private var projectionStore
 
     var body: some View {
+        let _ = projectionStore.dataVersion
+
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 MonthNavigationBar()

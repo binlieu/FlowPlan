@@ -10,6 +10,10 @@ struct PlanView: View {
     @State private var previewProjection: MonthlyProjection?
 
     var body: some View {
+        // Repository fetches return domain values. Tracking the write token makes SwiftUI rerun
+        // these fetches even when a successful write leaves the projection unchanged.
+        let _ = projectionStore.dataVersion
+
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 30) {
                 header

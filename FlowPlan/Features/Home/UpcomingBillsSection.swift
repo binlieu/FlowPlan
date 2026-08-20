@@ -30,6 +30,8 @@ struct UpcomingBillsSection: View {
     }
 
     var body: some View {
+        let _ = projectionStore.dataVersion
+
         let occurrences = unsettledPaymentOccurrences
         let promptOccurrences = overdueAutopayPromptOccurrences(
             in: occurrences.compactMap(\.billOccurrence)

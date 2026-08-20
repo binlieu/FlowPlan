@@ -13,6 +13,8 @@ struct RecentTransactionsSection: View {
     }
 
     var body: some View {
+        let _ = projectionStore.dataVersion
+
         Section {
             if recentTransactions.isEmpty {
                 EmptyStateView(
@@ -74,7 +76,6 @@ struct RecentTransactionsSection: View {
     }
 
     private var recentTransactions: [TransactionSnapshot] {
-        _ = projectionStore.projection
         return Array(repository.transactions(in: appState.selectedMonth).prefix(5))
     }
 

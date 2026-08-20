@@ -6,6 +6,7 @@ import FlowPlanDomain
 @Observable
 @MainActor
 final class ProjectionStore {
+    private(set) var dataVersion = 0
     private(set) var projection: MonthlyProjection
     private(set) var currentTransactions: [TransactionSnapshot]
     private(set) var previousTransactions: [TransactionSnapshot]
@@ -102,6 +103,10 @@ final class ProjectionStore {
                 previousTransactions: loadedPreviousTransactions,
                 bills: input.bills
             )
+
+        repository.setSuccessfulWriteHandler { [weak self] in
+            self?.dataVersion += 1
+        }
     }
 
     func refresh() {
