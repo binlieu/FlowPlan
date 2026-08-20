@@ -7,3 +7,6 @@ xcuserdata/
 .build/
 *.xcworkspace/xcuserdata/
 .codex-last-message.md
+
+# Design handoff assets — kept local; screen captures contain personal data
+docs/design/
