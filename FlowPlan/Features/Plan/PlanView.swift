@@ -16,6 +16,7 @@ struct PlanView: View {
         let _ = projectionStore.dataVersion
         let bills = repository.bills()
         let debts = repository.debts()
+        let projection = projectionForDisplay
 
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 30) {
@@ -25,14 +26,14 @@ struct PlanView: View {
 
                 PlanExpectedIncomeSection(
                     sources: repository.incomeSources(),
-                    plannedTotal: projectionStore.projection.plannedIncomeTotal,
+                    plannedTotal: projection.plannedIncomeTotal,
                     onAdd: { presentedEditor = .newIncome },
                     onEdit: { presentedEditor = .income($0) }
                 )
 
                 MonthlyBillsSection(
                     bills: bills,
-                    plannedTotal: Self.monthlyBillsTotal(for: projectionForDisplay),
+                    plannedTotal: Self.monthlyBillsTotal(for: projection),
                     onAdd: { presentedEditor = .newBill },
                     onEdit: { presentedEditor = .bill($0) }
                 )
@@ -41,7 +42,7 @@ struct PlanView: View {
                     debts: debts,
                     bills: bills,
                     originalBalances: repository.debtOriginalBalances(),
-                    outsideBillsTotal: projectionForDisplay.debtPaymentsDue,
+                    outsideBillsTotal: projection.debtPaymentsDue,
                     onAdd: { presentedEditor = .newDebt },
                     onEdit: { presentedEditor = .debt($0) },
                     onCountSeparately: countSeparately
@@ -50,22 +51,24 @@ struct PlanView: View {
                 SpendingBudgetSection(
                     budgets: repository.budgets(for: appState.selectedMonth),
                     transactions: repository.transactions(in: appState.selectedMonth),
+                    plannedTotal: Self.spendingBudgetTotal(for: projection),
                     onAdd: { presentedEditor = .newBudget },
                     onEdit: { presentedEditor = .budget($0) }
                 )
 
                 SavingsGoalSection(
                     plans: repository.savingsPlans(),
-                    projection: projectionForDisplay,
+                    projection: projection,
+                    plannedTotal: Self.savingsGoalTotal(for: projection),
                     onAdd: { presentedEditor = .newSavingsGoal },
                     onEdit: { presentedEditor = .savingsGoal($0) },
                     onPreviewTarget: previewSavingsTarget
                 )
 
                 NavigationLink {
-                    ProjectionDetailView(projection: projectionForDisplay)
+                    ProjectionDetailView(projection: projection)
                 } label: {
-                    MonthlyProjectionCard(projection: projectionForDisplay)
+                    MonthlyProjectionCard(projection: projection)
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Opens projection details")
@@ -125,6 +128,14 @@ struct PlanView: View {
 
     static func monthlyBillsTotal(for projection: MonthlyProjection) -> Decimal {
         projection.plannedBillsTotal
+    }
+
+    static func spendingBudgetTotal(for projection: MonthlyProjection) -> Decimal {
+        projection.plannedSpendingTotal
+    }
+
+    static func savingsGoalTotal(for projection: MonthlyProjection) -> Decimal {
+        projection.savingsTarget
     }
 
     @ViewBuilder

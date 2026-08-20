@@ -1,3 +1,4 @@
+import Foundation
 import OSLog
 import SwiftData
 import SwiftUI
@@ -17,7 +18,8 @@ struct FlowPlanApp: App {
 
     init() {
         let container = PersistenceController.shared
-        let state = AppState()
+        let userDefaults = UserDefaults.standard
+        let state = AppState(userDefaults: userDefaults)
         let context = container.mainContext
 
         if state.isSampleDataEnabled, !SampleData.isSeeded(context) {
@@ -29,7 +31,10 @@ struct FlowPlanApp: App {
             }
         }
 
-        let repository = FinanceRepository(context: context)
+        let repository = FinanceRepository(
+            context: context,
+            userDefaults: userDefaults
+        )
         let projectionStore = ProjectionStore(
             repository: repository,
             appState: state,

@@ -136,6 +136,26 @@ func disabledCarryBalanceForwardRestoresExplicitOrZeroBehavior() throws {
 
 @Test
 @MainActor
+func carryBalanceForwardPreferenceDoesNotLeakBetweenSuites() throws {
+    let disabledEnvironment = try BalanceRolloverTestEnvironment(carryBalanceForward: false)
+    let disabledPreviousMonth = MonthKey(year: 2026, month: 7)
+    try disabledEnvironment.repository.setStartingBalance(800, for: disabledPreviousMonth)
+
+    #expect(
+        disabledEnvironment.repository.startingBalance(for: disabledPreviousMonth.next) == .zero
+    )
+
+    let defaultEnvironment = try BalanceRolloverTestEnvironment()
+    let defaultPreviousMonth = MonthKey(year: 2026, month: 7)
+    try defaultEnvironment.repository.setStartingBalance(1_200, for: defaultPreviousMonth)
+
+    #expect(
+        defaultEnvironment.repository.startingBalance(for: defaultPreviousMonth.next) == 1_200
+    )
+}
+
+@Test
+@MainActor
 func disabledCarryForwardKeepsEnteredStartingBalanceScopedToItsMonth() throws {
     let environment = try BalanceRolloverTestEnvironment(carryBalanceForward: false)
     let month = MonthKey(year: 2026, month: 8)

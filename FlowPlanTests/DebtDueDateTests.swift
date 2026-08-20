@@ -144,9 +144,13 @@ private struct DebtDueDateTestEnvironment {
 
         let container = try PersistenceController.inMemory()
         self.container = container
+        let userDefaults = try isolatedTestUserDefaults(
+            suitePrefix: "FlowPlanTests.DebtDueDate"
+        )
         let repository = FinanceRepository(
             context: container.mainContext,
             calendar: calendar,
+            userDefaults: userDefaults,
             now: { Self.date(day: 20, calendar: calendar) }
         )
         self.repository = repository
@@ -155,9 +159,6 @@ private struct DebtDueDateTestEnvironment {
             try repository.setStartingBalance(startingBalance, for: month)
         }
 
-        let suiteName = "FlowPlanTests.DebtDueDate.\(UUID().uuidString)"
-        let userDefaults = try #require(UserDefaults(suiteName: suiteName))
-        userDefaults.removePersistentDomain(forName: suiteName)
         let appState = AppState(
             selectedMonth: month,
             calendar: calendar,

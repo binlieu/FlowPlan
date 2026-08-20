@@ -248,8 +248,12 @@ private struct TransactionsTestEnvironment {
 
         let container = try PersistenceController.inMemory()
         self.container = container
-        let repository = FinanceRepository(context: container.mainContext, calendar: calendar)
         let defaults = try Self.makeDefaults()
+        let repository = FinanceRepository(
+            context: container.mainContext,
+            calendar: calendar,
+            userDefaults: defaults
+        )
         let appState = AppState(
             selectedMonth: month,
             calendar: calendar,

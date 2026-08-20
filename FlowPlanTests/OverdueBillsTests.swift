@@ -425,6 +425,7 @@ private struct OverdueBillsTestEnvironment {
         let repository = FinanceRepository(
             context: container.mainContext,
             calendar: calendar,
+            userDefaults: userDefaults,
             now: { Self.date(day: 20, calendar: calendar) }
         )
         self.repository = repository

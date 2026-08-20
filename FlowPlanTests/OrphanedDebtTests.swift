@@ -98,6 +98,7 @@ func countSeparatelyActionIncludesPaymentAndLowersProjection() throws {
     let repository = FinanceRepository(
         context: container.mainContext,
         calendar: calendar,
+        userDefaults: try isolatedTestUserDefaults(),
         now: { orphanTestDate(day: 20, calendar: calendar) }
     )
     try repository.setStartingBalance(2_000, for: month)

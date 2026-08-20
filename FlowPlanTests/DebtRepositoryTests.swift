@@ -238,6 +238,7 @@ private struct DebtRepositoryEnvironment {
         repository = FinanceRepository(
             context: container.mainContext,
             calendar: calendar,
+            userDefaults: try isolatedTestUserDefaults(),
             now: { Self.date(day: 20, calendar: calendar) }
         )
     }

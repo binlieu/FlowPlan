@@ -105,6 +105,12 @@ struct MonthlyProjectionCard: View {
     }
 
     private func formattedAmount(for row: ProjectionCardRow) -> String {
+        // Zero has no direction — signing it renders "+$0" or "-$0", which reads as a movement
+        // that did not happen. Matches PlanTotalRow, which makes the same distinction.
+        guard row.amount != .zero else {
+            return money(row.amount)
+        }
+
         switch row.direction {
         case .addition:
             return "+\(money(row.amount))"

@@ -48,11 +48,16 @@ func explicitZeroStartingBalanceCountsAsEntered() throws {
     let context = container.mainContext
     let calendar = presentationTestCalendar
     let month = MonthKey(year: 2026, month: 8)
-    let repository = FinanceRepository(context: context, calendar: calendar)
+    let defaults = try presentationTestDefaults()
+    let repository = FinanceRepository(
+        context: context,
+        calendar: calendar,
+        userDefaults: defaults
+    )
     let appState = AppState(
         selectedMonth: month,
         calendar: calendar,
-        userDefaults: try presentationTestDefaults()
+        userDefaults: defaults
     )
 
     let store = ProjectionStore(
@@ -82,11 +87,16 @@ func projectionStoreCachesTransactionsAndStructuredInsights() throws {
     let context = container.mainContext
     let calendar = presentationTestCalendar
     let month = MonthKey(year: 2026, month: 8)
-    let repository = FinanceRepository(context: context, calendar: calendar)
+    let defaults = try presentationTestDefaults()
+    let repository = FinanceRepository(
+        context: context,
+        calendar: calendar,
+        userDefaults: defaults
+    )
     let appState = AppState(
         selectedMonth: month,
         calendar: calendar,
-        userDefaults: try presentationTestDefaults()
+        userDefaults: defaults
     )
 
     try repository.addTransaction(

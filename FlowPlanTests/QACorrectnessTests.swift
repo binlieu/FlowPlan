@@ -309,7 +309,8 @@ func startingBalancePersistsPerMonthAndMovesBalancesExactly() throws {
 
     let reloadedRepository = FinanceRepository(
         context: ModelContext(environment.container),
-        calendar: environment.calendar
+        calendar: environment.calendar,
+        userDefaults: environment.userDefaults
     )
     #expect(reloadedRepository.startingBalance(for: environment.month) == 2_400)
     #expect(reloadedRepository.startingBalance(for: environment.month.next) == 2_400)
@@ -401,6 +402,7 @@ private struct QACorrectnessEnvironment {
     let month = MonthKey(year: 2026, month: 8)
     let calendar: Calendar
     let container: ModelContainer
+    let userDefaults: UserDefaults
     let repository: FinanceRepository
     let projectionStore: ProjectionStore
     let transactionsViewModel: TransactionsViewModel
@@ -414,9 +416,14 @@ private struct QACorrectnessEnvironment {
 
         let container = try PersistenceController.inMemory()
         self.container = container
+        let defaults = try isolatedTestUserDefaults(
+            suitePrefix: "FlowPlanTests.QACorrectness"
+        )
+        userDefaults = defaults
         let repository = FinanceRepository(
             context: container.mainContext,
             calendar: calendar,
+            userDefaults: defaults,
             now: { Self.date(day: 20, calendar: calendar) },
             shouldFailReads: shouldFailReads
         )
@@ -426,9 +433,6 @@ private struct QACorrectnessEnvironment {
             try repository.setStartingBalance(startingBalance, for: month)
         }
 
-        let suiteName = "FlowPlanTests.QACorrectness.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defaults.removePersistentDomain(forName: suiteName)
         let appState = AppState(
             selectedMonth: month,
             calendar: calendar,

@@ -10,7 +10,10 @@ import FlowPlanDomain
 @MainActor
 func addingADebtAfterDeletingOneSucceeds() throws {
     let container = try PersistenceController.inMemory()
-    let repository = FinanceRepository(context: container.mainContext)
+    let repository = FinanceRepository(
+        context: container.mainContext,
+        userDefaults: try isolatedTestUserDefaults()
+    )
 
     let first = DebtEntity(
         name: "BoF Loan",
@@ -50,7 +53,10 @@ func addingADebtAfterDeletingOneSucceeds() throws {
 @MainActor
 func addingTwoDebtsInARowSucceeds() throws {
     let container = try PersistenceController.inMemory()
-    let repository = FinanceRepository(context: container.mainContext)
+    let repository = FinanceRepository(
+        context: container.mainContext,
+        userDefaults: try isolatedTestUserDefaults()
+    )
 
     try repository.addDebt(
         DebtEntity(
