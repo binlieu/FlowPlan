@@ -136,9 +136,9 @@ struct AvailableThisMonthCard: View {
 
             Button("Save starting balance", action: saveStartingBalance)
                 .font(.headline)
-                .foregroundStyle(Palette.surface)
+                .foregroundStyle(Palette.onAccentFill)
                 .buttonStyle(.borderedProminent)
-                .tint(Palette.accent)
+                .tint(Palette.accentFill)
                 .disabled(isSavingStartingBalance)
 
             Button("Go to Plan", action: onOpenPlan)
