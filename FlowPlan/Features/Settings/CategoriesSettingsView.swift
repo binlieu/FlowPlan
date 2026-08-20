@@ -28,8 +28,10 @@ struct CategoriesSettingsView: View {
             categorySection(title: "Expenses", kind: .expense, categories: expenseCategories)
             categorySection(title: "Savings", kind: .savings, categories: savingsCategories)
         }
+        .designSystemList()
         .navigationTitle("Categories")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -79,16 +81,17 @@ struct CategoriesSettingsView: View {
         kind: CategoryKind,
         categories: [String]
     ) -> some View {
-        Section(title) {
+        Section {
             ForEach(categories, id: \.self) { category in
                 HStack {
                     Text(category)
+                        .foregroundStyle(Palette.ink)
                     Spacer()
                     let count = useCount(EditableCategory(kind: kind, originalName: category))
                     if count > 0 {
                         Text("\(count) in use")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Palette.inkSecondary)
                     }
                 }
                 .swipeActions(edge: .trailing) {
@@ -118,7 +121,11 @@ struct CategoriesSettingsView: View {
                     }
                 }
             }
+        } header: {
+            Text(title)
+                .designSystemSectionHeader()
         }
+        .designSystemRows()
     }
 
     private var incomeCategories: [String] {
@@ -337,6 +344,7 @@ struct CategoriesSettingsView: View {
                         .textInputAutocapitalization(.words)
                 } header: {
                     Text("Category")
+                        .designSystemSectionHeader()
                 } footer: {
                     if editingCategory?.originalName != nil {
                         Text(
@@ -344,11 +352,15 @@ struct CategoriesSettingsView: View {
                                 + "Existing records keep their current type; changing the name "
                                 + "updates those records."
                         )
+                        .designSystemSectionFooter()
                     } else {
                         Text("Category names are used by transactions and monthly plans.")
+                            .designSystemSectionFooter()
                     }
                 }
+                .designSystemRows()
             }
+            .designSystemForm()
             .navigationTitle(categoryEditorTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -517,3 +529,21 @@ enum CategoryCatalog {
         name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
+
+#if DEBUG
+#Preview("Categories — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        NavigationStack {
+            CategoriesSettingsView()
+        }
+    }
+}
+
+#Preview("Categories — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
+        NavigationStack {
+            CategoriesSettingsView()
+        }
+    }
+}
+#endif

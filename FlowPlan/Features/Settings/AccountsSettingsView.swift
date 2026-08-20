@@ -32,15 +32,21 @@ struct AccountsSettingsView: View {
                 }
             } header: {
                 HStack {
-                    Text("ACCOUNTS")
+                    Text("Accounts")
+                        .designSystemSectionHeader()
                     Spacer()
                     Text(accountCountLabel)
+                        .font(Typography.supporting)
+                        .foregroundStyle(Palette.inkSecondary)
                         .textCase(nil)
                 }
             }
+            .designSystemRows()
         }
+        .designSystemList()
         .navigationTitle("Accounts")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .confirmationDialog(
             pendingDeletion.map { "Delete \($0.account.name)?" } ?? "Delete account?",
             isPresented: deletionConfirmationPresented,
@@ -204,8 +210,16 @@ private struct AccountDeletion: Identifiable {
 }
 
 #if DEBUG
-#Preview("Accounts") {
-    FlowPlanPreviewHost {
+#Preview("Accounts — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        NavigationStack {
+            AccountsSettingsView()
+        }
+    }
+}
+
+#Preview("Accounts — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
         NavigationStack {
             AccountsSettingsView()
         }

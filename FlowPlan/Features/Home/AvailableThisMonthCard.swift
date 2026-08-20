@@ -130,7 +130,7 @@ struct AvailableThisMonthCard: View {
             if let startingBalanceError {
                 Text(startingBalanceError)
                     .font(Typography.supporting)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Palette.negative)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -152,7 +152,7 @@ struct AvailableThisMonthCard: View {
     private var orphanedDebtWarning: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "exclamationmark.triangle")
-                .foregroundStyle(.orange)
+                .foregroundStyle(Palette.warning)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 8) {

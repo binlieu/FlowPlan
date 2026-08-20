@@ -68,7 +68,7 @@ struct RecentTransactionsSection: View {
                 amount: displayAmount(for: transaction),
                 style: .secondary,
                 signed: true,
-                emphasiseNegative: true
+                color: amountColor(for: transaction.type)
             )
         }
         .padding(.vertical, 4)
@@ -99,6 +99,10 @@ struct RecentTransactionsSection: View {
         case .savings:
             return "banknote"
         }
+    }
+
+    private func amountColor(for type: TransactionType) -> Color {
+        type == .income ? Palette.positive : Palette.ink
     }
 }
 

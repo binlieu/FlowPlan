@@ -50,7 +50,7 @@ struct StartingBalanceSection: View {
                 if let presentedError {
                     Text(presentedError)
                         .font(Typography.supporting)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Palette.negative)
                 }
             }
             .padding(16)

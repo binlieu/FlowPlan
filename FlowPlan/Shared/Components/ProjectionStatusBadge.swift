@@ -20,13 +20,13 @@ struct ProjectionStatusBadge: View {
     private var presentation: Presentation {
         switch status {
         case .healthy:
-            Presentation(title: "Healthy", symbol: "checkmark.circle.fill", color: .green)
+            Presentation(title: "Healthy", symbol: "checkmark.circle.fill", color: Palette.positive)
         case .tight:
-            Presentation(title: "Tight", symbol: "exclamationmark.triangle.fill", color: .secondary)
+            Presentation(title: "Tight", symbol: "exclamationmark.triangle.fill", color: Palette.warning)
         case .negative:
-            Presentation(title: "Short", symbol: "arrow.down.circle.fill", color: .red)
+            Presentation(title: "Short", symbol: "arrow.down.circle.fill", color: Palette.negative)
         case .aheadOfPlan:
-            Presentation(title: "Ahead of plan", symbol: "arrow.up.circle.fill", color: .accentColor)
+            Presentation(title: "Ahead of plan", symbol: "arrow.up.circle.fill", color: Palette.positive)
         }
     }
 

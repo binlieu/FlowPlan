@@ -46,7 +46,7 @@ struct PlanValidationMessage: View {
         if let message {
             Text(message)
                 .font(.footnote)
-                .foregroundStyle(.red)
+                .foregroundStyle(Palette.negative)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel("Validation error. \(message)")
         }

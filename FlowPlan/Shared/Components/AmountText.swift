@@ -13,17 +13,20 @@ struct AmountText: View {
     let style: AmountTextStyle
     let signed: Bool
     let emphasiseNegative: Bool
+    let color: Color?
 
     init(
         amount: Decimal,
         style: AmountTextStyle = .primary,
         signed: Bool = false,
-        emphasiseNegative: Bool = false
+        emphasiseNegative: Bool = false,
+        color: Color? = nil
     ) {
         self.amount = amount
         self.style = style
         self.signed = signed
         self.emphasiseNegative = emphasiseNegative
+        self.color = color
     }
 
     var body: some View {
@@ -68,7 +71,11 @@ struct AmountText: View {
     }
 
     private var foregroundColor: Color {
-        emphasiseNegative && amount < .zero ? .red : .primary
+        if let color {
+            return color
+        }
+
+        return emphasiseNegative && amount < .zero ? Palette.negative : Palette.ink
     }
 }
 

@@ -120,7 +120,7 @@ struct DebtSection: View {
             if OrphanedDebtDetector.isOrphaned(debt, bills: bills) {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Palette.warning)
                         .accessibilityHidden(true)
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -216,7 +216,7 @@ struct DebtSection: View {
     private func payoffColor(for debt: Debt) -> Color {
         switch DebtSchedule().remainingPayments(for: debt) {
         case .neverAmortises, .exceedsMaximumTerm:
-            return .red
+            return Palette.negative
         case .value:
             return Palette.inkSecondary
         }

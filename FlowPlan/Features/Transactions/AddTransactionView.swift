@@ -79,6 +79,7 @@ struct AddTransactionView: View {
                 recurringSection
                 noteSection
             }
+            .designSystemForm()
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -166,7 +167,11 @@ struct AddTransactionView: View {
                 }
                 .accessibilityLabel("More transaction types")
             }
+        } header: {
+            Text("Type")
+                .designSystemSectionHeader()
         }
+        .designSystemRows()
     }
 
     private var amountSection: some View {
@@ -180,12 +185,14 @@ struct AddTransactionView: View {
                 .accessibilityLabel("Amount")
         } header: {
             Text("Amount")
+                .designSystemSectionHeader()
         } footer: {
             if !hasValidAmount {
                 Text("Amount must be greater than zero.")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Palette.negative)
             }
         }
+        .designSystemRows()
     }
 
     private var detailsSection: some View {
@@ -218,7 +225,9 @@ struct AddTransactionView: View {
                     Label("Category", systemImage: "tag")
                     Spacer()
                     Text(trimmedCategory.isEmpty ? "Select" : trimmedCategory)
-                        .foregroundStyle(trimmedCategory.isEmpty ? .secondary : .primary)
+                        .foregroundStyle(
+                            trimmedCategory.isEmpty ? Palette.inkSecondary : Palette.ink
+                        )
                 }
                 .contentShape(Rectangle())
             }
@@ -271,7 +280,9 @@ struct AddTransactionView: View {
                     Label("Account", systemImage: "creditcard")
                     Spacer()
                     Text(trimmedAccount.isEmpty ? "None" : trimmedAccount)
-                        .foregroundStyle(trimmedAccount.isEmpty ? .secondary : .primary)
+                        .foregroundStyle(
+                            trimmedAccount.isEmpty ? Palette.inkSecondary : Palette.ink
+                        )
                 }
                 .contentShape(Rectangle())
             }
@@ -289,27 +300,36 @@ struct AddTransactionView: View {
             }
         } header: {
             Text("Details")
+                .designSystemSectionHeader()
         } footer: {
             if trimmedCategory.isEmpty {
                 Text("Select a category.")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Palette.negative)
             }
         }
+        .designSystemRows()
     }
 
     private var recurringSection: some View {
         Section {
             Toggle("Recurring monthly", isOn: $isRecurring)
                 .disabled(transactionToEdit != nil || !supportsRecurring)
+        } header: {
+            Text("Recurrence")
+                .designSystemSectionHeader()
         } footer: {
             if transactionToEdit != nil {
                 Text("Recurring plans can be created from a new transaction.")
+                    .designSystemSectionFooter()
             } else if !supportsRecurring {
                 Text("Recurring plans are available for income and expenses.")
+                    .designSystemSectionFooter()
             } else if isRecurring {
                 Text(recurringExplanation)
+                    .designSystemSectionFooter()
             }
         }
+        .designSystemRows()
     }
 
     @ViewBuilder
@@ -328,22 +348,30 @@ struct AddTransactionView: View {
                 .pickerStyle(.menu)
             } header: {
                 Text(transactionType == .income ? "Match planned income" : "Match a bill")
+                    .designSystemSectionHeader()
             } footer: {
                 Text("Linking this transaction marks the selected planned occurrence as settled.")
+                    .designSystemSectionFooter()
             }
+            .designSystemRows()
         }
     }
 
     private var noteSection: some View {
-        Section("Optional note") {
+        Section {
             TextField("Note", text: $note, axis: .vertical)
                 .lineLimit(2...5)
+        } header: {
+            Text("Optional note")
+                .designSystemSectionHeader()
         }
+        .designSystemRows()
     }
 
     private var saveBar: some View {
         VStack(spacing: 0) {
             Divider()
+                .overlay(Palette.hairline)
 
             Button(action: save) {
                 if isSaving {
@@ -363,7 +391,7 @@ struct AddTransactionView: View {
             .padding(.horizontal)
             .padding(.vertical, 10)
         }
-        .background(.bar)
+        .background(Palette.surface)
     }
 
     private var commonTypeBinding: Binding<TransactionType?> {

@@ -52,17 +52,23 @@ struct DataSettingsView: View {
                 }
             } header: {
                 Text("Transfer")
+                    .designSystemSectionHeader()
             } footer: {
                 Text("Money values are exported as decimal strings so no precision is lost.")
+                    .designSystemSectionFooter()
             }
+            .designSystemRows()
 
             Section {
                 Toggle("Load sample data", isOn: sampleDataBinding)
             } header: {
                 Text("Development Data")
+                    .designSystemSectionHeader()
             } footer: {
                 Text("Turning this on adds the built-in sample records once. Turning it off does not delete records.")
+                    .designSystemSectionFooter()
             }
+            .designSystemRows()
 
             Section {
                 Button("Erase all data", role: .destructive) {
@@ -71,12 +77,17 @@ struct DataSettingsView: View {
                 }
             } header: {
                 Text("Danger Zone")
+                    .designSystemSectionHeader()
             } footer: {
                 Text("This permanently removes every financial record from this device.")
+                    .designSystemSectionFooter()
             }
+            .designSystemRows()
         }
+        .designSystemForm()
         .navigationTitle("Data")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .task {
             prepareExport()
         }
@@ -819,3 +830,21 @@ private struct MonthSettingsRecord: Codable {
         )
     }
 }
+
+#if DEBUG
+#Preview("Data — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        NavigationStack {
+            DataSettingsView()
+        }
+    }
+}
+
+#Preview("Data — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
+        NavigationStack {
+            DataSettingsView()
+        }
+    }
+}
+#endif

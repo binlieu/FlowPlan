@@ -17,6 +17,7 @@ struct TransactionsView: View {
 private struct TransactionsContent: View {
     @Environment(AppState.self) private var appState
     @Environment(ProjectionStore.self) private var projectionStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var viewModel: TransactionsViewModel
     @State private var editor: TransactionEditorPresentation?
@@ -35,21 +36,25 @@ private struct TransactionsContent: View {
 
     var body: some View {
         List {
+            DesignSystemScreenHeader("Activity")
+                .designSystemScreenHeaderRow()
+
+            activityToolbar
+
+            activitySearchField
+
             MonthNavigationBar()
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .designSystemRows()
 
             if viewModel.filter.isActive {
                 activeFilterChips
                     .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .designSystemRows()
             }
 
             if viewModel.sections.isEmpty {
                 emptyState
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .designSystemRows()
             } else {
                 ForEach(viewModel.sections) { section in
                     Section {
@@ -59,29 +64,15 @@ private struct TransactionsContent: View {
                     } header: {
                         sectionHeader(section)
                     }
+                    .designSystemRows()
                 }
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Transactions")
+        .designSystemList()
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(
-            text: $viewModel.searchText,
-            placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Description or category"
-        )
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                filterMenu
-
-                Button {
-                    editor = TransactionEditorPresentation()
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel("Add transaction")
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $editor) { editor in
             AddTransactionView(
                 transaction: editor.transaction,
@@ -165,21 +156,37 @@ private struct TransactionsContent: View {
     }
 
     private func sectionHeader(_ section: TransactionDaySection) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(section.title)
-                .foregroundStyle(.primary)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    sectionTitle(section)
+                    sectionAmount(section)
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    sectionTitle(section)
 
-            Spacer()
+                    Spacer()
 
-            AmountText(
-                amount: section.netTotal,
-                style: .secondary,
-                signed: true,
-                emphasiseNegative: true
-            )
+                    sectionAmount(section)
+                }
+            }
         }
-        .textCase(nil)
         .accessibilityElement(children: .combine)
+    }
+
+    private func sectionTitle(_ section: TransactionDaySection) -> some View {
+        Text(section.title)
+            .designSystemSectionHeader()
+    }
+
+    private func sectionAmount(_ section: TransactionDaySection) -> some View {
+        AmountText(
+            amount: section.netTotal,
+            style: .secondary,
+            signed: true,
+            color: Palette.ink
+        )
     }
 
     private var emptyState: some View {
@@ -253,7 +260,7 @@ private struct TransactionsContent: View {
 
             if viewModel.filter.isActive {
                 Divider()
-                Button("Clear Filters", role: .destructive) {
+                Button("Clear Filters") {
                     viewModel.clearFilters()
                 }
             }
@@ -265,6 +272,64 @@ private struct TransactionsContent: View {
             )
         }
         .accessibilityLabel("Filter transactions")
+    }
+
+    private var activityToolbar: some View {
+        HStack(spacing: 8) {
+            Spacer(minLength: 0)
+
+            filterMenu
+                .frame(minWidth: 44, minHeight: 44)
+
+            Button {
+                editor = TransactionEditorPresentation()
+            } label: {
+                Image(systemName: "plus")
+                    .frame(minWidth: 44, minHeight: 44)
+            }
+            .accessibilityLabel("Add transaction")
+        }
+        .font(.headline)
+        .foregroundStyle(Palette.accent)
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 12))
+        .listRowBackground(Palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private var activitySearchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Palette.inkSecondary)
+                .accessibilityHidden(true)
+
+            TextField("Description or category", text: $viewModel.searchText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .foregroundStyle(Palette.ink)
+                .accessibilityLabel("Search by description or category")
+
+            if !viewModel.searchText.isEmpty {
+                Button {
+                    viewModel.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Palette.inkSecondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 44)
+        .background(Palette.surface)
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Palette.hairline, lineWidth: 1)
+        }
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 16, trailing: 20))
+        .listRowBackground(Palette.background)
+        .listRowSeparator(.hidden)
     }
 
     private var activeFilterChips: some View {
@@ -294,6 +359,7 @@ private struct TransactionsContent: View {
                     viewModel.clearFilters()
                 }
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Palette.accent)
                 .padding(.horizontal, 4)
             }
             .padding(.horizontal)
@@ -309,9 +375,13 @@ private struct TransactionsContent: View {
                     .font(.caption2.weight(.bold))
             }
             .font(.subheadline)
+            .foregroundStyle(Palette.accent)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(.thinMaterial, in: Capsule())
+            .background(Palette.accentLight, in: Capsule())
+            .overlay {
+                Capsule().stroke(Palette.accentMuted, lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Remove \(title) filter")
@@ -359,11 +429,28 @@ private struct TransactionsContent: View {
 }
 
 #if DEBUG
-#Preview("Transactions") {
-    FlowPlanPreviewHost {
+#Preview("Activity — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
         NavigationStack {
             TransactionsView()
         }
     }
+}
+
+#Preview("Activity — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
+        NavigationStack {
+            TransactionsView()
+        }
+    }
+}
+
+#Preview("Activity — Largest Dynamic Type") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        NavigationStack {
+            TransactionsView()
+        }
+    }
+    .dynamicTypeSize(.accessibility5)
 }
 #endif

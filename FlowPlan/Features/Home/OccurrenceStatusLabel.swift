@@ -9,10 +9,10 @@ struct OccurrenceStatusLabel: View {
         if isOverdue {
             Label(text, systemImage: "exclamationmark.circle")
                 .smallCapsTypography()
-                .foregroundStyle(.red)
+                .foregroundStyle(Palette.warning)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(.red.opacity(0.12), in: Capsule())
+                .background(Palette.warning.opacity(0.12), in: Capsule())
                 .accessibilityLabel(text.lowercased())
         } else {
             Text(text)

@@ -12,12 +12,12 @@ struct ProjectionCompletenessView: View {
             ForEach(checklistItems) { item in
                 Label {
                     Text(item.title)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Palette.ink)
                 } icon: {
                     Image(systemName: item.isPresent
                           ? "checkmark.circle.fill"
                           : "exclamationmark.triangle")
-                        .foregroundStyle(item.isPresent ? .green : .orange)
+                        .foregroundStyle(item.isPresent ? Palette.positive : Palette.warning)
                 }
                 .accessibilityLabel(
                     "\(item.title), \(item.isPresent ? "present" : "missing")"
@@ -27,14 +27,14 @@ struct ProjectionCompletenessView: View {
             if !missingReasons.isEmpty {
                 Text(incompleteMessage)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18))
+        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var checklistItems: [ChecklistItem] {

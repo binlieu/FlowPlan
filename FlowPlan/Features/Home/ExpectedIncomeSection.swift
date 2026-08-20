@@ -402,7 +402,7 @@ private struct IncomeReceiptConfirmationSheet: View {
                 if let presentedError {
                     Text(presentedError.message)
                         .font(Typography.supporting)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(Palette.negative)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
