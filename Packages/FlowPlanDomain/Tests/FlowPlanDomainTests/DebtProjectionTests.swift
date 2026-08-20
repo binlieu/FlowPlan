@@ -114,3 +114,59 @@ import FlowPlanDomain
     #expect(result.debtPaymentsDue == .zero)
     #expect(result.projectedEndOfMonthBalance == 500)
 }
+
+@Test func projectionProvidesAnUnsettledDatedDebtOccurrence() throws {
+    let debtID = Fixtures.id(72)
+    let debt = Fixtures.debt(
+        id: debtID,
+        balance: 8_000,
+        monthlyPayment: 505,
+        dueDay: 31
+    )
+    let result = MonthlyProjectionEngine().project(
+        Fixtures.input(
+            month: MonthKey(year: 2026, month: 4),
+            startingBalance: 2_000,
+            debts: [debt]
+        )
+    )
+    let occurrence = try #require(result.debtOccurrences.first)
+
+    #expect(result.debtOccurrences.count == 1)
+    #expect(occurrence.debtID == debtID)
+    #expect(occurrence.name == debt.name)
+    #expect(occurrence.amount == 505)
+    #expect(!occurrence.isPaidThroughBills)
+    #expect(result.month.contains(occurrence.date, calendar: Fixtures.calendar))
+    #expect(Fixtures.calendar.component(.day, from: occurrence.date) == 30)
+}
+
+@Test func settledAndBillPaidDebtsDoNotProduceHomeOccurrences() {
+    let separateDebtID = Fixtures.id(73)
+    let separateDebt = Fixtures.debt(
+        id: separateDebtID,
+        balance: 8_000,
+        monthlyPayment: 505,
+        dueDay: 15
+    )
+    let paidThroughBills = Fixtures.debt(
+        id: Fixtures.id(74),
+        balance: 250_000,
+        monthlyPayment: 1_850,
+        dueDay: 1,
+        isPaidThroughBills: true
+    )
+    let payment = Fixtures.transaction(
+        amount: 505,
+        type: .expense,
+        settlesDebtID: separateDebtID
+    )
+    let result = MonthlyProjectionEngine().project(
+        Fixtures.input(
+            debts: [separateDebt, paidThroughBills],
+            transactions: [payment]
+        )
+    )
+
+    #expect(result.debtOccurrences.isEmpty)
+}

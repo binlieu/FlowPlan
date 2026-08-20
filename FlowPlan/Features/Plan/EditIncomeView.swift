@@ -16,6 +16,7 @@ struct EditIncomeView: View {
     @State private var isSaving = false
     @State private var isShowingDeleteOptions = false
     @State private var presentedError: PresentedError?
+    @State private var hasAttemptedSave = false
 
     init(source: PlannedIncome? = nil) {
         self.source = source
@@ -32,14 +33,22 @@ struct EditIncomeView: View {
         NavigationStack {
             Form {
                 Section("Income") {
-                    TextField("Name", text: $name)
-                        .textInputAutocapitalization(.words)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Name", text: $name)
+                            .textInputAutocapitalization(.words)
+                        PlanValidationMessage(message: visible(nameValidationMessage, for: name))
+                    }
 
-                    TextField("Expected amount", text: $amountText)
-                        .font(.largeTitle.weight(.bold))
-                        .fontWidth(.condensed)
-                        .monospacedDigit()
-                        .keyboardType(.decimalPad)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Expected amount", text: $amountText)
+                            .font(.largeTitle.weight(.bold))
+                            .fontWidth(.condensed)
+                            .monospacedDigit()
+                            .keyboardType(.decimalPad)
+                        PlanValidationMessage(
+                            message: visible(amountValidationMessage, for: amountText)
+                        )
+                    }
                 }
 
                 Section("Recurrence") {
@@ -72,7 +81,7 @@ struct EditIncomeView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", action: save)
-                        .disabled(!isValid || isSaving)
+                        .disabled(isSaving)
                 }
             }
             .confirmationDialog(
@@ -103,7 +112,23 @@ struct EditIncomeView: View {
     }
 
     private var isValid: Bool {
-        !trimmedName.isEmpty && parsedAmount.map { $0 > .zero } == true
+        nameValidationMessage == nil && amountValidationMessage == nil
+    }
+
+    private var nameValidationMessage: String? {
+        PlanEditorValidation.requiredText(name, message: "Enter an income name.")
+    }
+
+    private var amountValidationMessage: String? {
+        PlanEditorValidation.positiveAmount(
+            amountText,
+            message: "Enter an expected amount greater than zero."
+        )
+    }
+
+    private func visible(_ message: String?, for input: String) -> String? {
+        let hasInput = !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return hasAttemptedSave || hasInput ? message : nil
     }
 
     private var parsedAmount: Decimal? {
@@ -123,6 +148,7 @@ struct EditIncomeView: View {
     }
 
     private func save() {
+        hasAttemptedSave = true
         guard let amount = parsedAmount, isValid else {
             return
         }

@@ -67,3 +67,47 @@ import FlowPlanDomain
     #expect(DebtSchedule.maximumMonths == 600)
     #expect(DebtSchedule().remainingPayments(for: slowDebt) == .exceedsMaximumTerm)
 }
+
+@Test func dueDayClampsToTheLastDayOfShortMonths() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+    let debt = Fixtures.debt(balance: 10_000, monthlyPayment: 100, dueDay: 31)
+    let schedule = DebtSchedule(startingIn: MonthKey(year: 2026, month: 4))
+
+    let aprilDate = try #require(
+        schedule.paymentDate(
+            for: debt,
+            in: MonthKey(year: 2026, month: 4),
+            calendar: calendar
+        )
+    )
+    let february2027Date = try #require(
+        schedule.paymentDate(
+            for: debt,
+            in: MonthKey(year: 2027, month: 2),
+            calendar: calendar
+        )
+    )
+    let february2028Date = try #require(
+        schedule.paymentDate(
+            for: debt,
+            in: MonthKey(year: 2028, month: 2),
+            calendar: calendar
+        )
+    )
+
+    #expect(calendar.component(.day, from: aprilDate) == 30)
+    #expect(calendar.component(.day, from: february2027Date) == 28)
+    #expect(calendar.component(.day, from: february2028Date) == 29)
+}
+
+@Test func paymentDateIsNilAfterThePayoffMonth() {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+    let march = MonthKey(year: 2027, month: 3)
+    let debt = Fixtures.debt(balance: 100, monthlyPayment: 150, dueDay: 15)
+    let schedule = DebtSchedule(startingIn: march)
+
+    #expect(schedule.paymentDate(for: debt, in: march, calendar: calendar) != nil)
+    #expect(schedule.paymentDate(for: debt, in: march.next, calendar: calendar) == nil)
+}

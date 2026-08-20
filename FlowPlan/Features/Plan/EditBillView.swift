@@ -19,6 +19,7 @@ struct EditBillView: View {
     @State private var isSaving = false
     @State private var isShowingDeleteOptions = false
     @State private var presentedError: PresentedError?
+    @State private var hasAttemptedSave = false
 
     init(bill: PlannedBill? = nil) {
         self.bill = bill
@@ -36,14 +37,22 @@ struct EditBillView: View {
         NavigationStack {
             Form {
                 Section("Bill") {
-                    TextField("Name", text: $name)
-                        .textInputAutocapitalization(.words)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Name", text: $name)
+                            .textInputAutocapitalization(.words)
+                        PlanValidationMessage(message: visible(nameValidationMessage, for: name))
+                    }
 
-                    TextField("Amount", text: $amountText)
-                        .font(.largeTitle.weight(.bold))
-                        .fontWidth(.condensed)
-                        .monospacedDigit()
-                        .keyboardType(.decimalPad)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Amount", text: $amountText)
+                            .font(.largeTitle.weight(.bold))
+                            .fontWidth(.condensed)
+                            .monospacedDigit()
+                            .keyboardType(.decimalPad)
+                        PlanValidationMessage(
+                            message: visible(amountValidationMessage, for: amountText)
+                        )
+                    }
 
                     Picker("Amount type", selection: $amountType) {
                         ForEach(BillAmountType.allCases, id: \.self) { option in
@@ -51,8 +60,13 @@ struct EditBillView: View {
                         }
                     }
 
-                    TextField("Category", text: $category)
-                        .textInputAutocapitalization(.words)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Category", text: $category)
+                            .textInputAutocapitalization(.words)
+                        PlanValidationMessage(
+                            message: visible(categoryValidationMessage, for: category)
+                        )
+                    }
                 }
 
                 Section("Recurrence") {
@@ -86,7 +100,7 @@ struct EditBillView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", action: save)
-                        .disabled(!isValid || isSaving)
+                        .disabled(isSaving)
                 }
             }
             .confirmationDialog(
@@ -133,12 +147,33 @@ struct EditBillView: View {
     }
 
     private var isValid: Bool {
-        !trimmedName.isEmpty
-            && !trimmedCategory.isEmpty
-            && parsedAmount.map { $0 > .zero } == true
+        nameValidationMessage == nil
+            && amountValidationMessage == nil
+            && categoryValidationMessage == nil
+    }
+
+    private var nameValidationMessage: String? {
+        PlanEditorValidation.requiredText(name, message: "Enter a bill name.")
+    }
+
+    private var amountValidationMessage: String? {
+        PlanEditorValidation.positiveAmount(
+            amountText,
+            message: "Enter a bill amount greater than zero."
+        )
+    }
+
+    private var categoryValidationMessage: String? {
+        PlanEditorValidation.requiredText(category, message: "Enter a category.")
+    }
+
+    private func visible(_ message: String?, for input: String) -> String? {
+        let hasInput = !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return hasAttemptedSave || hasInput ? message : nil
     }
 
     private func save() {
+        hasAttemptedSave = true
         guard let amount = parsedAmount, isValid else {
             return
         }

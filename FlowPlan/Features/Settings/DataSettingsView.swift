@@ -496,6 +496,7 @@ private struct DebtRecord: Codable {
     let annualInterestRate: DecimalValue
     let monthlyPayment: DecimalValue
     let category: String
+    let dueDay: Int?
     let isPaidThroughBills: Bool
     let isActive: Bool
     let createdAt: Date
@@ -509,6 +510,7 @@ private struct DebtRecord: Codable {
         annualInterestRate = DecimalValue(entity.annualInterestRate)
         monthlyPayment = DecimalValue(entity.monthlyPayment)
         category = entity.category
+        dueDay = entity.dueDay
         isPaidThroughBills = entity.isPaidThroughBills
         isActive = entity.isActive
         createdAt = entity.createdAt
@@ -533,6 +535,7 @@ private struct DebtRecord: Codable {
             annualInterestRate: annualInterestRate,
             monthlyPayment: monthlyPayment,
             category: category,
+            dueDay: dueDay ?? 1,
             isPaidThroughBills: isPaidThroughBills,
             isActive: isActive,
             createdAt: createdAt,

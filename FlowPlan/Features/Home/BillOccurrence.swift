@@ -49,6 +49,129 @@ struct BillOccurrence: Identifiable, Hashable {
     }
 }
 
+enum HomePaymentOccurrence: Identifiable, Hashable {
+    case bill(BillOccurrence)
+    case debt(DebtOccurrence)
+
+    var id: String {
+        switch self {
+        case .bill(let occurrence):
+            return "bill-\(occurrence.id)"
+        case .debt(let occurrence):
+            return "debt-\(occurrence.debtID.uuidString)"
+                + "-\(occurrence.date.timeIntervalSinceReferenceDate)"
+        }
+    }
+
+    var name: String {
+        switch self {
+        case .bill(let occurrence):
+            return occurrence.bill.name
+        case .debt(let occurrence):
+            return occurrence.name
+        }
+    }
+
+    var date: Date {
+        switch self {
+        case .bill(let occurrence):
+            return occurrence.date
+        case .debt(let occurrence):
+            return occurrence.date
+        }
+    }
+
+    var amount: Decimal {
+        switch self {
+        case .bill(let occurrence):
+            return occurrence.bill.amount
+        case .debt(let occurrence):
+            return occurrence.amount
+        }
+    }
+
+    var monogram: String {
+        switch self {
+        case .bill(let occurrence):
+            return occurrence.monogram
+        case .debt:
+            let letters = name.filter(\.isLetter)
+            let source = letters.isEmpty ? name : letters
+            return String(source.prefix(2)).uppercased()
+        }
+    }
+
+    var billOccurrence: BillOccurrence? {
+        guard case .bill(let occurrence) = self else {
+            return nil
+        }
+        return occurrence
+    }
+
+    var debtOccurrence: DebtOccurrence? {
+        guard case .debt(let occurrence) = self else {
+            return nil
+        }
+        return occurrence
+    }
+
+    var isDebt: Bool {
+        debtOccurrence != nil
+    }
+
+    func status(
+        relativeTo referenceDate: Date,
+        calendar: Calendar
+    ) -> BillOccurrenceStatus {
+        if calendar.startOfDay(for: date) < calendar.startOfDay(for: referenceDate) {
+            return .overdue
+        }
+
+        switch self {
+        case .bill(let occurrence):
+            return BillOccurrenceStatus.status(
+                for: occurrence.bill,
+                occurrenceDate: occurrence.date,
+                relativeTo: referenceDate,
+                calendar: calendar
+            )
+        case .debt:
+            return .upcoming
+        }
+    }
+
+    static func sorted(
+        _ occurrences: [HomePaymentOccurrence],
+        relativeTo referenceDate: Date,
+        calendar: Calendar
+    ) -> [HomePaymentOccurrence] {
+        occurrences.sorted { lhs, rhs in
+            let lhsIsOverdue = lhs.status(
+                relativeTo: referenceDate,
+                calendar: calendar
+            ) == .overdue
+            let rhsIsOverdue = rhs.status(
+                relativeTo: referenceDate,
+                calendar: calendar
+            ) == .overdue
+
+            if lhsIsOverdue != rhsIsOverdue {
+                return lhsIsOverdue
+            }
+            if lhs.date != rhs.date {
+                return lhs.date < rhs.date
+            }
+
+            let nameOrder = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+            if nameOrder != .orderedSame {
+                return nameOrder == .orderedAscending
+            }
+
+            return lhs.id < rhs.id
+        }
+    }
+}
+
 @MainActor
 struct BillOccurrenceProvider {
     let repository: FinanceRepository
@@ -165,7 +288,40 @@ enum BillSettlementError: String, Identifiable, Equatable {
     var id: String { rawValue }
 
     var message: String {
-        "The bill could not be marked as paid. Please try again."
+        "The payment could not be marked as paid. Please try again."
+    }
+}
+
+@MainActor
+enum HomePaymentSettlementAction {
+    @discardableResult
+    static func markAsPaid(
+        _ occurrence: HomePaymentOccurrence,
+        repository: FinanceRepository,
+        projectionStore: ProjectionStore
+    ) -> BillSettlementError? {
+        do {
+            switch occurrence {
+            case .bill(let billOccurrence):
+                try repository.markBillPaid(
+                    billID: billOccurrence.bill.id,
+                    occurrence: billOccurrence.date,
+                    amount: billOccurrence.bill.amount,
+                    on: billOccurrence.date
+                )
+            case .debt(let debtOccurrence):
+                try repository.markDebtPaymentMade(
+                    debtID: debtOccurrence.debtID,
+                    amount: debtOccurrence.amount,
+                    on: debtOccurrence.date
+                )
+            }
+
+            projectionStore.refresh()
+            return nil
+        } catch {
+            return .unableToRecord
+        }
     }
 }
 

@@ -107,6 +107,7 @@ enum Fixtures {
         balance: Decimal,
         annualInterestRate: Decimal = .zero,
         monthlyPayment: Decimal,
+        dueDay: Int = 1,
         isPaidThroughBills: Bool = false,
         isActive: Bool = true
     ) -> Debt {
@@ -117,6 +118,7 @@ enum Fixtures {
             annualInterestRate: annualInterestRate,
             monthlyPayment: monthlyPayment,
             category: "Transportation",
+            dueDay: dueDay,
             isPaidThroughBills: isPaidThroughBills,
             isActive: isActive
         )
