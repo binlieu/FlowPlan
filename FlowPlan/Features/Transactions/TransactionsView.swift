@@ -17,6 +17,7 @@ struct TransactionsView: View {
 private struct TransactionsContent: View {
     @Environment(AppState.self) private var appState
     @Environment(ProjectionStore.self) private var projectionStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var viewModel: TransactionsViewModel
     @State private var editor: TransactionEditorPresentation?
@@ -35,21 +36,21 @@ private struct TransactionsContent: View {
 
     var body: some View {
         List {
+            DesignSystemScreenHeader("Activity")
+                .designSystemScreenHeaderRow()
+
             MonthNavigationBar()
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .designSystemRows()
 
             if viewModel.filter.isActive {
                 activeFilterChips
                     .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .designSystemRows()
             }
 
             if viewModel.sections.isEmpty {
                 emptyState
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .designSystemRows()
             } else {
                 ForEach(viewModel.sections) { section in
                     Section {
@@ -59,11 +60,13 @@ private struct TransactionsContent: View {
                     } header: {
                         sectionHeader(section)
                     }
+                    .designSystemRows()
                 }
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Transactions")
+        .designSystemList()
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .searchable(
             text: $viewModel.searchText,
@@ -165,21 +168,37 @@ private struct TransactionsContent: View {
     }
 
     private func sectionHeader(_ section: TransactionDaySection) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(section.title)
-                .foregroundStyle(.primary)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 4) {
+                    sectionTitle(section)
+                    sectionAmount(section)
+                }
+            } else {
+                HStack(alignment: .firstTextBaseline) {
+                    sectionTitle(section)
 
-            Spacer()
+                    Spacer()
 
-            AmountText(
-                amount: section.netTotal,
-                style: .secondary,
-                signed: true,
-                emphasiseNegative: true
-            )
+                    sectionAmount(section)
+                }
+            }
         }
-        .textCase(nil)
         .accessibilityElement(children: .combine)
+    }
+
+    private func sectionTitle(_ section: TransactionDaySection) -> some View {
+        Text(section.title)
+            .designSystemSectionHeader()
+    }
+
+    private func sectionAmount(_ section: TransactionDaySection) -> some View {
+        AmountText(
+            amount: section.netTotal,
+            style: .secondary,
+            signed: true,
+            emphasiseNegative: true
+        )
     }
 
     private var emptyState: some View {
@@ -294,6 +313,7 @@ private struct TransactionsContent: View {
                     viewModel.clearFilters()
                 }
                 .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Palette.accent)
                 .padding(.horizontal, 4)
             }
             .padding(.horizontal)
@@ -309,9 +329,13 @@ private struct TransactionsContent: View {
                     .font(.caption2.weight(.bold))
             }
             .font(.subheadline)
+            .foregroundStyle(Palette.accent)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(.thinMaterial, in: Capsule())
+            .background(Palette.accentLight, in: Capsule())
+            .overlay {
+                Capsule().stroke(Palette.accentMuted, lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Remove \(title) filter")
@@ -359,11 +383,28 @@ private struct TransactionsContent: View {
 }
 
 #if DEBUG
-#Preview("Transactions") {
-    FlowPlanPreviewHost {
+#Preview("Activity — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
         NavigationStack {
             TransactionsView()
         }
     }
+}
+
+#Preview("Activity — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
+        NavigationStack {
+            TransactionsView()
+        }
+    }
+}
+
+#Preview("Activity — Largest Dynamic Type") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        NavigationStack {
+            TransactionsView()
+        }
+    }
+    .dynamicTypeSize(.accessibility5)
 }
 #endif

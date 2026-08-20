@@ -12,6 +12,12 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            DesignSystemScreenHeader(
+                "Settings",
+                subtitle: "Profile, preferences & data"
+            )
+            .designSystemScreenHeaderRow()
+
             profileSection
             preferencesSection
             organizationSection
@@ -19,8 +25,10 @@ struct SettingsView: View {
             securitySection
             aboutSection
         }
-        .navigationTitle("Settings")
+        .designSystemForm()
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
         .onChange(of: appState.carryBalanceForward) {
             projectionStore.refresh()
         }
@@ -30,7 +38,7 @@ struct SettingsView: View {
     }
 
     private var profileSection: some View {
-        Section("Profile") {
+        Section {
             TextField("Name", text: binding(\.userName))
                 .textContentType(.name)
 
@@ -41,7 +49,11 @@ struct SettingsView: View {
             }
 
             LabeledContent("Region", value: regionName)
+        } header: {
+            Text("Profile")
+                .designSystemSectionHeader()
         }
+        .designSystemRows()
     }
 
     private var preferencesSection: some View {
@@ -59,7 +71,7 @@ struct SettingsView: View {
                     Text("Record auto-pay automatically")
                     Text("Auto-pay bills and debts are recorded as spent once their due date passes.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.inkSecondary)
                 }
             }
 
@@ -68,16 +80,19 @@ struct SettingsView: View {
                     Text("Carry balance forward")
                     Text("Each month starts with what was left at the end of the previous one.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.inkSecondary)
                 }
             }
 
             Toggle("Notifications", isOn: $notificationsEnabled)
         } header: {
             Text("Preferences")
+                .designSystemSectionHeader()
         } footer: {
             Text("Notification scheduling is not enabled in this version.")
+                .designSystemSectionFooter()
         }
+        .designSystemRows()
     }
 
     private var organizationSection: some View {
@@ -89,7 +104,11 @@ struct SettingsView: View {
             NavigationLink("Categories") {
                 CategoriesSettingsView()
             }
+        } header: {
+            Text("Organization")
+                .designSystemSectionHeader()
         }
+        .designSystemRows()
     }
 
     private var dataSection: some View {
@@ -97,7 +116,11 @@ struct SettingsView: View {
             NavigationLink("Data") {
                 DataSettingsView()
             }
+        } header: {
+            Text("Data")
+                .designSystemSectionHeader()
         }
+        .designSystemRows()
     }
 
     private var securitySection: some View {
@@ -114,18 +137,21 @@ struct SettingsView: View {
 
             Text("Your financial data is stored only on this device.")
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.inkSecondary)
         } header: {
             Text("Security")
+                .designSystemSectionHeader()
         } footer: {
             if !isFaceIDAvailable {
                 Text(biometricAvailability.explanation)
+                    .designSystemSectionFooter()
             }
         }
+        .designSystemRows()
     }
 
     private var aboutSection: some View {
-        Section("About") {
+        Section {
             LabeledContent("Author", value: "Simon Lieu")
 
             LabeledContent("Version", value: version)
@@ -133,7 +159,11 @@ struct SettingsView: View {
             NavigationLink("Projection method") {
                 ProjectionMethodView()
             }
+        } header: {
+            Text("About")
+                .designSystemSectionHeader()
         }
+        .designSystemRows()
     }
 
     private var currencyCodes: [String] {
@@ -178,20 +208,34 @@ struct SettingsView: View {
 private struct ProjectionMethodView: View {
     var body: some View {
         List {
-            Section("Projected month-end balance") {
+            Section {
                 Text("Current available balance, plus remaining expected income, minus remaining bills, spending budgets, and the remaining savings goal.")
+            } header: {
+                Text("Projected month-end balance")
+                    .designSystemSectionHeader()
             }
+            .designSystemRows()
 
-            Section("Plan comparison") {
+            Section {
                 Text("The plan uses the month's starting balance and planned amounts. Variance is the projected month-end balance minus the planned month-end balance.")
+            } header: {
+                Text("Plan comparison")
+                    .designSystemSectionHeader()
             }
+            .designSystemRows()
 
-            Section("Safe to spend") {
+            Section {
                 Text("Spendable cash is divided across the remaining days and rounded down to avoid overstating the daily amount.")
+            } header: {
+                Text("Safe to spend")
+                    .designSystemSectionHeader()
             }
+            .designSystemRows()
         }
+        .designSystemList()
         .navigationTitle("Projection Method")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
     }
 }
 
@@ -207,3 +251,21 @@ private extension AppearancePreference {
         }
     }
 }
+
+#if DEBUG
+#Preview("Settings — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        NavigationStack {
+            SettingsView()
+        }
+    }
+}
+
+#Preview("Settings — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
+        NavigationStack {
+            SettingsView()
+        }
+    }
+}
+#endif

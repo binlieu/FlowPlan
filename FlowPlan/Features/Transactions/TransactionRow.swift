@@ -3,6 +3,7 @@ import FlowPlanDomain
 
 struct TransactionRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .title3) private var iconSize: CGFloat = 32
 
     let transaction: TransactionSnapshot
     let account: String
@@ -13,48 +14,87 @@ struct TransactionRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: transaction.type.systemImage)
-                .font(.title3)
-                .foregroundStyle(iconColor)
-                .frame(width: 32, height: 32)
-                .background(iconColor.opacity(0.12), in: Circle())
-                .accessibilityHidden(true)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 10) {
+                    identityContent
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(primaryText)
-                    .font(.body.weight(.medium))
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: true)
+                    amount
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            } else {
+                HStack(spacing: 12) {
+                    identityContent
 
-                HStack(spacing: 6) {
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
 
-                    if transaction.isAutoRecorded {
-                        Chip(text: "AUTO", style: .filledNeutral)
-                    }
+                    amount
                 }
             }
-            .layoutPriority(1)
-
-            Spacer(minLength: 8)
-
-            AmountText(
-                amount: displayedAmount,
-                style: .secondary,
-                signed: transaction.type != .transfer,
-                emphasiseNegative: true
-            )
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityValue(transaction.isAutoRecorded ? "Automatically recorded" : "")
         .accessibilityHint("Opens this transaction for editing")
+    }
+
+    private var identityContent: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: transaction.type.systemImage)
+                .font(.title3)
+                .foregroundStyle(iconColor)
+                .frame(width: iconSize, height: iconSize)
+                .background(iconColor.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(primaryText)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Palette.ink)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Group {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        VStack(alignment: .leading, spacing: 6) {
+                            subtitleText
+                            autoRecordedChip
+                        }
+                    } else {
+                        HStack(spacing: 6) {
+                            subtitleText
+                            autoRecordedChip
+                        }
+                    }
+                }
+            }
+            .layoutPriority(1)
+        }
+    }
+
+    private var subtitleText: some View {
+        Text(subtitle)
+            .font(.subheadline)
+            .foregroundStyle(Palette.inkSecondary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private var autoRecordedChip: some View {
+        if transaction.isAutoRecorded {
+            Chip(text: "AUTO", style: .filledNeutral)
+        }
+    }
+
+    private var amount: some View {
+        AmountText(
+            amount: displayedAmount,
+            style: .secondary,
+            signed: transaction.type != .transfer,
+            emphasiseNegative: true
+        )
     }
 
     private var primaryText: String {
