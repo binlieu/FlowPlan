@@ -1,81 +1,112 @@
-# Codex task spec — 06 — Plan screen (income, bills, budgets, savings)
+# Codex task spec — 06 — Plan screen (income, bills, budgets, savings, monthly projection)
 
 ## Goal
-The place where the user tells FlowPlan what they *expect*. Every edit here must move the
-Projected End of Month immediately.
+Build the Plan tab to match the design handoff. This is where the user states what they *expect*,
+and it is also where the full monthly projection now lives.
 
-## Scope — touch ONLY these
-- `FlowPlan/Features/Plan/PlanView.swift` (create)
-- `FlowPlan/Features/Plan/IncomeSection.swift` (create)
-- `FlowPlan/Features/Plan/BillsSection.swift` (create)
-- `FlowPlan/Features/Plan/BudgetsSection.swift` (create)
-- `FlowPlan/Features/Plan/SavingsSection.swift` (create)
-- `FlowPlan/Features/Plan/EditIncomeView.swift` (create)
-- `FlowPlan/Features/Plan/EditBillView.swift` (create)
-- `FlowPlan/Features/Plan/EditBudgetView.swift` (create)
-- `FlowPlan/Features/Plan/EditSavingsGoalView.swift` (create)
-- `FlowPlan/Features/Plan/RecurrencePicker.swift` (create)
+## Scope — touch ONLY these (create unless noted)
+- `FlowPlan/Features/Plan/PlanView.swift`
+- `FlowPlan/Features/Plan/ExpectedIncomeSection.swift`
+- `FlowPlan/Features/Plan/MonthlyBillsSection.swift`
+- `FlowPlan/Features/Plan/SpendingBudgetSection.swift`
+- `FlowPlan/Features/Plan/SavingsGoalSection.swift`
+- `FlowPlan/Features/Plan/MonthlyProjectionCard.swift`
+- `FlowPlan/Features/Plan/EditIncomeView.swift`
+- `FlowPlan/Features/Plan/EditBillView.swift`
+- `FlowPlan/Features/Plan/EditBudgetView.swift`
+- `FlowPlan/Features/Plan/EditSavingsGoalView.swift`
+- `FlowPlan/Features/Plan/RecurrencePicker.swift`
+- `FlowPlan/Shared/DesignSystem/Chip.swift`
+- `FlowPlan/Shared/DesignSystem/BudgetProgressBar.swift`
 - `FlowPlan/App/RootView.swift` (edit: wire the Plan tab)
-- `FlowPlanTests/PlanEditingTests.swift` (create)
+- `FlowPlanTests/PlanEditingTests.swift`
 
 Do NOT modify `Packages/FlowPlanDomain/**`, `FlowPlan/Data/**`, `AppState`, `ProjectionStore`,
-anything under `Features/Home`, `Features/Projection`, `Features/Transactions`, the Xcode
-project, or `docs/`.
+`Features/Home/**`, `Features/Projection/**`, `Features/Transactions/**`, or the Xcode project.
 
-## What to do
+## Design system — already exists, reuse it
+`Palette`, `Typography`, `TickCard` and `MoneyFormatter.compact` are in
+`FlowPlan/Shared/DesignSystem/` and `Shared/Formatting/`. Read them and use them. Do not
+introduce new colours, and do not hard-code hex.
 
-### `PlanView`
-`MonthNavigationBar`, then four `SectionCard`s in this order — Income, Bills, Monthly Spending
-Budget, Savings — each with its own totals row, matching the brief:
+## Layout — top to bottom, matching the handoff
+
+Header: `Plan` as a large bold title with the month in small caps beneath (`AUGUST 2026`).
+Plan uses a **title + subtitle**, not Home's bracketed chevron bar — but the month still comes
+from `appState.selectedMonth`, and changing month elsewhere must update this screen.
+
+### 1. Expected Income — heading with a trailing `Add` link
+Rows in a bordered group: name, a secondary subtitle describing the recurrence in words
+("Monthly · 15th & last day"), amount trailing in compact style. Final row is a **tinted total
+row**: `TOTAL EXPECTED INCOME` … `+$8,500`.
+
+### 2. Monthly Bills — heading with `Add`
+Each row: name; beneath it two `Chip`s — an **outlined accent chip** for the amount type
+(`FIXED` / `ESTIMATED` / `VARIABLE`) and a **filled neutral chip** for payment
+(`AUTO PAY` / `MANUAL`); amount trailing, with `Due 21st` in secondary text beneath it.
+
+### 3. Spending Budget — heading with `Add`
+One row per budgeted category: name, `{spent} of {limit}` trailing, a progress bar, and a footer
+line. Within budget → solid accent bar and `${remaining} remaining`. **Over budget → a
+diagonally hatched bar** (same treatment as the Home cash-flow remainder) and
+`${overspend} over budget`. Never draw a bar past 100% — clamp the fill and switch to the hatch.
+
+### 4. Savings Goal
+Current monthly target, progress toward it, and a **"Drag to re-plan the month" slider** with the
+range labelled at both ends. Dragging changes the savings target live and the projection card
+below updates as it moves. Commit the change to the repository on drag end, not on every frame,
+then call `projectionStore.refresh()`.
+
+### 5. `MonthlyProjectionCard` (TickCard) — the projection's new home
+Label `MONTHLY PROJECTION`, then rows, then an emphasised total:
 
 ```
-Salary            $6,500        Mortgage          $1,850      Groceries        $800
-Side Income       $1,200        Electric            $145      Dining           $300
-Rental Income       $800        Internet          $89.99      …
-                                                              Monthly Goal   $2,000
-Expected Income   $8,500        …                             Projected      $1,920
-                                                              Difference        -$80
+Expected income        +$8,500
+Recurring bills        -$2,393
+Planned spending       -$3,500
+Savings goal           -$2,000
+─────────────────────────────────
+PROJECTED REMAINING      +$607
 ```
 
-A compact "Projected month end: $1,420" strip pinned at the top of the screen, reading straight
-from `projectionStore.projection`, so the user watches the number move as they edit. Animate it
-with `.contentTransition(.numericText())`.
+Every figure comes from `projectionStore.projection`:
+`totalExpectedIncome`, the planned bills and planned budget totals, `savingsTarget`, and
+`plannedEndOfMonthBalance` for the total. **Do no arithmetic in the view.** If a planned total
+you need is not exposed on `MonthlyProjection`, stop and report it rather than computing it.
 
-Each row: name, amount, and a secondary line with the recurrence ("Monthly, on the 1st") or the
-budget's spent-of-limit progress. `.swipeActions` for Edit and Delete. A `+` per section adds a
-new item. Every write goes through `FinanceRepository` and is followed by
-`projectionStore.refresh()`.
+The handoff also shows a `Debt payments` row. **Debt is deferred (DECISIONS.md D-014) — omit that
+row entirely.** Do not invent a debt model, and do not leave a zero-valued placeholder row.
 
-### Editors
-Each editor is a native sheet in a `Form`, with a large amount field and a Save button disabled
-until valid. `EditBillView` also offers amount type (fixed / estimated / variable), category,
-auto-pay and an "Active" toggle. `EditIncomeView` offers expected amount, recurrence and Active.
-`EditBudgetView` offers category and monthly limit, and states plainly whether the row applies to
-every month or only this one. `EditSavingsGoalView` offers name, monthly target, overall target
-and an optional target date.
+Tapping the card opens the existing `ProjectionDetailView`.
 
-Deleting shows a confirmation naming the item. Deactivating (rather than deleting) is offered
-first for bills and income, because history should not disappear.
+## Editors
+Native sheets in `Form`s, each with a large amount field and a Save button disabled until valid.
+`EditBillView` covers amount type, category, due day, recurrence, auto-pay and Active.
+`EditIncomeView` covers expected amount, recurrence and Active. `EditBudgetView` covers category
+and monthly limit, and states plainly whether the row applies to every month or only this one.
+`EditSavingsGoalView` covers name, monthly target, overall target and an optional target date.
 
-### `RecurrencePicker`
-One reusable control over `RecurrenceFrequency` — weekly, every two weeks, monthly, every three
-months, every six months, yearly — plus the anchor date. Preview text spells out the rule in
-words ("Every two weeks, from 4 Aug 2026"). This is the only place recurrence UI exists.
+Deleting asks for confirmation naming the item. For bills and income, offer **deactivate** before
+delete, so history is not destroyed.
 
-### Savings section specifics
-Shows Monthly Goal (`savingsTarget`), Projected (`savingsCompleted + remainingSavingsGoal` — read
-from the projection, do not compute), and Difference. Negative differences are shown with a
-symbol and words, not colour alone.
+`RecurrencePicker` is the single reusable recurrence control — weekly, every two weeks, monthly,
+every three months, every six months, yearly — plus the anchor date, with a plain-words preview
+("Every two weeks, from 4 Aug 2026"). No other screen may implement recurrence UI.
 
-### Tests — `PlanEditingTests.swift`
-- raising a salary from 6_500 to 6_750 raises `projectedEndOfMonthBalance` by exactly 250
-- raising the savings goal from 1_500 to 2_000 lowers it by exactly 500
-- adding a bill lowers it by that bill's amount for the occurrences falling in the month
+Every write goes through `FinanceRepository` and is followed by `projectionStore.refresh()`.
+
+## Tests — `PlanEditingTests.swift`
+- raising a salary from 6,500 to 6,750 raises `plannedEndOfMonthBalance` by exactly 250
+- raising the savings goal by 500 lowers `projectedEndOfMonthBalance` by exactly 500
+- adding a bill lowers the projection by that bill's amount for occurrences in the month
 - deactivating a bill removes it from `remainingBills`
 - adding a budget category lowers the projection by its unspent remainder only
-- editing a budget that has already been overspent does not move the projection
+- editing a budget that is already overspent does not move the projection
+- the projection card's rows and total match `MonthlyProjection` exactly
 
 ## Done when
-- [ ] build succeeds, all tests pass, zero new warnings
-- [ ] every Plan edit is reflected in the Home projection with no manual refresh
-- [ ] no month arithmetic anywhere in this folder — `MonthNavigationBar` and `MonthKey` own it
+- [ ] builds for the iPhone 17 simulator, no new warnings
+- [ ] all 86 existing tests plus the new ones pass
+- [ ] `grep -rnE "Color\(red:|#colorLiteral|Color\(hex" FlowPlan/` finds nothing
+- [ ] no month arithmetic in this folder — `MonthKey` and `AppState` own it
+- [ ] every Plan edit moves the Home figures with no manual refresh
