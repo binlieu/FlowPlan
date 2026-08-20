@@ -136,6 +136,14 @@ public struct MonthlyProjection: Hashable, Sendable {
     public let incomeReceived: Decimal
     public let remainingExpectedIncome: Decimal
 
+    /// Plan-only totals: what the plan says should happen this month, ignoring what actually has.
+    /// These are the inputs to `plannedEndOfMonthBalance`, surfaced so a view can show the plan
+    /// breakdown without recomputing it. Do not confuse them with the live remaining-obligation
+    /// figures — `remainingBills` is what is still owed, `plannedBillsTotal` is what was planned.
+    public let plannedIncomeTotal: Decimal
+    public let plannedBillsTotal: Decimal
+    public let plannedSpendingTotal: Decimal
+
     public let expensesPaid: Decimal
     public let remainingBills: Decimal
     public let billsPaid: Decimal
@@ -169,6 +177,9 @@ public struct MonthlyProjection: Hashable, Sendable {
         totalExpectedIncome: Decimal,
         incomeReceived: Decimal,
         remainingExpectedIncome: Decimal,
+        plannedIncomeTotal: Decimal,
+        plannedBillsTotal: Decimal,
+        plannedSpendingTotal: Decimal,
         expensesPaid: Decimal,
         remainingBills: Decimal,
         billsPaid: Decimal,
@@ -196,6 +207,9 @@ public struct MonthlyProjection: Hashable, Sendable {
         self.totalExpectedIncome = totalExpectedIncome
         self.incomeReceived = incomeReceived
         self.remainingExpectedIncome = remainingExpectedIncome
+        self.plannedIncomeTotal = plannedIncomeTotal
+        self.plannedBillsTotal = plannedBillsTotal
+        self.plannedSpendingTotal = plannedSpendingTotal
         self.expensesPaid = expensesPaid
         self.remainingBills = remainingBills
         self.billsPaid = billsPaid

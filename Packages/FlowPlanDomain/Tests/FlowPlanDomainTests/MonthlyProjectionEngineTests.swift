@@ -24,6 +24,68 @@ import FlowPlanDomain
     #expect(MonthlyProjectionEngine().project(input).projectedEndOfMonthBalance == 1_500)
 }
 
+@Test func plannedTotalsInvariantHoldsWithoutAPlan() {
+    let result = MonthlyProjectionEngine().project(
+        Fixtures.input(startingBalance: 975)
+    )
+
+    #expect(plannedBalance(from: result) == result.plannedEndOfMonthBalance)
+    #expect(result.plannedIncomeTotal == .zero)
+    #expect(result.plannedBillsTotal == .zero)
+    #expect(result.plannedSpendingTotal == .zero)
+}
+
+@Test func plannedTotalsInvariantHoldsForACompletePlan() {
+    let result = MonthlyProjectionEngine().project(
+        Fixtures.input(
+            startingBalance: 1_200,
+            incomeSources: [Fixtures.income(amount: 6_500)],
+            bills: [Fixtures.bill(amount: 1_850)],
+            budgets: [Fixtures.budget(limit: 900)],
+            savingsPlans: [Fixtures.savingsPlan(target: 1_000)]
+        )
+    )
+
+    #expect(plannedBalance(from: result) == result.plannedEndOfMonthBalance)
+}
+
+@Test func plannedTotalsInvariantCountsEveryInMonthRecurrence() {
+    let result = MonthlyProjectionEngine().project(
+        Fixtures.input(
+            incomeSources: [
+                Fixtures.income(
+                    amount: 1_500,
+                    frequency: .biweekly,
+                    anchorDate: Fixtures.date(7)
+                )
+            ]
+        )
+    )
+
+    #expect(result.plannedIncomeTotal == 3_000)
+    #expect(plannedBalance(from: result) == result.plannedEndOfMonthBalance)
+}
+
+@Test func plannedBillTotalRemainsDistinctAfterBillIsPaid() {
+    let billID = Fixtures.id(41)
+    let result = MonthlyProjectionEngine().project(
+        Fixtures.input(
+            bills: [Fixtures.bill(id: billID, amount: 425)],
+            transactions: [
+                Fixtures.transaction(
+                    amount: 425,
+                    type: .expense,
+                    settlesBillID: billID
+                )
+            ]
+        )
+    )
+
+    #expect(result.plannedBillsTotal == 425)
+    #expect(result.remainingBills == .zero)
+    #expect(result.plannedBillsTotal != result.remainingBills)
+}
+
 @Test func transferTransactionsAreIgnoredEntirely() {
     let transfer = Fixtures.transaction(amount: 9_999, type: .transfer)
     let result = MonthlyProjectionEngine().project(
@@ -200,4 +262,12 @@ import FlowPlanDomain
         )
     )
     #expect(Fixtures.breakdownSubtotal(result) == result.projectedEndOfMonthBalance)
+}
+
+private func plannedBalance(from projection: MonthlyProjection) -> Decimal {
+    projection.startingBalance
+        + projection.plannedIncomeTotal
+        - projection.plannedBillsTotal
+        - projection.plannedSpendingTotal
+        - projection.savingsTarget
 }

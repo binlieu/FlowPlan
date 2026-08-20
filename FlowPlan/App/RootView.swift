@@ -33,12 +33,7 @@ struct RootView: View {
             .tag(AppTab.transactions)
 
             NavigationStack {
-                placeholder(
-                    symbol: "list.clipboard",
-                    title: "Plan",
-                    message: "Planning tools are coming in a later step."
-                )
-                .navigationTitle("Plan")
+                PlanView()
             }
             .environment(appState)
             .environment(repository)
@@ -191,6 +186,9 @@ enum FlowPlanPreviewData {
             totalExpectedIncome: 6_500,
             incomeReceived: 6_500,
             remainingExpectedIncome: .zero,
+            plannedIncomeTotal: 6_500,
+            plannedBillsTotal: 2_530,
+            plannedSpendingTotal: 3_000,
             expensesPaid: 3_120,
             remainingBills: 680,
             billsPaid: 1_850,
