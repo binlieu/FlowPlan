@@ -63,6 +63,7 @@ final class FinanceRepository {
     @ObservationIgnored private let userDefaults: UserDefaults
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let shouldFailReads: () -> Bool
+    @ObservationIgnored private var successfulWriteHandler: () -> Void = {}
 
     private static let carryBalanceForwardKey = "carryBalanceForward"
     private static let rolloverMonthLimit = 24
@@ -90,6 +91,10 @@ final class FinanceRepository {
         } catch {
             Self.logger.error("Unable to seed account names from existing transactions.")
         }
+    }
+
+    func setSuccessfulWriteHandler(_ handler: @escaping () -> Void) {
+        successfulWriteHandler = handler
     }
 
     func projectionInput(
@@ -1169,6 +1174,7 @@ final class FinanceRepository {
         do {
             let result = try body()
             try context.save()
+            successfulWriteHandler()
             return result
         } catch {
             let underlyingError = error as NSError

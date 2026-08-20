@@ -120,7 +120,7 @@ private struct TransactionsContent: View {
             projectionStore.refresh()
             viewModel.load(month: appState.selectedMonth)
         }
-        .onChange(of: projectionStore.projection) {
+        .onChange(of: projectionStore.dataVersion) {
             viewModel.load(month: appState.selectedMonth)
         }
     }

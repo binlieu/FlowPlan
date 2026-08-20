@@ -99,6 +99,8 @@ struct ExpectedIncomeSection: View {
     }
 
     var body: some View {
+        let _ = projectionStore.dataVersion
+
         if !unsettledOccurrences.isEmpty {
             Section {
                 ForEach(visibleOccurrences) { occurrence in
@@ -273,7 +275,6 @@ struct ExpectedIncomeSection: View {
     }
 
     private var unsettledOccurrences: [TransactionSettlementOccurrence] {
-        _ = projectionStore.projection
         return Self.unsettledOccurrences(
             repository: repository,
             month: appState.selectedMonth,
