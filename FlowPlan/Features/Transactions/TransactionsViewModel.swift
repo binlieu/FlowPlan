@@ -11,6 +11,28 @@ struct TransactionDaySection: Identifiable, Equatable {
     var id: Date { day }
 }
 
+struct TransactionSettlementOccurrence: Identifiable, Hashable {
+    enum Kind: Hashable {
+        case income
+        case bill
+    }
+
+    let kind: Kind
+    let sourceID: UUID
+    let name: String
+    let amount: Decimal
+    let category: String
+    let occurrenceDate: Date
+
+    var id: String {
+        "\(kind)-\(sourceID.uuidString)-\(occurrenceDate.timeIntervalSinceReferenceDate)"
+    }
+
+    var transactionType: TransactionType {
+        kind == .income ? .income : .expense
+    }
+}
+
 @Observable
 @MainActor
 final class TransactionsViewModel {
@@ -61,20 +83,106 @@ final class TransactionsViewModel {
         detail: String,
         note: String = "",
         account: String = "",
+        settlement: TransactionSettlementOccurrence? = nil,
         in month: MonthKey
     ) throws {
-        try repository.addTransaction(
-            TransactionEntity(
-                date: date,
-                amount: amount,
-                type: type,
-                category: category,
-                detail: detail,
-                note: note,
-                account: account
+        if let settlement {
+            guard settlement.transactionType == type else {
+                throw FinanceRepositoryError.settlementMustUseDedicatedMethod
+            }
+
+            switch settlement.kind {
+            case .income:
+                try repository.markIncomeReceived(
+                    incomeID: settlement.sourceID,
+                    occurrence: settlement.occurrenceDate,
+                    amount: amount,
+                    on: date
+                )
+            case .bill:
+                try repository.markBillPaid(
+                    billID: settlement.sourceID,
+                    occurrence: settlement.occurrenceDate,
+                    amount: amount,
+                    on: date
+                )
+            }
+        } else {
+            try repository.addTransaction(
+                TransactionEntity(
+                    date: date,
+                    amount: amount,
+                    type: type,
+                    category: category,
+                    detail: detail,
+                    note: note,
+                    account: account
+                )
             )
-        )
+        }
         refreshAfterWrite(month: month)
+    }
+
+    func unsettledOccurrences(
+        for type: TransactionType,
+        in month: MonthKey
+    ) -> [TransactionSettlementOccurrence] {
+        let transactions = repository.transactions(in: month)
+
+        let occurrences: [TransactionSettlementOccurrence]
+        switch type {
+        case .income:
+            let settledCounts = settlementCounts(
+                transactions.compactMap(\.settlesIncomeID)
+            )
+            occurrences = repository.incomeSources()
+                .filter(\.isActive)
+                .flatMap { source in
+                    source.recurrence.occurrences(in: month, calendar: calendar)
+                        .dropFirst(settledCounts[source.id, default: 0])
+                        .prefix(1)
+                        .map { occurrenceDate in
+                            TransactionSettlementOccurrence(
+                                kind: .income,
+                                sourceID: source.id,
+                                name: source.name,
+                                amount: source.expectedAmount,
+                                category: "Income",
+                                occurrenceDate: occurrenceDate
+                            )
+                        }
+                }
+        case .expense:
+            let settledCounts = settlementCounts(
+                transactions.compactMap(\.settlesBillID)
+            )
+            occurrences = repository.bills()
+                .filter(\.isActive)
+                .flatMap { bill in
+                    bill.recurrence.occurrences(in: month, calendar: calendar)
+                        .dropFirst(settledCounts[bill.id, default: 0])
+                        .prefix(1)
+                        .map { occurrenceDate in
+                            TransactionSettlementOccurrence(
+                                kind: .bill,
+                                sourceID: bill.id,
+                                name: bill.name,
+                                amount: bill.amount,
+                                category: bill.category,
+                                occurrenceDate: occurrenceDate
+                            )
+                        }
+                }
+        case .savings, .transfer:
+            occurrences = []
+        }
+
+        return occurrences.sorted { lhs, rhs in
+            if lhs.occurrenceDate != rhs.occurrenceDate {
+                return lhs.occurrenceDate < rhs.occurrenceDate
+            }
+            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        }
     }
 
     func updateTransaction(
@@ -129,6 +237,10 @@ final class TransactionsViewModel {
     private func refreshAfterWrite(month: MonthKey) {
         projectionStore.refresh()
         load(month: month)
+    }
+
+    private func settlementCounts(_ sourceIDs: [UUID]) -> [UUID: Int] {
+        Dictionary(grouping: sourceIDs, by: { $0 }).mapValues(\.count)
     }
 
     private func categories(in month: MonthKey) -> [String] {

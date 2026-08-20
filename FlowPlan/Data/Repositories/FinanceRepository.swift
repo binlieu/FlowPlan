@@ -5,8 +5,10 @@ import SwiftData
 import FlowPlanDomain
 
 enum FinanceRepositoryError: Error, Equatable {
+    case dataLoadFailed
     case invalidBudgetScope
     case invalidBillOccurrence
+    case invalidIncomeOccurrence
     case nonPositiveAmount
     case recordNotFound
     case settlementAlreadyRecorded
@@ -19,6 +21,7 @@ final class FinanceRepository {
     @ObservationIgnored private let context: ModelContext
     @ObservationIgnored private let calendar: Calendar
     @ObservationIgnored private let now: () -> Date
+    @ObservationIgnored private let shouldFailReads: () -> Bool
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "FlowPlan",
@@ -28,11 +31,13 @@ final class FinanceRepository {
     init(
         context: ModelContext,
         calendar: Calendar = .current,
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        shouldFailReads: @escaping () -> Bool = { false }
     ) {
         self.context = context
         self.calendar = calendar
         self.now = now
+        self.shouldFailReads = shouldFailReads
     }
 
     func projectionInput(
@@ -40,26 +45,59 @@ final class FinanceRepository {
         referenceDate: Date,
         configuration: ProjectionConfiguration
     ) -> ProjectionInput {
-        ProjectionInput(
-            month: month,
+        switch projectionInputResult(
+            for: month,
             referenceDate: referenceDate,
-            startingBalance: startingBalance(for: month),
-            incomeSources: incomeSources(),
-            bills: bills(),
-            budgets: budgets(for: month),
-            savingsPlans: savingsPlans(),
-            transactions: transactions(in: month),
-            calendar: calendar,
             configuration: configuration
-        )
+        ) {
+        case .success(let input):
+            return input
+        case .failure:
+            return emptyProjectionInput(
+                for: month,
+                referenceDate: referenceDate,
+                configuration: configuration
+            )
+        }
+    }
+
+    func projectionInputResult(
+        for month: MonthKey,
+        referenceDate: Date,
+        configuration: ProjectionConfiguration
+    ) -> Result<ProjectionInput, FinanceRepositoryError> {
+        do {
+            return .success(
+                ProjectionInput(
+                    month: month,
+                    referenceDate: referenceDate,
+                    startingBalance: try startingBalanceValue(for: month),
+                    incomeSources: try incomeSourceValues(),
+                    bills: try billValues(),
+                    budgets: try budgetValues(for: month),
+                    savingsPlans: try savingsPlanValues(),
+                    transactions: try transactionValues(in: month),
+                    calendar: calendar,
+                    configuration: configuration
+                )
+            )
+        } catch {
+            Self.logger.error("Unable to load projection data.")
+            return .failure((error as? FinanceRepositoryError) ?? .dataLoadFailed)
+        }
     }
 
     func transactions(in month: MonthKey) -> [TransactionSnapshot] {
+        read(or: []) {
+            try transactionValues(in: month)
+        }
+    }
+
+    private func transactionValues(in month: MonthKey) throws -> [TransactionSnapshot] {
         let startDate = month.startDate(calendar: calendar)
         let monthEnd = month.endDate(calendar: calendar)
         guard let endExclusiveDate = calendar.date(byAdding: .second, value: 1, to: monthEnd) else {
-            Self.logger.error("Unable to construct a transaction date range.")
-            return []
+            throw FinanceRepositoryError.dataLoadFailed
         }
 
         let predicate = #Predicate<TransactionEntity> { transaction in
@@ -69,24 +107,42 @@ final class FinanceRepository {
             predicate: predicate,
             sortBy: [SortDescriptor(\TransactionEntity.date, order: .reverse)]
         )
-        return fetch(descriptor).map { $0.toDomain() }
+        return try fetchOrThrow(descriptor).map { $0.toDomain() }
     }
 
     func incomeSources() -> [PlannedIncome] {
+        read(or: []) {
+            try incomeSourceValues()
+        }
+    }
+
+    private func incomeSourceValues() throws -> [PlannedIncome] {
         let descriptor = FetchDescriptor<IncomeSourceEntity>(
             sortBy: [SortDescriptor(\IncomeSourceEntity.name)]
         )
-        return fetch(descriptor).map { $0.toDomain() }
+        return try fetchOrThrow(descriptor).map { $0.toDomain() }
     }
 
     func bills() -> [PlannedBill] {
+        read(or: []) {
+            try billValues()
+        }
+    }
+
+    private func billValues() throws -> [PlannedBill] {
         let descriptor = FetchDescriptor<RecurringBillEntity>(
             sortBy: [SortDescriptor(\RecurringBillEntity.name)]
         )
-        return fetch(descriptor).map { $0.toDomain() }
+        return try fetchOrThrow(descriptor).map { $0.toDomain() }
     }
 
     func savingsPlans() -> [SavingsPlan] {
+        read(or: []) {
+            try savingsPlanValues()
+        }
+    }
+
+    private func savingsPlanValues() throws -> [SavingsPlan] {
         let predicate = #Predicate<SavingsGoalEntity> { goal in
             goal.isActive
         }
@@ -94,10 +150,16 @@ final class FinanceRepository {
             predicate: predicate,
             sortBy: [SortDescriptor(\SavingsGoalEntity.name)]
         )
-        return fetch(descriptor).map { $0.toDomain() }
+        return try fetchOrThrow(descriptor).map { $0.toDomain() }
     }
 
     func budgets(for month: MonthKey) -> [BudgetAllocation] {
+        read(or: []) {
+            try budgetValues(for: month)
+        }
+    }
+
+    private func budgetValues(for month: MonthKey) throws -> [BudgetAllocation] {
         let year = month.year
         let monthNumber = month.month
         let overridePredicate = #Predicate<BudgetEntity> { budget in
@@ -107,7 +169,7 @@ final class FinanceRepository {
             predicate: overridePredicate,
             sortBy: [SortDescriptor(\BudgetEntity.category)]
         )
-        let overrides: [BudgetEntity] = fetch(overrideDescriptor)
+        let overrides: [BudgetEntity] = try fetchOrThrow(overrideDescriptor)
 
         if !overrides.isEmpty {
             return overrides.map { $0.toDomain() }
@@ -120,10 +182,16 @@ final class FinanceRepository {
             predicate: defaultPredicate,
             sortBy: [SortDescriptor(\BudgetEntity.category)]
         )
-        return fetch(defaultDescriptor).map { $0.toDomain() }
+        return try fetchOrThrow(defaultDescriptor).map { $0.toDomain() }
     }
 
     func startingBalance(for month: MonthKey) -> Decimal {
+        read(or: .zero) {
+            try startingBalanceValue(for: month)
+        }
+    }
+
+    private func startingBalanceValue(for month: MonthKey) throws -> Decimal {
         let year = month.year
         let monthNumber = month.month
         let predicate = #Predicate<MonthSettingsEntity> { settings in
@@ -131,7 +199,7 @@ final class FinanceRepository {
         }
         var descriptor = FetchDescriptor(predicate: predicate)
         descriptor.fetchLimit = 1
-        return fetch(descriptor).first?.startingBalance ?? .zero
+        return try fetchOrThrow(descriptor).first?.startingBalance ?? .zero
     }
 
     func addTransaction(_ transaction: TransactionEntity) throws {
@@ -140,6 +208,7 @@ final class FinanceRepository {
         }
 
         transaction.amount = transaction.amount.positiveMagnitude
+        transaction.category = try canonicalCategory(transaction.category)
         transaction.updatedAt = now()
         context.insert(transaction)
         try context.save()
@@ -154,7 +223,7 @@ final class FinanceRepository {
         stored.date = transaction.date
         stored.amount = transaction.amount.positiveMagnitude
         stored.type = transaction.type
-        stored.category = transaction.category
+        stored.category = try canonicalCategory(transaction.category)
         stored.detail = transaction.detail
         stored.note = transaction.note
         stored.account = transaction.account
@@ -190,7 +259,7 @@ final class FinanceRepository {
 
     func deleteIncomeSource(id: UUID) throws {
         let source: IncomeSourceEntity = try existing(id: id)
-        let linkedTransactions = transactionsLinkedToIncome(id)
+        let linkedTransactions = try transactionsLinkedToIncome(id)
         let timestamp = now()
 
         for transaction in linkedTransactions {
@@ -205,6 +274,7 @@ final class FinanceRepository {
 
     func addBill(_ bill: RecurringBillEntity) throws {
         bill.amount = bill.amount.positiveMagnitude
+        bill.category = try canonicalCategory(bill.category)
         bill.updatedAt = now()
         context.insert(bill)
         try context.save()
@@ -215,7 +285,7 @@ final class FinanceRepository {
         stored.name = bill.name
         stored.amount = bill.amount.positiveMagnitude
         stored.amountType = bill.amountType
-        stored.category = bill.category
+        stored.category = try canonicalCategory(bill.category)
         stored.frequency = bill.frequency
         stored.anchorDate = bill.anchorDate
         stored.endDate = bill.endDate
@@ -227,7 +297,7 @@ final class FinanceRepository {
 
     func deleteBill(id: UUID) throws {
         let bill: RecurringBillEntity = try existing(id: id)
-        let linkedTransactions = transactionsLinkedToBill(id)
+        let linkedTransactions = try transactionsLinkedToBill(id)
         let timestamp = now()
 
         for transaction in linkedTransactions {
@@ -243,6 +313,7 @@ final class FinanceRepository {
     func addBudget(_ budget: BudgetEntity) throws {
         try validateScope(year: budget.scopeYear, month: budget.scopeMonth)
         budget.monthlyLimit = budget.monthlyLimit.positiveMagnitude
+        budget.category = try canonicalCategory(budget.category)
         budget.updatedAt = now()
         context.insert(budget)
         try context.save()
@@ -251,7 +322,7 @@ final class FinanceRepository {
     func updateBudget(_ budget: BudgetEntity) throws {
         try validateScope(year: budget.scopeYear, month: budget.scopeMonth)
         let stored: BudgetEntity = try existing(id: budget.id)
-        stored.category = budget.category
+        stored.category = try canonicalCategory(budget.category)
         stored.monthlyLimit = budget.monthlyLimit.positiveMagnitude
         stored.scopeYear = budget.scopeYear
         stored.scopeMonth = budget.scopeMonth
@@ -344,7 +415,7 @@ final class FinanceRepository {
             throw FinanceRepositoryError.invalidBillOccurrence
         }
 
-        let settlementCount = transactions(in: occurrenceMonth).count {
+        let settlementCount = try transactionValues(in: occurrenceMonth).count {
             $0.settlesBillID == billID
         }
         guard settlementCount == occurrenceIndex else {
@@ -356,7 +427,7 @@ final class FinanceRepository {
             date: date,
             amount: amount,
             type: .expense,
-            category: bill.category,
+            category: try canonicalCategory(bill.category),
             detail: bill.name,
             settlesBillID: billID,
             createdAt: timestamp,
@@ -372,6 +443,54 @@ final class FinanceRepository {
         }
 
         let source: IncomeSourceEntity = try existing(id: incomeID)
+        let month = MonthKey(date: date, calendar: calendar)
+        let occurrences = source.toDomain().recurrence.occurrences(in: month, calendar: calendar)
+        let settlementCount = try transactionValues(in: month).count {
+            $0.settlesIncomeID == incomeID
+        }
+        guard settlementCount < occurrences.count else {
+            throw FinanceRepositoryError.settlementAlreadyRecorded
+        }
+
+        try markIncomeReceived(
+            incomeID: incomeID,
+            occurrence: occurrences[settlementCount],
+            amount: amount,
+            on: date
+        )
+    }
+
+    func markIncomeReceived(
+        incomeID: UUID,
+        occurrence: Date,
+        amount: Decimal,
+        on date: Date
+    ) throws {
+        guard amount > .zero else {
+            throw FinanceRepositoryError.nonPositiveAmount
+        }
+
+        let source: IncomeSourceEntity = try existing(id: incomeID)
+        let occurrenceMonth = MonthKey(date: occurrence, calendar: calendar)
+        guard MonthKey(date: date, calendar: calendar) == occurrenceMonth else {
+            throw FinanceRepositoryError.invalidIncomeOccurrence
+        }
+
+        let occurrences = source.toDomain().recurrence.occurrences(
+            in: occurrenceMonth,
+            calendar: calendar
+        )
+        guard let occurrenceIndex = occurrences.firstIndex(of: occurrence) else {
+            throw FinanceRepositoryError.invalidIncomeOccurrence
+        }
+
+        let settlementCount = try transactionValues(in: occurrenceMonth).count {
+            $0.settlesIncomeID == incomeID
+        }
+        guard settlementCount == occurrenceIndex else {
+            throw FinanceRepositoryError.settlementAlreadyRecorded
+        }
+
         let timestamp = now()
         let transaction = TransactionEntity(
             date: date,
@@ -466,18 +585,40 @@ final class FinanceRepository {
         goal.currentAmount = goal.currentAmount.positiveMagnitude
     }
 
-    private func transactionsLinkedToBill(_ id: UUID) -> [TransactionEntity] {
+    private func canonicalCategory(_ category: String) throws -> String {
+        let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedCategory.isEmpty else {
+            return trimmedCategory
+        }
+
+        let storedCategories = try fetchOrThrow(FetchDescriptor<BudgetEntity>()).map(\.category)
+            + fetchOrThrow(FetchDescriptor<RecurringBillEntity>()).map(\.category)
+            + fetchOrThrow(FetchDescriptor<TransactionEntity>()).map(\.category)
+        let identity = categoryIdentity(trimmedCategory)
+
+        return storedCategories.first {
+            categoryIdentity($0) == identity
+        }?.trimmingCharacters(in: .whitespacesAndNewlines) ?? trimmedCategory
+    }
+
+    private func categoryIdentity(_ category: String) -> String {
+        category
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+    }
+
+    private func transactionsLinkedToBill(_ id: UUID) throws -> [TransactionEntity] {
         let predicate = #Predicate<TransactionEntity> { transaction in
             transaction.settlesBillID == id
         }
-        return fetch(FetchDescriptor(predicate: predicate))
+        return try fetchOrThrow(FetchDescriptor(predicate: predicate))
     }
 
-    private func transactionsLinkedToIncome(_ id: UUID) -> [TransactionEntity] {
+    private func transactionsLinkedToIncome(_ id: UUID) throws -> [TransactionEntity] {
         let predicate = #Predicate<TransactionEntity> { transaction in
             transaction.settlesIncomeID == id
         }
-        return fetch(FetchDescriptor(predicate: predicate))
+        return try fetchOrThrow(FetchDescriptor(predicate: predicate))
     }
 
     private func existing<Model: IdentifiedPersistentModel>(id: UUID) throws -> Model {
@@ -487,21 +628,47 @@ final class FinanceRepository {
         var descriptor = FetchDescriptor(predicate: predicate)
         descriptor.fetchLimit = 1
 
-        guard let model = try context.fetch(descriptor).first else {
+        guard let model = try fetchOrThrow(descriptor).first else {
             throw FinanceRepositoryError.recordNotFound
         }
         return model
     }
 
-    private func fetch<Model: PersistentModel>(
+    private func fetchOrThrow<Model: PersistentModel>(
         _ descriptor: FetchDescriptor<Model>
-    ) -> [Model] {
+    ) throws -> [Model] {
+        guard !shouldFailReads() else {
+            throw FinanceRepositoryError.dataLoadFailed
+        }
+
         do {
             return try context.fetch(descriptor)
         } catch {
-            Self.logger.error("A repository read failed.")
-            return []
+            throw FinanceRepositoryError.dataLoadFailed
         }
+    }
+
+    private func read<Value>(or fallback: Value, _ operation: () throws -> Value) -> Value {
+        do {
+            return try operation()
+        } catch {
+            Self.logger.error("A repository read failed.")
+            return fallback
+        }
+    }
+
+    private func emptyProjectionInput(
+        for month: MonthKey,
+        referenceDate: Date,
+        configuration: ProjectionConfiguration
+    ) -> ProjectionInput {
+        ProjectionInput(
+            month: month,
+            referenceDate: referenceDate,
+            startingBalance: .zero,
+            calendar: calendar,
+            configuration: configuration
+        )
     }
 }
 

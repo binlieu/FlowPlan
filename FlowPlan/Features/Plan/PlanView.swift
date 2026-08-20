@@ -14,6 +14,8 @@ struct PlanView: View {
             LazyVStack(alignment: .leading, spacing: 30) {
                 header
 
+                StartingBalanceSection()
+
                 ExpectedIncomeSection(
                     sources: repository.incomeSources(),
                     plannedTotal: projectionStore.projection.plannedIncomeTotal,

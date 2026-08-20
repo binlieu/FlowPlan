@@ -24,6 +24,8 @@ struct AddTransactionView: View {
     @State private var isRecurring = false
     @State private var note: String
     @State private var existingCategories: [String] = []
+    @State private var settlementOccurrences: [TransactionSettlementOccurrence] = []
+    @State private var selectedSettlementID: String?
     @State private var isPresentingNewCategory = false
     @State private var newCategory = ""
     @State private var presentedError: PresentedError?
@@ -64,6 +66,7 @@ struct AddTransactionView: View {
                 transactionTypeSection
                 amountSection
                 detailsSection
+                settlementSection
                 recurringSection
                 noteSection
             }
@@ -87,6 +90,17 @@ struct AddTransactionView: View {
                 if !supportsRecurring {
                     isRecurring = false
                 }
+                loadCategories()
+                loadSettlementOccurrences()
+            }
+            .onChange(of: date) {
+                loadSettlementOccurrences()
+            }
+            .onChange(of: isRecurring) {
+                loadSettlementOccurrences()
+            }
+            .onChange(of: selectedSettlementID) {
+                applySettlementDefaults()
             }
             .alert("New category", isPresented: $isPresentingNewCategory) {
                 TextField("Category name", text: $newCategory)
@@ -231,6 +245,28 @@ struct AddTransactionView: View {
         }
     }
 
+    @ViewBuilder
+    private var settlementSection: some View {
+        if transactionToEdit == nil, !isRecurring, !settlementOccurrences.isEmpty {
+            Section {
+                Picker("Planned occurrence", selection: $selectedSettlementID) {
+                    ForEach(settlementOccurrences) { occurrence in
+                        Text(settlementLabel(occurrence))
+                            .tag(Optional(occurrence.id))
+                    }
+
+                    Text(extraIncomeOrExpenseLabel)
+                        .tag(Optional(extraSettlementID))
+                }
+                .pickerStyle(.menu)
+            } header: {
+                Text(transactionType == .income ? "Match planned income" : "Match a bill")
+            } footer: {
+                Text("Linking this transaction marks the selected planned occurrence as settled.")
+            }
+        }
+    }
+
     private var noteSection: some View {
         Section("Optional note") {
             TextField("Note", text: $note, axis: .vertical)
@@ -352,6 +388,8 @@ struct AddTransactionView: View {
             }
         }
 
+        loadSettlementOccurrences()
+
         Task { @MainActor in
             isAmountFocused = true
         }
@@ -415,6 +453,81 @@ struct AddTransactionView: View {
         newCategory = ""
     }
 
+    private func loadSettlementOccurrences() {
+        guard transactionToEdit == nil, !isRecurring else {
+            settlementOccurrences = []
+            selectedSettlementID = nil
+            return
+        }
+
+        let calendar = Calendar.current
+        let month = MonthKey(date: date, calendar: calendar)
+        let viewModel = TransactionsViewModel(
+            repository: repository,
+            projectionStore: projectionStore,
+            calendar: calendar
+        )
+        let occurrences = viewModel.unsettledOccurrences(for: transactionType, in: month)
+        settlementOccurrences = occurrences
+
+        if let selectedSettlementID,
+           selectedSettlementID == extraSettlementID
+            || occurrences.contains(where: { $0.id == selectedSettlementID }) {
+            return
+        }
+
+        self.selectedSettlementID = occurrences.min { lhs, rhs in
+            let lhsDistance = abs(lhs.occurrenceDate.timeIntervalSince(date))
+            let rhsDistance = abs(rhs.occurrenceDate.timeIntervalSince(date))
+            if lhsDistance != rhsDistance {
+                return lhsDistance < rhsDistance
+            }
+            return lhs.occurrenceDate < rhs.occurrenceDate
+        }?.id
+    }
+
+    private func applySettlementDefaults() {
+        guard let selectedSettlement else {
+            return
+        }
+
+        if trimmedCategory.isEmpty {
+            category = selectedSettlement.category
+        }
+        if trimmedDescription.isEmpty {
+            transactionDescription = selectedSettlement.name
+        }
+        if amount == nil || amount == .zero {
+            amount = selectedSettlement.amount
+        }
+    }
+
+    private var selectedSettlement: TransactionSettlementOccurrence? {
+        guard let selectedSettlementID else {
+            return nil
+        }
+        return settlementOccurrences.first { $0.id == selectedSettlementID }
+    }
+
+    private var extraSettlementID: String {
+        "extra-\(transactionType.rawValue)"
+    }
+
+    private var extraIncomeOrExpenseLabel: String {
+        transactionType == .income
+            ? "Not one of these — extra income"
+            : "Not one of these — extra expense"
+    }
+
+    private func settlementLabel(_ occurrence: TransactionSettlementOccurrence) -> String {
+        let dateText = occurrence.occurrenceDate.formatted(.dateTime.month(.abbreviated).day())
+        let amountText = MoneyFormatter.string(
+            occurrence.amount,
+            currencyCode: appState.currencyCode
+        )
+        return "\(occurrence.name) · \(dateText) · \(amountText)"
+    }
+
     private func save() {
         guard let amount, amount > .zero, !trimmedCategory.isEmpty else {
             return
@@ -440,6 +553,23 @@ struct AddTransactionView: View {
                         settlesIncomeID: transactionToEdit.settlesIncomeID
                     )
                 )
+            } else if let selectedSettlement {
+                switch selectedSettlement.kind {
+                case .income:
+                    try repository.markIncomeReceived(
+                        incomeID: selectedSettlement.sourceID,
+                        occurrence: selectedSettlement.occurrenceDate,
+                        amount: amount,
+                        on: date
+                    )
+                case .bill:
+                    try repository.markBillPaid(
+                        billID: selectedSettlement.sourceID,
+                        occurrence: selectedSettlement.occurrenceDate,
+                        amount: amount,
+                        on: date
+                    )
+                }
             } else {
                 try repository.addTransaction(
                     TransactionEntity(
