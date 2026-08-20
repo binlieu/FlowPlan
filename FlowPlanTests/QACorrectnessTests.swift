@@ -312,7 +312,7 @@ func startingBalancePersistsPerMonthAndMovesBalancesExactly() throws {
         calendar: environment.calendar
     )
     #expect(reloadedRepository.startingBalance(for: environment.month) == 2_400)
-    #expect(reloadedRepository.startingBalance(for: environment.month.next) == .zero)
+    #expect(reloadedRepository.startingBalance(for: environment.month.next) == 2_400)
 }
 
 @Test

@@ -16,6 +16,7 @@ final class AppState {
     @ObservationIgnored @AppStorage("currencyCode") private var storedCurrencyCode = "USD"
     @ObservationIgnored @AppStorage("isFaceIDEnabled") private var storedIsFaceIDEnabled = false
     @ObservationIgnored @AppStorage("isHapticsEnabled") private var storedIsHapticsEnabled = true
+    @ObservationIgnored @AppStorage("carryBalanceForward") private var storedCarryBalanceForward = true
     @ObservationIgnored @AppStorage("appearancePreference") private var storedAppearancePreference: AppearancePreference = .system
     @ObservationIgnored @AppStorage("isSampleDataEnabled") private var storedIsSampleDataEnabled = false
 
@@ -38,6 +39,10 @@ final class AppState {
 
     var isHapticsEnabled: Bool {
         didSet { storedIsHapticsEnabled = isHapticsEnabled }
+    }
+
+    var carryBalanceForward: Bool {
+        didSet { storedCarryBalanceForward = carryBalanceForward }
     }
 
     var appearancePreference: AppearancePreference {
@@ -80,6 +85,11 @@ final class AppState {
             "isHapticsEnabled",
             store: userDefaults
         )
+        _storedCarryBalanceForward = AppStorage(
+            wrappedValue: true,
+            "carryBalanceForward",
+            store: userDefaults
+        )
         _storedAppearancePreference = AppStorage(
             wrappedValue: .system,
             "appearancePreference",
@@ -98,6 +108,7 @@ final class AppState {
         currencyCode = _storedCurrencyCode.wrappedValue
         isFaceIDEnabled = _storedIsFaceIDEnabled.wrappedValue
         isHapticsEnabled = _storedIsHapticsEnabled.wrappedValue
+        carryBalanceForward = _storedCarryBalanceForward.wrappedValue
         appearancePreference = _storedAppearancePreference.wrappedValue
         isSampleDataEnabled = _storedIsSampleDataEnabled.wrappedValue
     }

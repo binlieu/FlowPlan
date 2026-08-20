@@ -7,8 +7,11 @@ struct StartingBalanceSection: View {
     @Environment(ProjectionStore.self) private var projectionStore
 
     @State private var amountText = ""
+    @State private var resolvedAmount = Decimal.zero
+    @State private var balanceSource = StartingBalanceResolution.Source.unset
     @State private var presentedError: String?
     @State private var isSaving = false
+    @State private var hasEditedAmount = false
 
     @FocusState private var isAmountFocused: Bool
 
@@ -20,7 +23,7 @@ struct StartingBalanceSection: View {
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 12) {
-                    TextField("0.00", text: $amountText)
+                    TextField("0.00", text: amountBinding)
                         .font(.title2.weight(.bold))
                         .fontWidth(.condensed)
                         .monospacedDigit()
@@ -34,10 +37,15 @@ struct StartingBalanceSection: View {
                         .foregroundStyle(Palette.inkSecondary)
                 }
 
-                Text("What you had available at the start of the month.")
-                    .font(Typography.supporting)
-                    .foregroundStyle(Palette.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                balanceExplanation
+
+                if balanceSource == .explicit {
+                    Button("Use rolled-over amount", action: useRolledOverAmount)
+                        .font(Typography.supporting.weight(.semibold))
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Palette.accent)
+                        .accessibilityHint("Deletes this month's explicit starting balance")
+                }
 
                 if let presentedError {
                     Text(presentedError)
@@ -55,6 +63,9 @@ struct StartingBalanceSection: View {
         .onChange(of: appState.selectedMonth) {
             loadBalance()
         }
+        .onChange(of: appState.carryBalanceForward) {
+            loadBalance()
+        }
         .onChange(of: isAmountFocused) {
             if !isAmountFocused {
                 commit()
@@ -63,15 +74,49 @@ struct StartingBalanceSection: View {
         .disabled(isSaving)
     }
 
-    private func loadBalance() {
-        amountText = PlanAmountParser.text(
-            repository.startingBalance(for: appState.selectedMonth)
+    @ViewBuilder
+    private var balanceExplanation: some View {
+        switch balanceSource {
+        case .explicit, .unset:
+            Text("What you had available at the start of the month.")
+                .font(Typography.supporting)
+                .foregroundStyle(Palette.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        case .rolledOver(let previousMonth):
+            Text(
+                "Rolled over from \(monthName(previousMonth)) · "
+                    + MoneyFormatter.string(
+                        resolvedAmount,
+                        currencyCode: appState.currencyCode
+                    )
+            )
+            .font(Typography.supporting)
+            .foregroundStyle(Palette.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var amountBinding: Binding<String> {
+        Binding(
+            get: { amountText },
+            set: { newValue in
+                amountText = newValue
+                hasEditedAmount = true
+            }
         )
+    }
+
+    private func loadBalance() {
+        let resolution = repository.startingBalanceResolution(for: appState.selectedMonth)
+        amountText = PlanAmountParser.text(resolution.amount)
+        resolvedAmount = resolution.amount
+        balanceSource = resolution.source
+        hasEditedAmount = false
         presentedError = nil
     }
 
     private func commit() {
-        guard !isSaving else {
+        guard !isSaving, hasEditedAmount else {
             return
         }
         guard let balance = PlanAmountParser.decimal(from: amountText) else {
@@ -85,11 +130,38 @@ struct StartingBalanceSection: View {
         do {
             try repository.setStartingBalance(balance, for: appState.selectedMonth)
             amountText = PlanAmountParser.text(balance)
+            resolvedAmount = balance
+            balanceSource = .explicit
+            hasEditedAmount = false
             presentedError = nil
             projectionStore.refresh()
         } catch {
             presentedError = "The starting balance could not be saved. Please try again."
         }
+    }
+
+    private func useRolledOverAmount() {
+        guard !isSaving else {
+            return
+        }
+
+        isSaving = true
+        hasEditedAmount = false
+        isAmountFocused = false
+        defer { isSaving = false }
+
+        do {
+            try repository.deleteStartingBalance(for: appState.selectedMonth)
+            projectionStore.refresh()
+            loadBalance()
+        } catch {
+            loadBalance()
+            presentedError = "The starting balance could not be reset. Please try again."
+        }
+    }
+
+    private func monthName(_ month: MonthKey) -> String {
+        month.startDate(calendar: .current).formatted(.dateTime.month(.wide))
     }
 }
 
