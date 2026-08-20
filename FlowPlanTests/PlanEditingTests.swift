@@ -536,12 +536,13 @@ private struct PlanEditingEnvironment {
 
         let container = try PersistenceController.inMemory()
         self.container = container
+        let defaults = try Self.makeDefaults()
         let repository = FinanceRepository(
             context: container.mainContext,
             calendar: calendar,
+            userDefaults: defaults,
             now: { Self.date(day: 20, calendar: calendar) }
         )
-        let defaults = try Self.makeDefaults()
         let appState = AppState(
             selectedMonth: month,
             calendar: calendar,

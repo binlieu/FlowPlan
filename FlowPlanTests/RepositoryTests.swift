@@ -109,7 +109,11 @@ func entitiesRoundTripThroughPersistenceAndDomain() throws {
 func budgetsUseExactMonthOverridesWithoutMixingDefaults() throws {
     let container = try PersistenceController.inMemory()
     let context = container.mainContext
-    let repository = FinanceRepository(context: context, calendar: repositoryTestCalendar)
+    let repository = FinanceRepository(
+        context: context,
+        calendar: repositoryTestCalendar,
+        userDefaults: try isolatedTestUserDefaults()
+    )
 
     context.insert(BudgetEntity(id: repositoryID(10), category: "Default A", monthlyLimit: 100))
     context.insert(BudgetEntity(id: repositoryID(11), category: "Default B", monthlyLimit: 200))
@@ -146,7 +150,11 @@ func transactionsFetchIncludesFirstAndLastDayAndExcludesOtherMonths() throws {
     let container = try PersistenceController.inMemory()
     let context = container.mainContext
     let calendar = repositoryTestCalendar
-    let repository = FinanceRepository(context: context, calendar: calendar)
+    let repository = FinanceRepository(
+        context: context,
+        calendar: calendar,
+        userDefaults: try isolatedTestUserDefaults()
+    )
 
     let firstDay = repositoryDate(2026, 8, 1, hour: 0, calendar: calendar)
     let lastDay = repositoryDate(
@@ -179,7 +187,11 @@ func markingBillPaidLinksOneTransactionWithoutDoubleCounting() throws {
     let container = try PersistenceController.inMemory()
     let context = container.mainContext
     let calendar = repositoryTestCalendar
-    let repository = FinanceRepository(context: context, calendar: calendar)
+    let repository = FinanceRepository(
+        context: context,
+        calendar: calendar,
+        userDefaults: try isolatedTestUserDefaults()
+    )
     let month = MonthKey(year: 2026, month: 8)
     let billID = repositoryID(30)
     let occurrence = repositoryDate(2026, 8, 10, calendar: calendar)

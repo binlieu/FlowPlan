@@ -11,7 +11,6 @@ struct UpcomingBillsSection: View {
 
     private let calendar: Calendar
     private let now: () -> Date
-    private let dismissalStore: OverdueAutopayPromptDismissalStore
 
     @State private var presentedError: BillSettlementError?
     @State private var dismissalRevision = 0
@@ -20,13 +19,15 @@ struct UpcomingBillsSection: View {
     init(
         onSeeAll: @escaping () -> Void = {},
         calendar: Calendar = .current,
-        now: @escaping () -> Date = Date.init,
-        userDefaults: UserDefaults = .standard
+        now: @escaping () -> Date = Date.init
     ) {
         self.onSeeAll = onSeeAll
         self.calendar = calendar
         self.now = now
-        dismissalStore = OverdueAutopayPromptDismissalStore(userDefaults: userDefaults)
+    }
+
+    private var dismissalStore: OverdueAutopayPromptDismissalStore {
+        OverdueAutopayPromptDismissalStore(userDefaults: appState.userDefaults)
     }
 
     var body: some View {

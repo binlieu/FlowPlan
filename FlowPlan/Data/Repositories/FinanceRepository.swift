@@ -76,7 +76,7 @@ final class FinanceRepository {
     init(
         context: ModelContext,
         calendar: Calendar = .current,
-        userDefaults: UserDefaults = .standard,
+        userDefaults: UserDefaults,
         now: @escaping () -> Date = Date.init,
         shouldFailReads: @escaping () -> Bool = { false }
     ) {

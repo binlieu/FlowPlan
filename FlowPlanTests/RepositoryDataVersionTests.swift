@@ -287,12 +287,13 @@ struct RepositoryDataVersionEnvironment {
 
         let container = try PersistenceController.inMemory()
         self.container = container
+        let defaults = try Self.makeDefaults()
         let repository = FinanceRepository(
             context: container.mainContext,
             calendar: calendar,
+            userDefaults: defaults,
             now: { referenceDate }
         )
-        let defaults = try Self.makeDefaults()
         let appState = AppState(
             selectedMonth: month,
             calendar: calendar,

@@ -173,9 +173,11 @@ struct FlowPlanPreviewHost<Content: View>: View {
             preconditionFailure("Unable to build preview data: \(error.localizedDescription)")
         }
 
-        let defaults = UserDefaults(
+        guard let defaults = UserDefaults(
             suiteName: "FlowPlanPreviews.\(UUID().uuidString)"
-        ) ?? .standard
+        ) else {
+            preconditionFailure("Unable to create isolated preview preferences.")
+        }
         let state = AppState(
             selectedMonth: FlowPlanPreviewData.month,
             calendar: FlowPlanPreviewData.calendar,
@@ -185,6 +187,7 @@ struct FlowPlanPreviewHost<Content: View>: View {
         let repository = FinanceRepository(
             context: container.mainContext,
             calendar: FlowPlanPreviewData.calendar,
+            userDefaults: defaults,
             now: { FlowPlanPreviewData.referenceDate }
         )
         let projectionStore = ProjectionStore(

@@ -276,7 +276,7 @@ struct OverdueAutopayPromptDismissalStore {
     private let key: String
 
     init(
-        userDefaults: UserDefaults = .standard,
+        userDefaults: UserDefaults,
         key: String = "overdueAutopayPrompt.dismissedOccurrenceSets.v1"
     ) {
         self.userDefaults = userDefaults

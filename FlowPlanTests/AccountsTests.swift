@@ -8,7 +8,10 @@ import FlowPlanDomain
 @MainActor
 func addingDuplicateAccountNameCaseInsensitivelyIsRejected() throws {
     let container = try PersistenceController.inMemory()
-    let repository = FinanceRepository(context: container.mainContext)
+    let repository = FinanceRepository(
+        context: container.mainContext,
+        userDefaults: try isolatedTestUserDefaults()
+    )
 
     try repository.addAccount(named: "Checking")
 
@@ -28,7 +31,11 @@ func deletingUsedAccountClearsLabelsWithoutChangingTransactionsOrProjection() th
     let container = try PersistenceController.inMemory()
     let context = container.mainContext
     let calendar = accountsTestCalendar
-    let repository = FinanceRepository(context: context, calendar: calendar)
+    let repository = FinanceRepository(
+        context: context,
+        calendar: calendar,
+        userDefaults: try isolatedTestUserDefaults()
+    )
     let month = MonthKey(year: 2026, month: 8)
     let referenceDate = accountsTestDate(day: 20, calendar: calendar)
 
@@ -88,7 +95,10 @@ func deletingUsedAccountClearsLabelsWithoutChangingTransactionsOrProjection() th
 @MainActor
 func deletingUnusedAccountRemovesIt() throws {
     let container = try PersistenceController.inMemory()
-    let repository = FinanceRepository(context: container.mainContext)
+    let repository = FinanceRepository(
+        context: container.mainContext,
+        userDefaults: try isolatedTestUserDefaults()
+    )
 
     try repository.addAccount(named: "Cash")
     let account = try #require(repository.accounts().first)
@@ -112,7 +122,11 @@ func firstLaunchSeedsDistinctExistingAccountLabels() throws {
     context.insert(accountsTestTransaction(account: "", day: 5, calendar: calendar))
     try context.save()
 
-    let repository = FinanceRepository(context: context, calendar: calendar)
+    let repository = FinanceRepository(
+        context: context,
+        calendar: calendar,
+        userDefaults: try isolatedTestUserDefaults()
+    )
     let seededNames = repository.accounts().map(\.name)
 
     #expect(seededNames.count == 2)

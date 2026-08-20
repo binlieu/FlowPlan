@@ -24,7 +24,11 @@ func sampleSeedIsIdempotentAndMatchesTheAugustBrief() throws {
     #expect(try context.fetchCount(FetchDescriptor<MonthSettingsEntity>()) == 1)
     #expect(try context.fetchCount(FetchDescriptor<TransactionEntity>()) == 15)
 
-    let repository = FinanceRepository(context: context, calendar: calendar)
+    let repository = FinanceRepository(
+        context: context,
+        calendar: calendar,
+        userDefaults: try isolatedTestUserDefaults()
+    )
     let incomes = repository.incomeSources()
     let bills = repository.bills()
     let budgets = repository.budgets(for: month)

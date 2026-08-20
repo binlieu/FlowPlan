@@ -97,11 +97,16 @@ private struct ProjectionBreakdownTestHarness {
         let context = container.mainContext
         let calendar = Self.makeCalendar()
         let month = MonthKey(year: 2026, month: 8)
-        let repository = FinanceRepository(context: context, calendar: calendar)
+        let defaults = try Self.makeDefaults()
+        let repository = FinanceRepository(
+            context: context,
+            calendar: calendar,
+            userDefaults: defaults
+        )
         let appState = AppState(
             selectedMonth: month,
             calendar: calendar,
-            userDefaults: try Self.makeDefaults()
+            userDefaults: defaults
         )
 
         try SampleData.seed(into: context, calendar: calendar)

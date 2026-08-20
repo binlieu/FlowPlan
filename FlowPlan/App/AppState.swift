@@ -22,6 +22,7 @@ final class AppState {
     @ObservationIgnored @AppStorage("isSampleDataEnabled") private var storedIsSampleDataEnabled = false
 
     @ObservationIgnored private let calendar: Calendar
+    @ObservationIgnored let userDefaults: UserDefaults
     @ObservationIgnored private let now: () -> Date
 
     var selectedMonth: MonthKey
@@ -65,7 +66,7 @@ final class AppState {
     init(
         selectedMonth: MonthKey? = nil,
         calendar: Calendar = .current,
-        userDefaults: UserDefaults = .standard,
+        userDefaults: UserDefaults,
         now: @escaping () -> Date = Date.init
     ) {
         let defaultCurrencyCode = Locale.current.currency?.identifier ?? "USD"
@@ -112,6 +113,7 @@ final class AppState {
         )
 
         self.calendar = calendar
+        self.userDefaults = userDefaults
         self.now = now
         self.selectedMonth = selectedMonth ?? MonthKey(date: now(), calendar: calendar)
         userName = _storedUserName.wrappedValue

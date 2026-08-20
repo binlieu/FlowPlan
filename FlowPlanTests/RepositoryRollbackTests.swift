@@ -9,7 +9,11 @@ import FlowPlanDomain
 func rejectedWriteRollsBackBeforeAnUnrelatedValidWrite() throws {
     let container = try PersistenceController.inMemory()
     let context = container.mainContext
-    let repository = FinanceRepository(context: context, calendar: rollbackTestCalendar)
+    let repository = FinanceRepository(
+        context: context,
+        calendar: rollbackTestCalendar,
+        userDefaults: try isolatedTestUserDefaults()
+    )
     let transactionID = UUID()
 
     try repository.addTransaction(
