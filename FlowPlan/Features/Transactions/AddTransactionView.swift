@@ -11,10 +11,15 @@ struct AddTransactionView: View {
 
     private let transactionToEdit: TransactionSnapshot?
     private let isDuplicate: Bool
+    private let sourceCategory: String?
     private let onSaved: () -> Void
 
     @Query private var storedTransactions: [TransactionEntity]
     @Query(sort: \AccountEntity.name) private var managedAccountEntities: [AccountEntity]
+
+    @AppStorage("incomeCategories") private var storedIncomeCategories = ""
+    @AppStorage("expenseCategories") private var storedExpenseCategories = ""
+    @AppStorage("savingsCategories") private var storedSavingsCategories = ""
 
     @State private var transactionType: TransactionType
     @State private var amount: Decimal?
@@ -48,6 +53,7 @@ struct AddTransactionView: View {
 
         transactionToEdit = transaction
         isDuplicate = duplicatedTransaction != nil
+        sourceCategory = source?.category
         self.onSaved = onSaved
         _storedTransactions = Query(
             filter: #Predicate<TransactionEntity> { storedTransaction in
@@ -94,6 +100,10 @@ struct AddTransactionView: View {
                     isRecurring = false
                 }
                 loadCategories()
+                if !trimmedCategory.isEmpty,
+                   !CategoryCatalog.contains(trimmedCategory, in: existingCategories) {
+                    category = ""
+                }
                 loadSettlementOccurrences()
             }
             .onChange(of: date) {
@@ -113,9 +123,9 @@ struct AddTransactionView: View {
                 Button("Add") {
                     addNewCategory()
                 }
-                .disabled(trimmedNewCategory.isEmpty)
+                .disabled(!canAddNewCategory)
             } message: {
-                Text("Enter a category name for this transaction.")
+                Text(newCategoryMessage)
             }
             .alert(item: $presentedError) { error in
                 Alert(
@@ -427,6 +437,18 @@ struct AddTransactionView: View {
         newCategory.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var canAddNewCategory: Bool {
+        !trimmedNewCategory.isEmpty
+            && !CategoryCatalog.contains(trimmedNewCategory, in: existingCategories)
+    }
+
+    private var newCategoryMessage: String {
+        guard let kind = CategoryKind(transactionType: transactionType) else {
+            return "Enter a category name for this transaction."
+        }
+        return "It will be saved as a \(kind.title) category."
+    }
+
     private var trimmedNewAccount: String {
         newAccount.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -488,30 +510,45 @@ struct AddTransactionView: View {
     }
 
     private func loadCategories() {
-        var categories = Set(
-            repository.transactions(in: appState.selectedMonth)
-                .map(\.category)
-                .filter { !$0.isEmpty }
+        let preservedCategory = sourceCategory.flatMap { sourceCategory in
+            CategoryCatalog.namesMatch(sourceCategory, trimmedCategory)
+                ? trimmedCategory
+                : nil
+        }
+        existingCategories = Self.categoryOptions(
+            for: transactionType,
+            transactions: repository.transactions(in: appState.selectedMonth),
+            budgetCategories: repository.budgets(for: appState.selectedMonth).map(\.category),
+            billCategories: repository.bills().map(\.category),
+            storedCategories: persistedCategories(for: transactionType),
+            selectedCategory: preservedCategory
         )
-        categories.formUnion(
-            repository.budgets(for: appState.selectedMonth)
-                .map(\.category)
-                .filter { !$0.isEmpty }
-        )
-        categories.formUnion(
-            repository.bills().map(\.category).filter { !$0.isEmpty }
-        )
+    }
 
-        if !repository.incomeSources().isEmpty || transactionType == .income {
-            categories.insert("Income")
+    static func categoryOptions(
+        for transactionType: TransactionType,
+        transactions: [TransactionSnapshot],
+        budgetCategories: [String],
+        billCategories: [String],
+        storedCategories: [String],
+        selectedCategory: String?
+    ) -> [String] {
+        var categories = storedCategories
+        categories += transactions
+            .filter { $0.type == transactionType }
+            .map(\.category)
+
+        if transactionType == .expense {
+            categories += budgetCategories + billCategories
         }
-        if !trimmedCategory.isEmpty {
-            categories.insert(trimmedCategory)
+        if transactionType == .transfer {
+            categories.append("Transfer")
+        }
+        if let selectedCategory {
+            categories.append(selectedCategory)
         }
 
-        existingCategories = categories.sorted {
-            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
-        }
+        return CategoryCatalog.uniqueSorted(categories)
     }
 
     private func defaultDate(for month: MonthKey) -> Date {
@@ -531,18 +568,56 @@ struct AddTransactionView: View {
     }
 
     private func addNewCategory() {
-        guard !trimmedNewCategory.isEmpty else {
+        guard canAddNewCategory else {
             return
         }
 
-        category = trimmedNewCategory
-        if !existingCategories.contains(trimmedNewCategory) {
-            existingCategories.append(trimmedNewCategory)
-            existingCategories.sort {
-                $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
-            }
+        let categoryName = trimmedNewCategory
+        category = categoryName
+
+        if let kind = CategoryKind(transactionType: transactionType) {
+            var categories = persistedCategories(for: kind)
+            categories.append(categoryName)
+            store(categories, for: kind)
+            loadCategories()
+        } else {
+            existingCategories = CategoryCatalog.uniqueSorted(existingCategories + [categoryName])
         }
         newCategory = ""
+    }
+
+    private func persistedCategories(for transactionType: TransactionType) -> [String] {
+        guard let kind = CategoryKind(transactionType: transactionType) else {
+            return []
+        }
+        return persistedCategories(for: kind)
+    }
+
+    private func persistedCategories(for kind: CategoryKind) -> [String] {
+        CategoryCatalog.categories(from: storedValue(for: kind), kind: kind)
+    }
+
+    private func store(_ categories: [String], for kind: CategoryKind) {
+        let value = CategoryCatalog.encode(categories)
+        switch kind {
+        case .income:
+            storedIncomeCategories = value
+        case .expense:
+            storedExpenseCategories = value
+        case .savings:
+            storedSavingsCategories = value
+        }
+    }
+
+    private func storedValue(for kind: CategoryKind) -> String {
+        switch kind {
+        case .income:
+            return storedIncomeCategories
+        case .expense:
+            return storedExpenseCategories
+        case .savings:
+            return storedSavingsCategories
+        }
     }
 
     private func addNewAccount() {
