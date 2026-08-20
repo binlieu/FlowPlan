@@ -33,8 +33,16 @@ enum PersistenceController {
         }
     }()
 
+    /// A fresh in-memory container for tests and previews.
+    ///
+    /// The configuration is named per container so concurrent containers cannot share a store
+    /// identity. That matters because the entities carry uniqueness constraints —
+    /// `MonthSettingsEntity` is unique on (year, month) and every test uses the same month — so
+    /// any store sharing between two supposedly independent containers would surface as a
+    /// constraint violation rather than as an obviously wrong result.
     static func inMemory() throws -> ModelContainer {
         let configuration = ModelConfiguration(
+            "InMemory-\(UUID().uuidString)",
             schema: schema,
             isStoredInMemoryOnly: true
         )

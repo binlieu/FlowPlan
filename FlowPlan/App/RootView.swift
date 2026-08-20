@@ -24,12 +24,7 @@ struct RootView: View {
             .tag(AppTab.home)
 
             NavigationStack {
-                placeholder(
-                    symbol: "list.bullet.rectangle",
-                    title: "Transactions",
-                    message: "Transaction tools are coming in the next step."
-                )
-                .navigationTitle("Transactions")
+                TransactionsView()
             }
             .environment(appState)
             .environment(repository)
