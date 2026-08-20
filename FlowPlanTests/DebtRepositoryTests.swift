@@ -19,6 +19,7 @@ func debtEntityRoundTripsAndPreservesOriginalBalance() throws {
             monthlyPayment: 505,
             category: "Transportation",
             dueDay: 23,
+            isAutoPay: true,
             isPaidThroughBills: false
         )
     )
@@ -29,6 +30,7 @@ func debtEntityRoundTripsAndPreservesOriginalBalance() throws {
     #expect(debt.annualInterestRate == 0.0649)
     #expect(debt.monthlyPayment == 505)
     #expect(debt.dueDay == 23)
+    #expect(debt.isAutoPay)
     #expect(!debt.isPaidThroughBills)
     #expect(environment.repository.debtOriginalBalances()[debtID] == 18_500)
 }

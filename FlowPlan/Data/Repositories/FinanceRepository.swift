@@ -319,6 +319,7 @@ final class FinanceRepository {
                 monthlyPayment: debt.monthlyPayment,
                 category: debt.category,
                 dueDay: debt.dueDay,
+                isAutoPay: debt.isAutoPay,
                 isPaidThroughBills: debt.isPaidThroughBills,
                 isActive: debt.isActive
             )
@@ -636,6 +637,7 @@ final class FinanceRepository {
             stored.monthlyPayment = debt.monthlyPayment.positiveMagnitude
             stored.category = try canonicalCategory(defaultDebtCategory(for: debt.category))
             stored.dueDay = min(31, max(1, debt.dueDay))
+            stored.isAutoPay = debt.isAutoPay
             stored.isPaidThroughBills = debt.isPaidThroughBills
             stored.isActive = debt.isActive
             stored.updatedAt = now()

@@ -14,6 +14,7 @@ struct EditDebtView: View {
     @State private var paymentText: String
     @State private var category: String
     @State private var dueDay: Int
+    @State private var isAutoPay: Bool
     @State private var isPaidThroughBills: Bool
     @State private var isActive: Bool
     @State private var isSaving = false
@@ -35,6 +36,7 @@ struct EditDebtView: View {
         )
         _category = State(initialValue: debt?.category ?? "")
         _dueDay = State(initialValue: debt?.dueDay ?? 1)
+        _isAutoPay = State(initialValue: debt?.isAutoPay ?? false)
         _isPaidThroughBills = State(initialValue: debt?.isPaidThroughBills ?? false)
         _isActive = State(initialValue: debt?.isActive ?? true)
     }
@@ -90,12 +92,17 @@ struct EditDebtView: View {
                 }
 
                 Section {
+                    Toggle("Auto-pay", isOn: $isAutoPay)
+
+                    Text("The payment leaves your account automatically.")
+                        .font(Typography.supporting)
+                        .foregroundStyle(Palette.inkSecondary)
+
                     Toggle("Payment is in Monthly Bills", isOn: $isPaidThroughBills)
-                } footer: {
-                    Text(
-                        "Turn this on when Monthly Bills already includes the payment. "
-                            + "FlowPlan will track the debt without subtracting it twice."
-                    )
+
+                    Text("The payment is already listed as a bill, so it is not counted again.")
+                        .font(Typography.supporting)
+                        .foregroundStyle(Palette.inkSecondary)
                 }
 
                 Section {
@@ -234,6 +241,7 @@ struct EditDebtView: View {
                 monthlyPayment: payment,
                 category: resolvedCategory,
                 dueDay: dueDay,
+                isAutoPay: isAutoPay,
                 isPaidThroughBills: isPaidThroughBills,
                 isActive: isActive
             )
@@ -265,6 +273,7 @@ struct EditDebtView: View {
                     monthlyPayment: debt.monthlyPayment,
                     category: debt.category,
                     dueDay: debt.dueDay,
+                    isAutoPay: debt.isAutoPay,
                     isPaidThroughBills: debt.isPaidThroughBills,
                     isActive: false
                 )

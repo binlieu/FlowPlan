@@ -161,6 +161,116 @@ func markAllAsPaidSettlesOnlyOverdueAutopayBillsAndPreservesProjection() throws 
 
 @Test
 @MainActor
+func overdueAutopayDebtSelectionExcludesFuturePaidThroughBillsAndManualDebts() {
+    let calendar = OverdueBillsTestEnvironment.testCalendar
+    let referenceDate = OverdueBillsTestEnvironment.date(day: 20, calendar: calendar)
+    let overdueAutopayID = UUID()
+    let futureAutopayID = UUID()
+    let paidThroughBillsID = UUID()
+    let manualID = UUID()
+    let occurrences = [
+        HomePaymentOccurrence.debt(
+            DebtOccurrence(
+                debtID: overdueAutopayID,
+                name: "Auto loan",
+                date: OverdueBillsTestEnvironment.date(day: 10, calendar: calendar),
+                amount: 200,
+                isPaidThroughBills: false
+            )
+        ),
+        HomePaymentOccurrence.debt(
+            DebtOccurrence(
+                debtID: futureAutopayID,
+                name: "Future loan",
+                date: OverdueBillsTestEnvironment.date(day: 25, calendar: calendar),
+                amount: 300,
+                isPaidThroughBills: false
+            )
+        ),
+        HomePaymentOccurrence.debt(
+            DebtOccurrence(
+                debtID: paidThroughBillsID,
+                name: "Mortgage",
+                date: OverdueBillsTestEnvironment.date(day: 5, calendar: calendar),
+                amount: 1_850,
+                isPaidThroughBills: true
+            )
+        ),
+        HomePaymentOccurrence.debt(
+            DebtOccurrence(
+                debtID: manualID,
+                name: "Manual loan",
+                date: OverdueBillsTestEnvironment.date(day: 8, calendar: calendar),
+                amount: 100,
+                isPaidThroughBills: false
+            )
+        )
+    ]
+
+    let selected = OverdueAutopaySettlementAction.overdueAutopayOccurrences(
+        from: occurrences,
+        autoPayDebtIDs: [overdueAutopayID, futureAutopayID, paidThroughBillsID],
+        relativeTo: referenceDate,
+        calendar: calendar
+    )
+
+    #expect(selected.count == 1)
+    #expect(selected.first?.debtOccurrence?.debtID == overdueAutopayID)
+}
+
+@Test
+@MainActor
+func markAllAsPaidSettlesOverdueAutopayDebtAndPreservesProjection() throws {
+    let environment = try OverdueBillsTestEnvironment(startingBalance: 2_000)
+    let debtID = try environment.addDebt(
+        name: "Auto loan",
+        balance: 1_200,
+        payment: 200,
+        dueDay: 10,
+        isAutoPay: true
+    )
+    environment.projectionStore.refresh()
+
+    let before = environment.projectionStore.projection
+    let occurrences = UpcomingBillsSection.paymentOccurrences(
+        bills: [],
+        debts: before.debtOccurrences,
+        relativeTo: environment.referenceDate,
+        calendar: environment.calendar
+    )
+    let result = OverdueAutopaySettlementAction.markAllAsPaid(
+        from: occurrences,
+        autoPayDebtIDs: [debtID],
+        relativeTo: environment.referenceDate,
+        repository: environment.repository,
+        projectionStore: environment.projectionStore,
+        calendar: environment.calendar
+    )
+
+    let after = environment.projectionStore.projection
+    let settlements = environment.repository.transactions(in: environment.month).filter {
+        $0.settlesDebtID == debtID
+    }
+
+    #expect(result == nil)
+    #expect(settlements.count == 1)
+    #expect(settlements.first?.amount == 200)
+    // A settlement carries the occurrence's due *day*, not a particular instant — debt
+    // occurrences are built at the start of the day. Asserting an exact timestamp would pin an
+    // arbitrary time-of-day instead of the behaviour that matters.
+    #expect(
+        environment.calendar.isDate(
+            try #require(settlements.first?.date),
+            inSameDayAs: environment.date(day: 10)
+        )
+    )
+    #expect(after.currentAvailableBalance == before.currentAvailableBalance - 200)
+    #expect(after.expensesPaid == before.expensesPaid + 200)
+    #expect(after.projectedEndOfMonthBalance == before.projectedEndOfMonthBalance)
+}
+
+@Test
+@MainActor
 func dismissedAutopayPromptStaysDismissedForSameOccurrencesAfterRefresh() throws {
     let environment = try OverdueBillsTestEnvironment()
     try environment.addBill(
@@ -300,6 +410,32 @@ private struct OverdueBillsTestEnvironment {
                 frequency: .monthly,
                 anchorDate: date(day: dueDay),
                 isAutoPay: isAutoPay
+            )
+        )
+        return id
+    }
+
+    @discardableResult
+    func addDebt(
+        name: String,
+        balance: Decimal,
+        payment: Decimal,
+        dueDay: Int,
+        isAutoPay: Bool,
+        isPaidThroughBills: Bool = false
+    ) throws -> UUID {
+        let id = UUID()
+        try repository.addDebt(
+            DebtEntity(
+                id: id,
+                name: name,
+                currentBalance: balance,
+                annualInterestRate: .zero,
+                monthlyPayment: payment,
+                category: "Debt",
+                dueDay: dueDay,
+                isAutoPay: isAutoPay,
+                isPaidThroughBills: isPaidThroughBills
             )
         )
         return id
