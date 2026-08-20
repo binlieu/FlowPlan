@@ -55,12 +55,19 @@ func explicitZeroStartingBalanceCountsAsEntered() throws {
         userDefaults: try presentationTestDefaults()
     )
 
-    try repository.setStartingBalance(.zero, for: month)
     let store = ProjectionStore(
         repository: repository,
         appState: appState,
         modelContext: context
     )
+
+    #expect(store.projection.startingBalance == .zero)
+    #expect(!store.hasStartingBalance)
+    #expect(!store.completeness.hasStartingBalance)
+    #expect(store.completeness.hasNoPlanningInputs)
+
+    try repository.setStartingBalance(.zero, for: month)
+    store.refresh()
 
     #expect(store.projection.startingBalance == .zero)
     #expect(store.hasStartingBalance)
