@@ -15,7 +15,7 @@ struct UpcomingBillsSection: View {
 
     @State private var presentedError: BillSettlementError?
     @State private var dismissalRevision = 0
-    @State private var isSettlingAutopayPayments = false
+    @State private var isSettlingPromptPayments = false
 
     init(
         onSeeAll: @escaping () -> Void = {},
@@ -33,7 +33,7 @@ struct UpcomingBillsSection: View {
         let _ = projectionStore.dataVersion
 
         let occurrences = unsettledPaymentOccurrences
-        let promptOccurrences = overdueAutopayPromptOccurrences(in: occurrences)
+        let promptOccurrences = overduePaymentPromptOccurrences(in: occurrences)
 
         Section {
             if !promptOccurrences.isEmpty {
@@ -106,7 +106,7 @@ struct UpcomingBillsSection: View {
                     .foregroundStyle(.red)
                     .accessibilityHidden(true)
 
-                Text("\(occurrences.count) autopay payments were due. Mark them paid?")
+                Text(promptMessage(for: occurrences))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -125,12 +125,12 @@ struct UpcomingBillsSection: View {
             }
 
             Button("Mark all as paid") {
-                markAllAutopayPaymentsAsPaid(occurrences)
+                markAllPromptPaymentsAsPaid(occurrences)
             }
             .font(.subheadline.weight(.bold))
             .buttonStyle(.borderedProminent)
             .tint(Palette.accent)
-            .disabled(isSettlingAutopayPayments)
+            .disabled(isSettlingPromptPayments)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -332,22 +332,40 @@ struct UpcomingBillsSection: View {
         occurrence.status(relativeTo: now(), calendar: calendar)
     }
 
-    private func overdueAutopayPromptOccurrences(
+    private func overduePaymentPromptOccurrences(
         in occurrences: [HomePaymentOccurrence]
     ) -> [HomePaymentOccurrence] {
         _ = dismissalRevision
 
-        let overdueAutopayOccurrences = OverdueAutopaySettlementAction
-            .overdueAutopayOccurrences(
+        let overdueOccurrences: [HomePaymentOccurrence]
+        if appState.recordAutopayAutomatically {
+            overdueOccurrences = OverdueAutopaySettlementAction.overdueNonAutopayOccurrences(
                 from: occurrences,
                 autoPayDebtIDs: autoPayDebtIDs,
                 relativeTo: now(),
                 calendar: calendar
             )
+        } else {
+            overdueOccurrences = OverdueAutopaySettlementAction.overdueAutopayOccurrences(
+                from: occurrences,
+                autoPayDebtIDs: autoPayDebtIDs,
+                relativeTo: now(),
+                calendar: calendar
+            )
+        }
+
         return dismissalStore.undismissedOccurrences(
-            in: overdueAutopayOccurrences,
+            in: overdueOccurrences,
             calendar: calendar
         )
+    }
+
+    private func promptMessage(for occurrences: [HomePaymentOccurrence]) -> String {
+        if appState.recordAutopayAutomatically {
+            return "\(occurrences.count) payments were due. Mark them paid?"
+        }
+
+        return "\(occurrences.count) autopay payments were due. Mark them paid?"
     }
 
     private var autoPayDebtIDs: Set<UUID> {
@@ -374,21 +392,18 @@ struct UpcomingBillsSection: View {
         )
     }
 
-    private func markAllAutopayPaymentsAsPaid(_ occurrences: [HomePaymentOccurrence]) {
-        guard !isSettlingAutopayPayments else {
+    private func markAllPromptPaymentsAsPaid(_ occurrences: [HomePaymentOccurrence]) {
+        guard !isSettlingPromptPayments else {
             return
         }
 
-        isSettlingAutopayPayments = true
+        isSettlingPromptPayments = true
         presentedError = OverdueAutopaySettlementAction.markAllAsPaid(
-            from: occurrences,
-            autoPayDebtIDs: autoPayDebtIDs,
-            relativeTo: now(),
+            occurrences,
             repository: repository,
-            projectionStore: projectionStore,
-            calendar: calendar
+            projectionStore: projectionStore
         )
-        isSettlingAutopayPayments = false
+        isSettlingPromptPayments = false
     }
 
     private func dismissPrompt(for occurrences: [HomePaymentOccurrence]) {

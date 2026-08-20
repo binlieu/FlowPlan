@@ -111,3 +111,26 @@ import FlowPlanDomain
     #expect(schedule.paymentDate(for: debt, in: march, calendar: calendar) != nil)
     #expect(schedule.paymentDate(for: debt, in: march.next, calendar: calendar) == nil)
 }
+
+@Test func futureFirstPaymentMonthHasNoPaymentOrDateBeforeIt() {
+    let october = MonthKey(year: 2026, month: 10)
+    let debt = Fixtures.debt(
+        balance: 10_000,
+        monthlyPayment: 500,
+        firstPaymentMonth: october,
+        dueDay: 15
+    )
+    let schedule = DebtSchedule(startingIn: MonthKey(year: 2026, month: 8))
+
+    #expect(schedule.paymentDue(for: debt, in: MonthKey(year: 2026, month: 8)) == .zero)
+    #expect(schedule.paymentDue(for: debt, in: MonthKey(year: 2026, month: 9)) == .zero)
+    #expect(
+        schedule.paymentDate(
+            for: debt,
+            in: MonthKey(year: 2026, month: 9),
+            calendar: Fixtures.calendar
+        ) == nil
+    )
+    #expect(schedule.paymentDue(for: debt, in: october) == 500)
+    #expect(schedule.paymentDate(for: debt, in: october, calendar: Fixtures.calendar) != nil)
+}

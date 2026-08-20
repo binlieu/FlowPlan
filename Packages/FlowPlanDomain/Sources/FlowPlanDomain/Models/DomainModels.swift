@@ -100,6 +100,7 @@ public struct TransactionSnapshot: Identifiable, Hashable, Codable, Sendable {
     public let settlesBillID: UUID?
     public let settlesDebtID: UUID?
     public let settlesIncomeID: UUID?
+    public let isAutoRecorded: Bool
 
     public init(
         id: UUID,
@@ -110,7 +111,8 @@ public struct TransactionSnapshot: Identifiable, Hashable, Codable, Sendable {
         detail: String,
         settlesBillID: UUID? = nil,
         settlesDebtID: UUID? = nil,
-        settlesIncomeID: UUID? = nil
+        settlesIncomeID: UUID? = nil,
+        isAutoRecorded: Bool = false
     ) {
         self.id = id
         self.date = date
@@ -121,5 +123,6 @@ public struct TransactionSnapshot: Identifiable, Hashable, Codable, Sendable {
         self.settlesBillID = settlesBillID
         self.settlesDebtID = settlesDebtID
         self.settlesIncomeID = settlesIncomeID
+        self.isAutoRecorded = isAutoRecorded
     }
 }

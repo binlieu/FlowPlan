@@ -13,6 +13,7 @@ struct DataSettingsView: View {
     @Query private var incomeSources: [IncomeSourceEntity]
     @Query private var bills: [RecurringBillEntity]
     @Query private var debts: [DebtEntity]
+    @Query private var autoRecordExclusions: [AutoRecordExclusionEntity]
     @Query private var budgets: [BudgetEntity]
     @Query private var savingsGoals: [SavingsGoalEntity]
     @Query private var monthSettings: [MonthSettingsEntity]
@@ -148,6 +149,7 @@ struct DataSettingsView: View {
                 incomeSources: incomeSources.map(IncomeSourceRecord.init),
                 bills: bills.map(BillRecord.init),
                 debts: debts.map(DebtRecord.init),
+                autoRecordExclusions: autoRecordExclusions.map(AutoRecordExclusionRecord.init),
                 budgets: budgets.map(BudgetRecord.init),
                 savingsGoals: savingsGoals.map(SavingsGoalRecord.init),
                 monthSettings: monthSettings.map(MonthSettingsRecord.init)
@@ -199,6 +201,7 @@ struct DataSettingsView: View {
         var incomeIDs = Set(incomeSources.map(\.id))
         var billIDs = Set(bills.map(\.id))
         var debtIDs = Set(debts.map(\.id))
+        var exclusionIDs = Set(autoRecordExclusions.map(\.id))
         var budgetIDs = Set(budgets.map(\.id))
         var savingsIDs = Set(savingsGoals.map(\.id))
         var settingIDs = Set(monthSettings.map(\.id))
@@ -209,6 +212,7 @@ struct DataSettingsView: View {
         count += payload.incomeSources.count { incomeIDs.insert($0.id).inserted }
         count += payload.bills.count { billIDs.insert($0.id).inserted }
         count += payload.debts.count { debtIDs.insert($0.id).inserted }
+        count += payload.autoRecordExclusions.count { exclusionIDs.insert($0.id).inserted }
         count += payload.budgets.count { budgetIDs.insert($0.id).inserted }
         count += payload.savingsGoals.count { savingsIDs.insert($0.id).inserted }
         count += payload.monthSettings.count { record in
@@ -229,6 +233,7 @@ struct DataSettingsView: View {
             var incomeIDs = Set(incomeSources.map(\.id))
             var billIDs = Set(bills.map(\.id))
             var debtIDs = Set(debts.map(\.id))
+            var exclusionIDs = Set(autoRecordExclusions.map(\.id))
             var budgetIDs = Set(budgets.map(\.id))
             var savingsIDs = Set(savingsGoals.map(\.id))
             var settingIDs = Set(monthSettings.map(\.id))
@@ -245,6 +250,10 @@ struct DataSettingsView: View {
                 importedEntities.append(try record.entity())
             }
             for record in payload.debts where debtIDs.insert(record.id).inserted {
+                importedEntities.append(try record.entity())
+            }
+            for record in payload.autoRecordExclusions
+                where exclusionIDs.insert(record.id).inserted {
                 importedEntities.append(try record.entity())
             }
             for record in payload.budgets where budgetIDs.insert(record.id).inserted {
@@ -297,6 +306,7 @@ struct DataSettingsView: View {
             incomeSources.forEach(modelContext.delete)
             bills.forEach(modelContext.delete)
             debts.forEach(modelContext.delete)
+            autoRecordExclusions.forEach(modelContext.delete)
             budgets.forEach(modelContext.delete)
             savingsGoals.forEach(modelContext.delete)
             monthSettings.forEach(modelContext.delete)
@@ -349,6 +359,7 @@ private struct FlowPlanExport: Codable {
     let incomeSources: [IncomeSourceRecord]
     let bills: [BillRecord]
     let debts: [DebtRecord]
+    let autoRecordExclusions: [AutoRecordExclusionRecord]
     let budgets: [BudgetRecord]
     let savingsGoals: [SavingsGoalRecord]
     let monthSettings: [MonthSettingsRecord]
@@ -358,6 +369,7 @@ private struct FlowPlanExport: Codable {
         incomeSources: [IncomeSourceRecord],
         bills: [BillRecord],
         debts: [DebtRecord],
+        autoRecordExclusions: [AutoRecordExclusionRecord],
         budgets: [BudgetRecord],
         savingsGoals: [SavingsGoalRecord],
         monthSettings: [MonthSettingsRecord]
@@ -367,6 +379,7 @@ private struct FlowPlanExport: Codable {
         self.incomeSources = incomeSources
         self.bills = bills
         self.debts = debts
+        self.autoRecordExclusions = autoRecordExclusions
         self.budgets = budgets
         self.savingsGoals = savingsGoals
         self.monthSettings = monthSettings
@@ -379,6 +392,10 @@ private struct FlowPlanExport: Codable {
         incomeSources = try container.decode([IncomeSourceRecord].self, forKey: .incomeSources)
         bills = try container.decode([BillRecord].self, forKey: .bills)
         debts = try container.decodeIfPresent([DebtRecord].self, forKey: .debts) ?? []
+        autoRecordExclusions = try container.decodeIfPresent(
+            [AutoRecordExclusionRecord].self,
+            forKey: .autoRecordExclusions
+        ) ?? []
         budgets = try container.decode([BudgetRecord].self, forKey: .budgets)
         savingsGoals = try container.decode([SavingsGoalRecord].self, forKey: .savingsGoals)
         monthSettings = try container.decode([MonthSettingsRecord].self, forKey: .monthSettings)
@@ -406,6 +423,7 @@ private struct FlowPlanExport: Codable {
         _ = try incomeSources.map { try $0.entity() }
         _ = try bills.map { try $0.entity() }
         _ = try debts.map { try $0.entity() }
+        _ = try autoRecordExclusions.map { try $0.entity() }
         _ = try budgets.map { try $0.entity() }
         _ = try savingsGoals.map { try $0.entity() }
         _ = try monthSettings.map { try $0.entity() }
@@ -447,6 +465,7 @@ private struct TransactionRecord: Codable {
     let settlesBillID: UUID?
     let settlesDebtID: UUID?
     let settlesIncomeID: UUID?
+    let isAutoRecorded: Bool?
     let createdAt: Date
     let updatedAt: Date
 
@@ -462,6 +481,7 @@ private struct TransactionRecord: Codable {
         settlesBillID = entity.settlesBillID
         settlesDebtID = entity.settlesDebtID
         settlesIncomeID = entity.settlesIncomeID
+        isAutoRecorded = entity.isAutoRecorded
         createdAt = entity.createdAt
         updatedAt = entity.updatedAt
     }
@@ -482,6 +502,7 @@ private struct TransactionRecord: Codable {
             settlesBillID: settlesBillID,
             settlesDebtID: settlesDebtID,
             settlesIncomeID: settlesIncomeID,
+            isAutoRecorded: isAutoRecorded ?? false,
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -496,7 +517,10 @@ private struct DebtRecord: Codable {
     let annualInterestRate: DecimalValue
     let monthlyPayment: DecimalValue
     let category: String
+    let firstPaymentYear: Int?
+    let firstPaymentMonthNumber: Int?
     let dueDay: Int?
+    let isAutoPay: Bool?
     let isPaidThroughBills: Bool
     let isActive: Bool
     let createdAt: Date
@@ -510,7 +534,10 @@ private struct DebtRecord: Codable {
         annualInterestRate = DecimalValue(entity.annualInterestRate)
         monthlyPayment = DecimalValue(entity.monthlyPayment)
         category = entity.category
+        firstPaymentYear = entity.firstPaymentYear
+        firstPaymentMonthNumber = entity.firstPaymentMonthNumber
         dueDay = entity.dueDay
+        isAutoPay = entity.isAutoPay
         isPaidThroughBills = entity.isPaidThroughBills
         isActive = entity.isActive
         createdAt = entity.createdAt
@@ -535,11 +562,51 @@ private struct DebtRecord: Codable {
             annualInterestRate: annualInterestRate,
             monthlyPayment: monthlyPayment,
             category: category,
+            firstPaymentMonth: firstPaymentMonth,
             dueDay: dueDay ?? 1,
+            isAutoPay: isAutoPay ?? false,
             isPaidThroughBills: isPaidThroughBills,
             isActive: isActive,
             createdAt: createdAt,
             updatedAt: updatedAt
+        )
+    }
+
+    private var firstPaymentMonth: MonthKey? {
+        guard let firstPaymentYear, let firstPaymentMonthNumber else {
+            return nil
+        }
+
+        return MonthKey(year: firstPaymentYear, month: firstPaymentMonthNumber)
+    }
+}
+
+private struct AutoRecordExclusionRecord: Codable {
+    let id: UUID
+    let kind: String
+    let sourceID: UUID
+    let occurrenceDate: Date
+    let createdAt: Date
+
+    init(_ entity: AutoRecordExclusionEntity) {
+        id = entity.id
+        kind = entity.kindRaw
+        sourceID = entity.sourceID
+        occurrenceDate = entity.occurrenceDate
+        createdAt = entity.createdAt
+    }
+
+    func entity() throws -> AutoRecordExclusionEntity {
+        guard let kind = AutoRecordExclusionKind(rawValue: kind) else {
+            throw DataSettingsError.invalidEnum
+        }
+
+        return AutoRecordExclusionEntity(
+            id: id,
+            kind: kind,
+            sourceID: sourceID,
+            occurrenceDate: occurrenceDate,
+            createdAt: createdAt
         )
     }
 }

@@ -40,12 +40,14 @@ public struct DebtSchedule: Sendable {
         for debt: Debt,
         startingIn month: MonthKey
     ) -> DebtScheduleResult<MonthKey> {
+        let firstPaymentMonth = debt.firstPaymentMonth ?? month
+
         switch remainingPayments(for: debt) {
         case .value(let count):
             guard count > 0 else {
-                return .value(month.previous)
+                return .value(firstPaymentMonth.previous)
             }
-            return .value(month.adding(months: count - 1))
+            return .value(firstPaymentMonth.adding(months: count - 1))
         case .neverAmortises:
             return .neverAmortises
         case .exceedsMaximumTerm:
@@ -56,7 +58,7 @@ public struct DebtSchedule: Sendable {
     /// Returns the scheduled payment in `month`. When no starting month was supplied to the
     /// schedule, `month` is treated as the first payment month.
     public func paymentDue(for debt: Debt, in month: MonthKey) -> Decimal {
-        let firstPaymentMonth = startingMonth ?? month
+        let firstPaymentMonth = debt.firstPaymentMonth ?? startingMonth ?? month
         return paymentDue(for: debt, in: month, startingIn: firstPaymentMonth)
     }
 
@@ -65,6 +67,7 @@ public struct DebtSchedule: Sendable {
         in month: MonthKey,
         startingIn firstPaymentMonth: MonthKey
     ) -> Decimal {
+        let firstPaymentMonth = debt.firstPaymentMonth ?? firstPaymentMonth
         guard month >= firstPaymentMonth else {
             return .zero
         }

@@ -318,6 +318,7 @@ final class FinanceRepository {
                 annualInterestRate: debt.annualInterestRate,
                 monthlyPayment: debt.monthlyPayment,
                 category: debt.category,
+                firstPaymentMonth: debt.firstPaymentMonth,
                 dueDay: debt.dueDay,
                 isAutoPay: debt.isAutoPay,
                 isPaidThroughBills: debt.isPaidThroughBills,
@@ -537,6 +538,21 @@ final class FinanceRepository {
     func deleteTransaction(id: UUID) throws {
         try write {
             let transaction: TransactionEntity = try existing(id: id)
+
+            if transaction.isAutoRecorded {
+                try addAutoRecordExclusion(for: transaction)
+            }
+
+            if let debtID = transaction.settlesDebtID {
+                let debt: DebtEntity = try existing(id: debtID)
+                debt.currentBalance = DebtSchedule().balanceBeforePayment(
+                    of: transaction.amount,
+                    remainingBalance: debt.currentBalance,
+                    annualInterestRate: debt.annualInterestRate
+                )
+                debt.updatedAt = now()
+            }
+
             context.delete(transaction)
         }
     }
@@ -636,6 +652,8 @@ final class FinanceRepository {
             stored.annualInterestRate = debt.annualInterestRate.positiveMagnitude
             stored.monthlyPayment = debt.monthlyPayment.positiveMagnitude
             stored.category = try canonicalCategory(defaultDebtCategory(for: debt.category))
+            stored.firstPaymentYear = debt.firstPaymentYear
+            stored.firstPaymentMonthNumber = debt.firstPaymentMonthNumber
             stored.dueDay = min(31, max(1, debt.dueDay))
             stored.isAutoPay = debt.isAutoPay
             stored.isPaidThroughBills = debt.isPaidThroughBills
@@ -767,7 +785,8 @@ final class FinanceRepository {
         occurrence: Date,
         amount: Decimal,
         on date: Date,
-        account: String = ""
+        account: String = "",
+        isAutoRecorded: Bool = false
     ) throws {
         try write {
             guard amount > .zero else {
@@ -804,6 +823,7 @@ final class FinanceRepository {
                 detail: bill.name,
                 account: AccountName.trimmed(account),
                 settlesBillID: billID,
+                isAutoRecorded: isAutoRecorded,
                 createdAt: timestamp,
                 updatedAt: timestamp
             )
@@ -815,7 +835,8 @@ final class FinanceRepository {
         debtID: UUID,
         amount: Decimal,
         on date: Date,
-        account: String = ""
+        account: String = "",
+        isAutoRecorded: Bool = false
     ) throws {
         try write {
             guard amount > .zero else {
@@ -840,6 +861,7 @@ final class FinanceRepository {
                 detail: debt.name,
                 account: AccountName.trimmed(account),
                 settlesDebtID: debtID,
+                isAutoRecorded: isAutoRecorded,
                 createdAt: timestamp,
                 updatedAt: timestamp
             )
@@ -850,6 +872,100 @@ final class FinanceRepository {
             )
             debt.updatedAt = timestamp
             context.insert(transaction)
+        }
+    }
+
+    /// Records only overdue automatic payments. Each write deliberately routes through the
+    /// dedicated settlement methods so their occurrence-level duplicate guards remain decisive.
+    func recordOverdueAutopayPayments(
+        in month: MonthKey,
+        relativeTo referenceDate: Date
+    ) throws {
+        let referenceDay = calendar.startOfDay(for: referenceDate)
+        let exclusions = try fetchOrThrow(FetchDescriptor<AutoRecordExclusionEntity>())
+        let monthTransactions = try transactionValues(in: month)
+
+        for bill in try billValues().filter({ $0.isActive && $0.isAutoPay }) {
+            let settledCount = monthTransactions.count {
+                $0.type == .expense && $0.settlesBillID == bill.id
+            }
+            let unsettledOccurrences = bill.recurrence
+                .occurrences(in: month, calendar: calendar)
+                .dropFirst(settledCount)
+
+            for occurrence in unsettledOccurrences
+                where calendar.startOfDay(for: occurrence) < referenceDay {
+                guard !isAutoRecordExcluded(
+                    kind: .bill,
+                    sourceID: bill.id,
+                    occurrenceDate: occurrence,
+                    exclusions: exclusions
+                ) else {
+                    continue
+                }
+
+                do {
+                    try markBillPaid(
+                        billID: bill.id,
+                        occurrence: occurrence,
+                        amount: bill.amount,
+                        on: occurrence,
+                        isAutoRecorded: true
+                    )
+                } catch FinanceRepositoryError.settlementAlreadyRecorded {
+                    continue
+                }
+            }
+        }
+
+        let debtSettlements = Set(
+            monthTransactions
+                .filter { $0.type == .expense }
+                .compactMap(\.settlesDebtID)
+        )
+        let fallbackStartMonth = min(
+            month,
+            MonthKey(date: referenceDate, calendar: calendar)
+        )
+
+        for debt in try debtValues().filter({
+            $0.isActive && $0.isAutoPay && !$0.isPaidThroughBills
+        }) {
+            guard !debtSettlements.contains(debt.id) else {
+                continue
+            }
+
+            let schedule = DebtSchedule(
+                startingIn: debt.firstPaymentMonth ?? fallbackStartMonth
+            )
+            guard
+                let occurrence = schedule.paymentDate(
+                    for: debt,
+                    in: month,
+                    calendar: calendar
+                ),
+                calendar.startOfDay(for: occurrence) < referenceDay,
+                !isAutoRecordExcluded(
+                    kind: .debt,
+                    sourceID: debt.id,
+                    occurrenceDate: occurrence,
+                    exclusions: exclusions
+                )
+            else {
+                continue
+            }
+
+            let amount = schedule.paymentDue(for: debt, in: month)
+            do {
+                try markDebtPaymentMade(
+                    debtID: debt.id,
+                    amount: amount,
+                    on: occurrence,
+                    isAutoRecorded: true
+                )
+            } catch FinanceRepositoryError.settlementAlreadyRecorded {
+                continue
+            }
         }
     }
 
@@ -1131,6 +1247,53 @@ final class FinanceRepository {
             transaction.settlesIncomeID == id
         }
         return try fetchOrThrow(FetchDescriptor(predicate: predicate))
+    }
+
+    private func addAutoRecordExclusion(for transaction: TransactionEntity) throws {
+        let kind: AutoRecordExclusionKind
+        let sourceID: UUID
+
+        if let billID = transaction.settlesBillID {
+            kind = .bill
+            sourceID = billID
+        } else if let debtID = transaction.settlesDebtID {
+            kind = .debt
+            sourceID = debtID
+        } else {
+            return
+        }
+
+        let exclusions = try fetchOrThrow(FetchDescriptor<AutoRecordExclusionEntity>())
+        guard !isAutoRecordExcluded(
+            kind: kind,
+            sourceID: sourceID,
+            occurrenceDate: transaction.date,
+            exclusions: exclusions
+        ) else {
+            return
+        }
+
+        context.insert(
+            AutoRecordExclusionEntity(
+                kind: kind,
+                sourceID: sourceID,
+                occurrenceDate: transaction.date,
+                createdAt: now()
+            )
+        )
+    }
+
+    private func isAutoRecordExcluded(
+        kind: AutoRecordExclusionKind,
+        sourceID: UUID,
+        occurrenceDate: Date,
+        exclusions: [AutoRecordExclusionEntity]
+    ) -> Bool {
+        exclusions.contains { exclusion in
+            exclusion.kind == kind
+                && exclusion.sourceID == sourceID
+                && calendar.isDate(exclusion.occurrenceDate, inSameDayAs: occurrenceDate)
+        }
     }
 
     private func existing<Model: IdentifiedPersistentModel>(id: UUID) throws -> Model {

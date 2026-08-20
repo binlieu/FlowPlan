@@ -199,3 +199,57 @@ import FlowPlanDomain
 
     #expect(result.debtOccurrences.isEmpty)
 }
+
+@Test func debtContributesNothingUntilItsFirstPaymentMonth() {
+    let october = MonthKey(year: 2026, month: 10)
+    let debt = Fixtures.debt(
+        balance: 8_000,
+        monthlyPayment: 505,
+        firstPaymentMonth: october
+    )
+    let engine = MonthlyProjectionEngine()
+
+    for month in [MonthKey(year: 2026, month: 8), MonthKey(year: 2026, month: 9)] {
+        let result = engine.project(
+            Fixtures.input(
+                month: month,
+                referenceDate: Fixtures.date(2026, 8, 20),
+                startingBalance: 2_000,
+                debts: [debt]
+            )
+        )
+
+        #expect(result.debtPaymentsDue == .zero)
+        #expect(result.remainingDebtPayments == .zero)
+        #expect(result.projectedEndOfMonthBalance == 2_000)
+        #expect(result.plannedEndOfMonthBalance == 2_000)
+        #expect(result.spendableRemaining == 2_000)
+        #expect(result.debtOccurrences.isEmpty)
+    }
+
+    let firstMonth = engine.project(
+        Fixtures.input(
+            month: october,
+            referenceDate: Fixtures.date(2026, 8, 20),
+            startingBalance: 2_000,
+            debts: [debt]
+        )
+    )
+
+    #expect(firstMonth.debtPaymentsDue == 505)
+    #expect(firstMonth.remainingDebtPayments == 505)
+    #expect(firstMonth.projectedEndOfMonthBalance == 1_495)
+    #expect(firstMonth.debtOccurrences.count == 1)
+}
+
+@Test func nilFirstPaymentMonthPreservesImmediateStartBehavior() {
+    let debt = Fixtures.debt(balance: 8_000, monthlyPayment: 505)
+    let result = MonthlyProjectionEngine().project(
+        Fixtures.input(startingBalance: 2_000, debts: [debt])
+    )
+
+    #expect(debt.firstPaymentMonth == nil)
+    #expect(result.debtPaymentsDue == 505)
+    #expect(result.remainingDebtPayments == 505)
+    #expect(result.projectedEndOfMonthBalance == 1_495)
+}

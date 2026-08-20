@@ -8,6 +8,9 @@ public struct Debt: Identifiable, Hashable, Codable, Sendable {
     public let monthlyPayment: Decimal
     public let category: String
 
+    /// The month scheduled payments begin. Nil preserves the existing immediate-start behavior.
+    public let firstPaymentMonth: MonthKey?
+
     /// Day of the month the payment is due. Months with fewer days use their final day.
     public let dueDay: Int
 
@@ -26,6 +29,7 @@ public struct Debt: Identifiable, Hashable, Codable, Sendable {
         annualInterestRate: Decimal,
         monthlyPayment: Decimal,
         category: String,
+        firstPaymentMonth: MonthKey? = nil,
         dueDay: Int = 1,
         isAutoPay: Bool = false,
         isPaidThroughBills: Bool,
@@ -37,6 +41,7 @@ public struct Debt: Identifiable, Hashable, Codable, Sendable {
         self.annualInterestRate = annualInterestRate
         self.monthlyPayment = monthlyPayment
         self.category = category
+        self.firstPaymentMonth = firstPaymentMonth
         self.dueDay = min(31, max(1, dueDay))
         self.isAutoPay = isAutoPay
         self.isPaidThroughBills = isPaidThroughBills

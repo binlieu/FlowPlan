@@ -13,6 +13,7 @@ struct EditDebtView: View {
     @State private var aprText: String
     @State private var paymentText: String
     @State private var category: String
+    @State private var firstPaymentMonth: MonthKey
     @State private var dueDay: Int
     @State private var isAutoPay: Bool
     @State private var isPaidThroughBills: Bool
@@ -35,6 +36,10 @@ struct EditDebtView: View {
             initialValue: debt.map { PlanAmountParser.text($0.monthlyPayment) } ?? ""
         )
         _category = State(initialValue: debt?.category ?? "")
+        _firstPaymentMonth = State(
+            initialValue: debt?.firstPaymentMonth
+                ?? MonthKey(date: Date(), calendar: .current)
+        )
         _dueDay = State(initialValue: debt?.dueDay ?? 1)
         _isAutoPay = State(initialValue: debt?.isAutoPay ?? false)
         _isPaidThroughBills = State(initialValue: debt?.isPaidThroughBills ?? false)
@@ -80,6 +85,16 @@ struct EditDebtView: View {
                 }
 
                 Section("Payment date") {
+                    Picker("First payment", selection: $firstPaymentMonth) {
+                        ForEach(selectableFirstPaymentMonths, id: \.self) { month in
+                            Text(monthTitle(month)).tag(month)
+                        }
+                    }
+
+                    Text("First payment \(monthTitle(firstPaymentMonth))")
+                        .font(Typography.supporting)
+                        .foregroundStyle(Palette.inkSecondary)
+
                     Picker("Due day", selection: $dueDay) {
                         ForEach(1...31, id: \.self) { day in
                             Text(DebtDueDayText.ordinal(day)).tag(day)
@@ -240,6 +255,7 @@ struct EditDebtView: View {
                 annualInterestRate: aprPercentage / 100,
                 monthlyPayment: payment,
                 category: resolvedCategory,
+                firstPaymentMonth: firstPaymentMonth,
                 dueDay: dueDay,
                 isAutoPay: isAutoPay,
                 isPaidThroughBills: isPaidThroughBills,
@@ -272,6 +288,7 @@ struct EditDebtView: View {
                     annualInterestRate: debt.annualInterestRate,
                     monthlyPayment: debt.monthlyPayment,
                     category: debt.category,
+                    firstPaymentMonth: debt.firstPaymentMonth,
                     dueDay: debt.dueDay,
                     isAutoPay: debt.isAutoPay,
                     isPaidThroughBills: debt.isPaidThroughBills,
@@ -300,6 +317,20 @@ struct EditDebtView: View {
     private func finish() {
         projectionStore.refresh()
         dismiss()
+    }
+
+    private var selectableFirstPaymentMonths: [MonthKey] {
+        let currentMonth = MonthKey(date: Date(), calendar: .current)
+        var months = (-120...600).map { currentMonth.adding(months: $0) }
+        if !months.contains(firstPaymentMonth) {
+            months.append(firstPaymentMonth)
+            months.sort()
+        }
+        return months
+    }
+
+    private func monthTitle(_ month: MonthKey) -> String {
+        month.startDate(calendar: .current).formatted(.dateTime.month(.wide).year())
     }
 
     private func showError(_ operation: WriteOperation, error: Error) {

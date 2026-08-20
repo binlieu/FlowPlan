@@ -38,22 +38,32 @@ final class ProjectionStore {
     @ObservationIgnored private let modelContext: ModelContext
     @ObservationIgnored private let engine: MonthlyProjectionEngine
     @ObservationIgnored private let insightsEngine: InsightsEngine
+    @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var projectionInput: ProjectionInput
 
     init(
         repository: FinanceRepository,
         appState: AppState,
         modelContext: ModelContext,
-        engine: MonthlyProjectionEngine = .init()
+        engine: MonthlyProjectionEngine = .init(),
+        now: @escaping () -> Date = Date.init
     ) {
         self.repository = repository
         self.appState = appState
         self.modelContext = modelContext
         self.engine = engine
+        self.now = now
         let loadedInsightsEngine = InsightsEngine()
         insightsEngine = loadedInsightsEngine
 
-        let referenceDate = Date()
+        let referenceDate = now()
+        if appState.recordAutopayAutomatically {
+            try? repository.recordOverdueAutopayPayments(
+                in: appState.selectedMonth,
+                relativeTo: referenceDate
+            )
+        }
+
         let result = repository.projectionInputResult(
             for: appState.selectedMonth,
             referenceDate: referenceDate,
@@ -110,9 +120,18 @@ final class ProjectionStore {
     }
 
     func refresh() {
+        let referenceDate = now()
+
+        if appState.recordAutopayAutomatically {
+            try? repository.recordOverdueAutopayPayments(
+                in: appState.selectedMonth,
+                relativeTo: referenceDate
+            )
+        }
+
         let result = repository.projectionInputResult(
             for: appState.selectedMonth,
-            referenceDate: Date(),
+            referenceDate: referenceDate,
             configuration: .default
         )
 

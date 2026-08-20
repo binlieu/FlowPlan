@@ -220,6 +220,60 @@ func overdueAutopayDebtSelectionExcludesFuturePaidThroughBillsAndManualDebts() {
 
 @Test
 @MainActor
+func automaticModePromptSelectionContainsOnlyOverdueNonAutopayPayments() {
+    let calendar = OverdueBillsTestEnvironment.testCalendar
+    let referenceDate = OverdueBillsTestEnvironment.date(day: 20, calendar: calendar)
+    let manualDebtID = UUID()
+    let autoDebtID = UUID()
+    let manualBill = overdueBillsPlannedBill(name: "Manual bill")
+    let autoBill = overdueBillsPlannedBill(name: "Auto bill", isAutoPay: true)
+    let occurrences: [HomePaymentOccurrence] = [
+        .bill(
+            BillOccurrence(
+                bill: manualBill,
+                date: OverdueBillsTestEnvironment.date(day: 5, calendar: calendar)
+            )
+        ),
+        .bill(
+            BillOccurrence(
+                bill: autoBill,
+                date: OverdueBillsTestEnvironment.date(day: 6, calendar: calendar)
+            )
+        ),
+        .debt(
+            DebtOccurrence(
+                debtID: manualDebtID,
+                name: "Manual debt",
+                date: OverdueBillsTestEnvironment.date(day: 7, calendar: calendar),
+                amount: 100,
+                isPaidThroughBills: false
+            )
+        ),
+        .debt(
+            DebtOccurrence(
+                debtID: autoDebtID,
+                name: "Auto debt",
+                date: OverdueBillsTestEnvironment.date(day: 8, calendar: calendar),
+                amount: 100,
+                isPaidThroughBills: false
+            )
+        )
+    ]
+
+    let selected = OverdueAutopaySettlementAction.overdueNonAutopayOccurrences(
+        from: occurrences,
+        autoPayDebtIDs: [autoDebtID],
+        relativeTo: referenceDate,
+        calendar: calendar
+    )
+
+    #expect(selected.count == 2)
+    #expect(selected.compactMap(\.billOccurrence).map(\.bill.id) == [manualBill.id])
+    #expect(selected.compactMap(\.debtOccurrence).map(\.debtID) == [manualDebtID])
+}
+
+@Test
+@MainActor
 func markAllAsPaidSettlesOverdueAutopayDebtAndPreservesProjection() throws {
     let environment = try OverdueBillsTestEnvironment(startingBalance: 2_000)
     let debtID = try environment.addDebt(
@@ -385,10 +439,12 @@ private struct OverdueBillsTestEnvironment {
             userDefaults: userDefaults,
             now: { Self.date(day: 20, calendar: calendar) }
         )
+        appState.recordAutopayAutomatically = false
         projectionStore = ProjectionStore(
             repository: repository,
             appState: appState,
-            modelContext: container.mainContext
+            modelContext: container.mainContext,
+            now: { Self.date(day: 20, calendar: calendar) }
         )
     }
 
