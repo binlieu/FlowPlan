@@ -95,6 +95,8 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section("About") {
+            LabeledContent("Author", value: "Simon Lieu")
+
             LabeledContent("Version", value: version)
 
             NavigationLink("Projection method") {

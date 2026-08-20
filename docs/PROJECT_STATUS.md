@@ -26,6 +26,8 @@ Updated: 2026-08-19
 
 - QA 1.5: failed repository writes do not use a repository-wide rollback strategy.
 - QA 1.6: creating a month budget override is not yet one atomic transaction.
+- QA 2.8: fixed — compact formatting now asks the system for the currency's own
+  fraction digits instead of assuming two.
 - QA 1.8: chart/layout geometry intentionally converts Decimal values to floating
   point; the trapping savings-slider integer conversion is now clamped.
 - QA 2.2: Plan budget rows still aggregate category spending during body evaluation.

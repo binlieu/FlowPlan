@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 enum MoneyFormatter {
     enum Style {
@@ -16,8 +17,11 @@ enum MoneyFormatter {
             .sign(strategy: signed ? .always(showZero: false) : .automatic)
 
         if style == .compact {
+            // Compact drops the fraction only when there is nothing to drop. The number of
+            // digits kept is the currency's own, never a hardcoded 2 — JPY has none and KWD
+            // has three, so assuming 2 would round a Kuwaiti dinar amount down by a digit.
             formatStyle = formatStyle.precision(
-                .fractionLength(hasFractionalPart(amount) ? 2 : 0)
+                .fractionLength(hasFractionalPart(amount) ? fractionDigits(for: currencyCode) : 0)
             )
         }
 
@@ -30,6 +34,24 @@ enum MoneyFormatter {
                 .presentation(.fullName)
         )
     }
+
+    /// The number of fraction digits the given currency actually uses, asked of the system
+    /// rather than assumed. Cached because compact formatting runs on every row of every list.
+    static func fractionDigits(for currencyCode: String) -> Int {
+        if let cached = cachedFractionDigits.withLock({ $0[currencyCode] }) {
+            return cached
+        }
+
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currencyCode
+        let digits = formatter.maximumFractionDigits
+
+        cachedFractionDigits.withLock { $0[currencyCode] = digits }
+        return digits
+    }
+
+    private static let cachedFractionDigits = OSAllocatedUnfairLock(initialState: [String: Int]())
 
     private static func hasFractionalPart(_ amount: Decimal) -> Bool {
         var source = amount
