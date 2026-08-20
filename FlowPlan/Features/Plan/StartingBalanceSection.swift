@@ -136,7 +136,11 @@ struct StartingBalanceSection: View {
             presentedError = nil
             projectionStore.refresh()
         } catch {
-            presentedError = "The starting balance could not be saved. Please try again."
+            presentedError = WriteErrorPresentation(
+                operation: .save,
+                subject: "starting balance",
+                error: error
+            ).inlineMessage
         }
     }
 
@@ -156,7 +160,11 @@ struct StartingBalanceSection: View {
             loadBalance()
         } catch {
             loadBalance()
-            presentedError = "The starting balance could not be reset. Please try again."
+            presentedError = WriteErrorPresentation(
+                operation: .reset,
+                subject: "starting balance",
+                error: error
+            ).inlineMessage
         }
     }
 

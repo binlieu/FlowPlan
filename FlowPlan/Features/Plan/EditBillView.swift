@@ -18,7 +18,7 @@ struct EditBillView: View {
     @State private var isActive: Bool
     @State private var isSaving = false
     @State private var isShowingDeleteOptions = false
-    @State private var presentedError: PresentedError?
+    @State private var presentedError: WriteErrorPresentation?
     @State private var hasAttemptedSave = false
 
     init(bill: PlannedBill? = nil) {
@@ -122,7 +122,7 @@ struct EditBillView: View {
             }
             .alert(item: $presentedError) { error in
                 Alert(
-                    title: Text("Unable to save bill"),
+                    title: Text(error.title),
                     message: Text(error.message),
                     dismissButton: .default(Text("OK"))
                 )
@@ -202,7 +202,7 @@ struct EditBillView: View {
 
             finish()
         } catch {
-            showSaveError()
+            showError(.save, error: error)
         }
     }
 
@@ -228,7 +228,7 @@ struct EditBillView: View {
             )
             finish()
         } catch {
-            showSaveError()
+            showError(.deactivate, error: error)
         }
     }
 
@@ -241,7 +241,7 @@ struct EditBillView: View {
             try repository.deleteBill(id: bill.id)
             finish()
         } catch {
-            showSaveError()
+            showError(.delete, error: error)
         }
     }
 
@@ -250,15 +250,12 @@ struct EditBillView: View {
         dismiss()
     }
 
-    private func showSaveError() {
+    private func showError(_ operation: WriteOperation, error: Error) {
         isSaving = false
-        presentedError = PresentedError(
-            message: "The bill could not be saved. Please try again."
+        presentedError = WriteErrorPresentation(
+            operation: operation,
+            subject: "bill",
+            error: error
         )
-    }
-
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
     }
 }

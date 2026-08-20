@@ -18,7 +18,7 @@ struct EditDebtView: View {
     @State private var isActive: Bool
     @State private var isSaving = false
     @State private var isShowingDeleteOptions = false
-    @State private var presentedError: PresentedError?
+    @State private var presentedError: WriteErrorPresentation?
     @State private var hasAttemptedSave = false
 
     init(debt: Debt? = nil) {
@@ -143,7 +143,7 @@ struct EditDebtView: View {
             }
             .alert(item: $presentedError) { error in
                 Alert(
-                    title: Text("Unable to save debt"),
+                    title: Text(error.title),
                     message: Text(error.message),
                     dismissButton: .default(Text("OK"))
                 )
@@ -246,7 +246,7 @@ struct EditDebtView: View {
 
             finish()
         } catch {
-            showSaveError()
+            showError(.save, error: error)
         }
     }
 
@@ -271,7 +271,7 @@ struct EditDebtView: View {
             )
             finish()
         } catch {
-            showSaveError()
+            showError(.deactivate, error: error)
         }
     }
 
@@ -284,7 +284,7 @@ struct EditDebtView: View {
             try repository.deleteDebt(id: debt.id)
             finish()
         } catch {
-            showSaveError()
+            showError(.delete, error: error)
         }
     }
 
@@ -293,15 +293,12 @@ struct EditDebtView: View {
         dismiss()
     }
 
-    private func showSaveError() {
+    private func showError(_ operation: WriteOperation, error: Error) {
         isSaving = false
-        presentedError = PresentedError(
-            message: "The debt could not be saved. Please try again."
+        presentedError = WriteErrorPresentation(
+            operation: operation,
+            subject: "debt",
+            error: error
         )
-    }
-
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
     }
 }

@@ -18,7 +18,7 @@ struct SavingsGoalSection: View {
     @State private var sliderUpperBound = 4_000.0
     @State private var isDragging = false
     @State private var isInactiveExpanded = false
-    @State private var presentedError: PresentedError?
+    @State private var presentedError: WriteErrorPresentation?
     @State private var pendingDeletion: PendingGoalDeletion?
 
     var body: some View {
@@ -56,7 +56,7 @@ struct SavingsGoalSection: View {
         }
         .alert(item: $presentedError) { error in
             Alert(
-                title: Text("Unable to update savings goal"),
+                title: Text(error.title),
                 message: Text(error.message),
                 dismissButton: .default(Text("OK"))
             )
@@ -325,8 +325,10 @@ struct SavingsGoalSection: View {
         } catch {
             synchronizeSlider()
             onPreviewTarget(nil)
-            presentedError = PresentedError(
-                message: "The savings target could not be saved. Please try again."
+            presentedError = WriteErrorPresentation(
+                operation: .update,
+                subject: "savings target",
+                error: error
             )
         }
     }
@@ -354,8 +356,10 @@ struct SavingsGoalSection: View {
             )
             projectionStore.refresh()
         } catch {
-            presentedError = PresentedError(
-                message: "The savings goal could not be reactivated. Please try again."
+            presentedError = WriteErrorPresentation(
+                operation: .reactivate,
+                subject: "savings goal",
+                error: error
             )
         }
     }
@@ -367,8 +371,10 @@ struct SavingsGoalSection: View {
             try repository.deleteSavingsGoal(id: id)
             projectionStore.refresh()
         } catch {
-            presentedError = PresentedError(
-                message: "The savings goal could not be deleted. Please try again."
+            presentedError = WriteErrorPresentation(
+                operation: .delete,
+                subject: "savings goal",
+                error: error
             )
         }
     }
@@ -379,11 +385,6 @@ struct SavingsGoalSection: View {
             currencyCode: appState.currencyCode,
             style: .compact
         )
-    }
-
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
     }
 
     private struct PendingGoalDeletion {

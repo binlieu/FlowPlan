@@ -22,7 +22,7 @@ private struct TransactionsContent: View {
     @State private var editor: TransactionEditorPresentation?
     @State private var pendingDelete: TransactionSnapshot?
     @State private var isConfirmingDelete = false
-    @State private var presentedError: PresentedError?
+    @State private var presentedError: WriteErrorPresentation?
 
     init(repository: FinanceRepository, projectionStore: ProjectionStore) {
         _viewModel = State(
@@ -105,7 +105,7 @@ private struct TransactionsContent: View {
         }
         .alert(item: $presentedError) { error in
             Alert(
-                title: Text("Unable to delete"),
+                title: Text(error.title),
                 message: Text(error.message),
                 dismissButton: .default(Text("OK"))
             )
@@ -330,8 +330,10 @@ private struct TransactionsContent: View {
             pendingDelete = nil
         } catch {
             pendingDelete = nil
-            presentedError = PresentedError(
-                message: "The transaction could not be deleted. Please try again."
+            presentedError = WriteErrorPresentation(
+                operation: .delete,
+                subject: "transaction",
+                error: error
             )
         }
     }
@@ -350,10 +352,6 @@ private struct TransactionsContent: View {
         }
     }
 
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
-    }
 }
 
 #if DEBUG

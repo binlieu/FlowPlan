@@ -17,6 +17,33 @@ enum FinanceRepositoryError: Error, Equatable {
     case settlementMustUseDedicatedMethod
 }
 
+extension FinanceRepositoryError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .duplicateAccountName:
+            return "An account with this name already exists."
+        case .emptyAccountName:
+            return "The account name is empty."
+        case .dataLoadFailed:
+            return "The saved data could not be loaded."
+        case .invalidBudgetScope:
+            return "The budget month is invalid."
+        case .invalidBillOccurrence:
+            return "The selected bill occurrence is invalid."
+        case .invalidIncomeOccurrence:
+            return "The selected income occurrence is invalid."
+        case .nonPositiveAmount:
+            return "The amount must be greater than zero."
+        case .recordNotFound:
+            return "The record no longer exists."
+        case .settlementAlreadyRecorded:
+            return "This payment or deposit was already recorded."
+        case .settlementMustUseDedicatedMethod:
+            return "This planned payment or deposit must be recorded from its matching occurrence."
+        }
+    }
+}
+
 struct StartingBalanceResolution: Equatable {
     enum Source: Equatable {
         case explicit
@@ -169,35 +196,40 @@ final class FinanceRepository {
     }
 
     func addAccount(named name: String) throws {
-        let trimmedName = AccountName.trimmed(name)
-        guard !trimmedName.isEmpty else {
-            throw FinanceRepositoryError.emptyAccountName
-        }
+        try write {
+            let trimmedName = AccountName.trimmed(name)
+            guard !trimmedName.isEmpty else {
+                throw FinanceRepositoryError.emptyAccountName
+            }
 
-        let identity = AccountName.identity(trimmedName)
-        let existingAccounts = try fetchOrThrow(FetchDescriptor<AccountEntity>())
-        guard !existingAccounts.contains(where: { AccountName.identity($0.name) == identity }) else {
-            throw FinanceRepositoryError.duplicateAccountName
-        }
+            let identity = AccountName.identity(trimmedName)
+            let existingAccounts = try fetchOrThrow(FetchDescriptor<AccountEntity>())
+            guard !existingAccounts.contains(where: {
+                AccountName.identity($0.name) == identity
+            }) else {
+                throw FinanceRepositoryError.duplicateAccountName
+            }
 
-        context.insert(AccountEntity(name: trimmedName, createdAt: now()))
-        try context.save()
+            context.insert(AccountEntity(name: trimmedName, createdAt: now()))
+        }
     }
 
     func deleteAccount(_ account: Account) throws {
-        let stored: AccountEntity = try existing(id: account.id)
-        let identity = AccountName.identity(stored.name)
-        let timestamp = now()
-        let transactions = try fetchOrThrow(FetchDescriptor<TransactionEntity>())
+        try write {
+            let stored: AccountEntity = try existing(id: account.id)
+            let identity = AccountName.identity(stored.name)
+            let timestamp = now()
+            let transactions = try fetchOrThrow(FetchDescriptor<TransactionEntity>())
 
-        // Deleting an account only removes its label. Financial transactions are never deleted.
-        for transaction in transactions where AccountName.identity(transaction.account) == identity {
-            transaction.account = ""
-            transaction.updatedAt = timestamp
+            // Deleting an account only removes its label. Financial transactions are never deleted.
+            for transaction in transactions
+                where AccountName.identity(transaction.account) == identity {
+                transaction.account = ""
+                transaction.updatedAt = timestamp
+            }
+
+            context.delete(stored)
         }
-
-        context.delete(stored)
-        try context.save()
     }
 
     func transactionCount(forAccount account: Account) -> Int {
@@ -458,256 +490,269 @@ final class FinanceRepository {
     }
 
     func addTransaction(_ transaction: TransactionEntity) throws {
-        guard
-            transaction.settlesBillID == nil,
-            transaction.settlesDebtID == nil,
-            transaction.settlesIncomeID == nil
-        else {
-            throw FinanceRepositoryError.settlementMustUseDedicatedMethod
-        }
+        try write {
+            guard
+                transaction.settlesBillID == nil,
+                transaction.settlesDebtID == nil,
+                transaction.settlesIncomeID == nil
+            else {
+                throw FinanceRepositoryError.settlementMustUseDedicatedMethod
+            }
 
-        transaction.amount = transaction.amount.positiveMagnitude
-        transaction.category = try canonicalCategory(transaction.category)
-        transaction.updatedAt = now()
-        context.insert(transaction)
-        try context.save()
+            transaction.amount = transaction.amount.positiveMagnitude
+            transaction.category = try canonicalCategory(transaction.category)
+            transaction.updatedAt = now()
+            context.insert(transaction)
+        }
     }
 
     func updateTransaction(_ transaction: TransactionEntity) throws {
-        guard
-            transaction.settlesBillID == nil,
-            transaction.settlesDebtID == nil,
-            transaction.settlesIncomeID == nil
-        else {
-            throw FinanceRepositoryError.settlementMustUseDedicatedMethod
-        }
+        try write {
+            guard
+                transaction.settlesBillID == nil,
+                transaction.settlesDebtID == nil,
+                transaction.settlesIncomeID == nil
+            else {
+                throw FinanceRepositoryError.settlementMustUseDedicatedMethod
+            }
 
-        let stored: TransactionEntity = try existing(id: transaction.id)
-        stored.date = transaction.date
-        stored.amount = transaction.amount.positiveMagnitude
-        stored.type = transaction.type
-        stored.category = try canonicalCategory(transaction.category)
-        stored.detail = transaction.detail
-        stored.note = transaction.note
-        stored.account = transaction.account
-        stored.updatedAt = now()
-        try context.save()
+            let stored: TransactionEntity = try existing(id: transaction.id)
+            stored.date = transaction.date
+            stored.amount = transaction.amount.positiveMagnitude
+            stored.type = transaction.type
+            stored.category = try canonicalCategory(transaction.category)
+            stored.detail = transaction.detail
+            stored.note = transaction.note
+            stored.account = transaction.account
+            stored.updatedAt = now()
+        }
     }
 
     func deleteTransaction(id: UUID) throws {
-        let transaction: TransactionEntity = try existing(id: id)
-        transaction.updatedAt = now()
-        context.delete(transaction)
-        try context.save()
+        try write {
+            let transaction: TransactionEntity = try existing(id: id)
+            context.delete(transaction)
+        }
     }
 
     func addIncomeSource(_ source: IncomeSourceEntity) throws {
-        source.expectedAmount = source.expectedAmount.positiveMagnitude
-        source.updatedAt = now()
-        context.insert(source)
-        try context.save()
+        try write {
+            source.expectedAmount = source.expectedAmount.positiveMagnitude
+            source.updatedAt = now()
+            context.insert(source)
+        }
     }
 
     func updateIncomeSource(_ source: IncomeSourceEntity) throws {
-        let stored: IncomeSourceEntity = try existing(id: source.id)
-        stored.name = source.name
-        stored.expectedAmount = source.expectedAmount.positiveMagnitude
-        stored.frequency = source.frequency
-        stored.anchorDate = source.anchorDate
-        stored.endDate = source.endDate
-        stored.isActive = source.isActive
-        stored.updatedAt = now()
-        try context.save()
+        try write {
+            let stored: IncomeSourceEntity = try existing(id: source.id)
+            stored.name = source.name
+            stored.expectedAmount = source.expectedAmount.positiveMagnitude
+            stored.frequency = source.frequency
+            stored.anchorDate = source.anchorDate
+            stored.endDate = source.endDate
+            stored.isActive = source.isActive
+            stored.updatedAt = now()
+        }
     }
 
     func deleteIncomeSource(id: UUID) throws {
-        let source: IncomeSourceEntity = try existing(id: id)
-        let linkedTransactions = try transactionsLinkedToIncome(id)
-        let timestamp = now()
+        try write {
+            let source: IncomeSourceEntity = try existing(id: id)
+            let linkedTransactions = try transactionsLinkedToIncome(id)
+            let timestamp = now()
 
-        for transaction in linkedTransactions {
-            transaction.settlesIncomeID = nil
-            transaction.updatedAt = timestamp
+            for transaction in linkedTransactions {
+                transaction.settlesIncomeID = nil
+                transaction.updatedAt = timestamp
+            }
+
+            context.delete(source)
         }
-
-        source.updatedAt = timestamp
-        context.delete(source)
-        try context.save()
     }
 
     func addBill(_ bill: RecurringBillEntity) throws {
-        bill.amount = bill.amount.positiveMagnitude
-        bill.category = try canonicalCategory(bill.category)
-        bill.updatedAt = now()
-        context.insert(bill)
-        try context.save()
+        try write {
+            bill.amount = bill.amount.positiveMagnitude
+            bill.category = try canonicalCategory(bill.category)
+            bill.updatedAt = now()
+            context.insert(bill)
+        }
     }
 
     func updateBill(_ bill: RecurringBillEntity) throws {
-        let stored: RecurringBillEntity = try existing(id: bill.id)
-        stored.name = bill.name
-        stored.amount = bill.amount.positiveMagnitude
-        stored.amountType = bill.amountType
-        stored.category = try canonicalCategory(bill.category)
-        stored.frequency = bill.frequency
-        stored.anchorDate = bill.anchorDate
-        stored.endDate = bill.endDate
-        stored.isAutoPay = bill.isAutoPay
-        stored.isActive = bill.isActive
-        stored.updatedAt = now()
-        try context.save()
+        try write {
+            let stored: RecurringBillEntity = try existing(id: bill.id)
+            stored.name = bill.name
+            stored.amount = bill.amount.positiveMagnitude
+            stored.amountType = bill.amountType
+            stored.category = try canonicalCategory(bill.category)
+            stored.frequency = bill.frequency
+            stored.anchorDate = bill.anchorDate
+            stored.endDate = bill.endDate
+            stored.isAutoPay = bill.isAutoPay
+            stored.isActive = bill.isActive
+            stored.updatedAt = now()
+        }
     }
 
     func deleteBill(id: UUID) throws {
-        let bill: RecurringBillEntity = try existing(id: id)
-        let linkedTransactions = try transactionsLinkedToBill(id)
-        let timestamp = now()
+        try write {
+            let bill: RecurringBillEntity = try existing(id: id)
+            let linkedTransactions = try transactionsLinkedToBill(id)
+            let timestamp = now()
 
-        for transaction in linkedTransactions {
-            transaction.settlesBillID = nil
-            transaction.updatedAt = timestamp
+            for transaction in linkedTransactions {
+                transaction.settlesBillID = nil
+                transaction.updatedAt = timestamp
+            }
+
+            context.delete(bill)
         }
-
-        bill.updatedAt = timestamp
-        context.delete(bill)
-        try context.save()
     }
 
     func addDebt(_ debt: DebtEntity) throws {
-        normalize(debt)
-        debt.category = try canonicalCategory(defaultDebtCategory(for: debt.category))
-        debt.updatedAt = now()
-        context.insert(debt)
-        try context.save()
+        try write {
+            normalize(debt)
+            debt.category = try canonicalCategory(defaultDebtCategory(for: debt.category))
+            debt.updatedAt = now()
+            context.insert(debt)
+        }
     }
 
     func updateDebt(_ debt: DebtEntity) throws {
-        let stored: DebtEntity = try existing(id: debt.id)
-        let normalizedBalance = debt.currentBalance.positiveMagnitude
-        stored.name = debt.name
-        stored.currentBalance = normalizedBalance
-        stored.originalBalance = max(stored.originalBalance, normalizedBalance)
-        stored.annualInterestRate = debt.annualInterestRate.positiveMagnitude
-        stored.monthlyPayment = debt.monthlyPayment.positiveMagnitude
-        stored.category = try canonicalCategory(defaultDebtCategory(for: debt.category))
-        stored.dueDay = min(31, max(1, debt.dueDay))
-        stored.isPaidThroughBills = debt.isPaidThroughBills
-        stored.isActive = debt.isActive
-        stored.updatedAt = now()
-        try context.save()
+        try write {
+            let stored: DebtEntity = try existing(id: debt.id)
+            let normalizedBalance = debt.currentBalance.positiveMagnitude
+            stored.name = debt.name
+            stored.currentBalance = normalizedBalance
+            stored.originalBalance = max(stored.originalBalance, normalizedBalance)
+            stored.annualInterestRate = debt.annualInterestRate.positiveMagnitude
+            stored.monthlyPayment = debt.monthlyPayment.positiveMagnitude
+            stored.category = try canonicalCategory(defaultDebtCategory(for: debt.category))
+            stored.dueDay = min(31, max(1, debt.dueDay))
+            stored.isPaidThroughBills = debt.isPaidThroughBills
+            stored.isActive = debt.isActive
+            stored.updatedAt = now()
+        }
     }
 
     func deleteDebt(id: UUID) throws {
-        let debt: DebtEntity = try existing(id: id)
-        let linkedTransactions = try transactionsLinkedToDebt(id)
-        let timestamp = now()
+        try write {
+            let debt: DebtEntity = try existing(id: id)
+            let linkedTransactions = try transactionsLinkedToDebt(id)
+            let timestamp = now()
 
-        for transaction in linkedTransactions {
-            transaction.settlesDebtID = nil
-            transaction.updatedAt = timestamp
+            for transaction in linkedTransactions {
+                transaction.settlesDebtID = nil
+                transaction.updatedAt = timestamp
+            }
+
+            context.delete(debt)
         }
-
-        debt.updatedAt = timestamp
-        context.delete(debt)
-        try context.save()
     }
 
     func addBudget(_ budget: BudgetEntity) throws {
-        try validateScope(year: budget.scopeYear, month: budget.scopeMonth)
-        budget.monthlyLimit = budget.monthlyLimit.positiveMagnitude
-        budget.category = try canonicalCategory(budget.category)
-        budget.updatedAt = now()
-        context.insert(budget)
-        try context.save()
+        try write {
+            try validateScope(year: budget.scopeYear, month: budget.scopeMonth)
+            budget.monthlyLimit = budget.monthlyLimit.positiveMagnitude
+            budget.category = try canonicalCategory(budget.category)
+            budget.updatedAt = now()
+            context.insert(budget)
+        }
     }
 
     func updateBudget(_ budget: BudgetEntity) throws {
-        try validateScope(year: budget.scopeYear, month: budget.scopeMonth)
-        let stored: BudgetEntity = try existing(id: budget.id)
-        stored.category = try canonicalCategory(budget.category)
-        stored.monthlyLimit = budget.monthlyLimit.positiveMagnitude
-        stored.scopeYear = budget.scopeYear
-        stored.scopeMonth = budget.scopeMonth
-        stored.updatedAt = now()
-        try context.save()
+        try write {
+            try validateScope(year: budget.scopeYear, month: budget.scopeMonth)
+            let stored: BudgetEntity = try existing(id: budget.id)
+            stored.category = try canonicalCategory(budget.category)
+            stored.monthlyLimit = budget.monthlyLimit.positiveMagnitude
+            stored.scopeYear = budget.scopeYear
+            stored.scopeMonth = budget.scopeMonth
+            stored.updatedAt = now()
+        }
     }
 
     func deleteBudget(id: UUID) throws {
-        let budget: BudgetEntity = try existing(id: id)
-        budget.updatedAt = now()
-        context.delete(budget)
-        try context.save()
+        try write {
+            let budget: BudgetEntity = try existing(id: id)
+            context.delete(budget)
+        }
     }
 
     func addSavingsGoal(_ goal: SavingsGoalEntity) throws {
-        normalize(goal)
-        goal.updatedAt = now()
-        context.insert(goal)
-        try context.save()
+        try write {
+            normalize(goal)
+            goal.updatedAt = now()
+            context.insert(goal)
+        }
     }
 
     func updateSavingsGoal(_ goal: SavingsGoalEntity) throws {
-        let stored: SavingsGoalEntity = try existing(id: goal.id)
-        stored.name = goal.name
-        stored.targetAmount = goal.targetAmount.positiveMagnitude
-        stored.monthlyTarget = goal.monthlyTarget.positiveMagnitude
-        stored.currentAmount = goal.currentAmount.positiveMagnitude
-        stored.targetDate = goal.targetDate
-        stored.isActive = goal.isActive
-        stored.updatedAt = now()
-        try context.save()
+        try write {
+            let stored: SavingsGoalEntity = try existing(id: goal.id)
+            stored.name = goal.name
+            stored.targetAmount = goal.targetAmount.positiveMagnitude
+            stored.monthlyTarget = goal.monthlyTarget.positiveMagnitude
+            stored.currentAmount = goal.currentAmount.positiveMagnitude
+            stored.targetDate = goal.targetDate
+            stored.isActive = goal.isActive
+            stored.updatedAt = now()
+        }
     }
 
     func deleteSavingsGoal(id: UUID) throws {
-        let goal: SavingsGoalEntity = try existing(id: id)
-        goal.updatedAt = now()
-        context.delete(goal)
-        try context.save()
+        try write {
+            let goal: SavingsGoalEntity = try existing(id: id)
+            context.delete(goal)
+        }
     }
 
     func setStartingBalance(_ balance: Decimal, for month: MonthKey) throws {
-        let year = month.year
-        let monthNumber = month.month
-        let predicate = #Predicate<MonthSettingsEntity> { settings in
-            settings.year == year && settings.month == monthNumber
-        }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
-        let timestamp = now()
+        try write {
+            let year = month.year
+            let monthNumber = month.month
+            let predicate = #Predicate<MonthSettingsEntity> { settings in
+                settings.year == year && settings.month == monthNumber
+            }
+            var descriptor = FetchDescriptor(predicate: predicate)
+            descriptor.fetchLimit = 1
+            let timestamp = now()
 
-        if let settings = try context.fetch(descriptor).first {
-            settings.startingBalance = balance
-            settings.updatedAt = timestamp
-        } else {
-            context.insert(
-                MonthSettingsEntity(
-                    year: year,
-                    month: monthNumber,
-                    startingBalance: balance,
-                    createdAt: timestamp,
-                    updatedAt: timestamp
+            if let settings = try context.fetch(descriptor).first {
+                settings.startingBalance = balance
+                settings.updatedAt = timestamp
+            } else {
+                context.insert(
+                    MonthSettingsEntity(
+                        year: year,
+                        month: monthNumber,
+                        startingBalance: balance,
+                        createdAt: timestamp,
+                        updatedAt: timestamp
+                    )
                 )
-            )
+            }
         }
-
-        try context.save()
     }
 
     func deleteStartingBalance(for month: MonthKey) throws {
-        let year = month.year
-        let monthNumber = month.month
-        let predicate = #Predicate<MonthSettingsEntity> { settings in
-            settings.year == year && settings.month == monthNumber
-        }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
+        try write {
+            let year = month.year
+            let monthNumber = month.month
+            let predicate = #Predicate<MonthSettingsEntity> { settings in
+                settings.year == year && settings.month == monthNumber
+            }
+            var descriptor = FetchDescriptor(predicate: predicate)
+            descriptor.fetchLimit = 1
 
-        guard let settings = try fetchOrThrow(descriptor).first else {
-            return
-        }
+            guard let settings = try fetchOrThrow(descriptor).first else {
+                return
+            }
 
-        context.delete(settings)
-        try context.save()
+            context.delete(settings)
+        }
     }
 
     func markBillPaid(
@@ -717,45 +762,46 @@ final class FinanceRepository {
         on date: Date,
         account: String = ""
     ) throws {
-        guard amount > .zero else {
-            throw FinanceRepositoryError.nonPositiveAmount
-        }
+        try write {
+            guard amount > .zero else {
+                throw FinanceRepositoryError.nonPositiveAmount
+            }
 
-        let bill: RecurringBillEntity = try existing(id: billID)
-        let occurrenceMonth = MonthKey(date: occurrence, calendar: calendar)
-        guard MonthKey(date: date, calendar: calendar) == occurrenceMonth else {
-            throw FinanceRepositoryError.invalidBillOccurrence
-        }
+            let bill: RecurringBillEntity = try existing(id: billID)
+            let occurrenceMonth = MonthKey(date: occurrence, calendar: calendar)
+            guard MonthKey(date: date, calendar: calendar) == occurrenceMonth else {
+                throw FinanceRepositoryError.invalidBillOccurrence
+            }
 
-        let occurrences = bill.toDomain().recurrence.occurrences(
-            in: occurrenceMonth,
-            calendar: calendar
-        )
-        guard let occurrenceIndex = occurrences.firstIndex(of: occurrence) else {
-            throw FinanceRepositoryError.invalidBillOccurrence
-        }
+            let occurrences = bill.toDomain().recurrence.occurrences(
+                in: occurrenceMonth,
+                calendar: calendar
+            )
+            guard let occurrenceIndex = occurrences.firstIndex(of: occurrence) else {
+                throw FinanceRepositoryError.invalidBillOccurrence
+            }
 
-        let settlementCount = try transactionValues(in: occurrenceMonth).count {
-            $0.settlesBillID == billID
-        }
-        guard settlementCount == occurrenceIndex else {
-            throw FinanceRepositoryError.settlementAlreadyRecorded
-        }
+            let settlementCount = try transactionValues(in: occurrenceMonth).count {
+                $0.settlesBillID == billID
+            }
+            guard settlementCount == occurrenceIndex else {
+                throw FinanceRepositoryError.settlementAlreadyRecorded
+            }
 
-        let timestamp = now()
-        let transaction = TransactionEntity(
-            date: date,
-            amount: amount,
-            type: .expense,
-            category: try canonicalCategory(bill.category),
-            detail: bill.name,
-            account: AccountName.trimmed(account),
-            settlesBillID: billID,
-            createdAt: timestamp,
-            updatedAt: timestamp
-        )
-        context.insert(transaction)
-        try context.save()
+            let timestamp = now()
+            let transaction = TransactionEntity(
+                date: date,
+                amount: amount,
+                type: .expense,
+                category: try canonicalCategory(bill.category),
+                detail: bill.name,
+                account: AccountName.trimmed(account),
+                settlesBillID: billID,
+                createdAt: timestamp,
+                updatedAt: timestamp
+            )
+            context.insert(transaction)
+        }
     }
 
     func markDebtPaymentMade(
@@ -764,39 +810,40 @@ final class FinanceRepository {
         on date: Date,
         account: String = ""
     ) throws {
-        guard amount > .zero else {
-            throw FinanceRepositoryError.nonPositiveAmount
-        }
+        try write {
+            guard amount > .zero else {
+                throw FinanceRepositoryError.nonPositiveAmount
+            }
 
-        let debt: DebtEntity = try existing(id: debtID)
-        let month = MonthKey(date: date, calendar: calendar)
-        let settlementCount = try transactionValues(in: month).count {
-            $0.settlesDebtID == debtID
-        }
-        guard settlementCount == 0 else {
-            throw FinanceRepositoryError.settlementAlreadyRecorded
-        }
+            let debt: DebtEntity = try existing(id: debtID)
+            let month = MonthKey(date: date, calendar: calendar)
+            let settlementCount = try transactionValues(in: month).count {
+                $0.settlesDebtID == debtID
+            }
+            guard settlementCount == 0 else {
+                throw FinanceRepositoryError.settlementAlreadyRecorded
+            }
 
-        let timestamp = now()
-        let transaction = TransactionEntity(
-            date: date,
-            amount: amount,
-            type: .expense,
-            category: try canonicalCategory(debt.category),
-            detail: debt.name,
-            account: AccountName.trimmed(account),
-            settlesDebtID: debtID,
-            createdAt: timestamp,
-            updatedAt: timestamp
-        )
+            let timestamp = now()
+            let transaction = TransactionEntity(
+                date: date,
+                amount: amount,
+                type: .expense,
+                category: try canonicalCategory(debt.category),
+                detail: debt.name,
+                account: AccountName.trimmed(account),
+                settlesDebtID: debtID,
+                createdAt: timestamp,
+                updatedAt: timestamp
+            )
 
-        debt.currentBalance = DebtSchedule().remainingBalance(
-            afterPaymentOf: amount,
-            for: debt.toDomain()
-        )
-        debt.updatedAt = timestamp
-        context.insert(transaction)
-        try context.save()
+            debt.currentBalance = DebtSchedule().remainingBalance(
+                afterPaymentOf: amount,
+                for: debt.toDomain()
+            )
+            debt.updatedAt = timestamp
+            context.insert(transaction)
+        }
     }
 
     func markIncomeReceived(
@@ -805,27 +852,33 @@ final class FinanceRepository {
         on date: Date,
         account: String = ""
     ) throws {
-        guard amount > .zero else {
-            throw FinanceRepositoryError.nonPositiveAmount
-        }
+        try write {
+            guard amount > .zero else {
+                throw FinanceRepositoryError.nonPositiveAmount
+            }
 
-        let source: IncomeSourceEntity = try existing(id: incomeID)
-        let month = MonthKey(date: date, calendar: calendar)
-        let occurrences = source.toDomain().recurrence.occurrences(in: month, calendar: calendar)
-        let settlementCount = try transactionValues(in: month).count {
-            $0.settlesIncomeID == incomeID
-        }
-        guard settlementCount < occurrences.count else {
-            throw FinanceRepositoryError.settlementAlreadyRecorded
-        }
+            let source: IncomeSourceEntity = try existing(id: incomeID)
+            let month = MonthKey(date: date, calendar: calendar)
+            let occurrences = source.toDomain().recurrence.occurrences(
+                in: month,
+                calendar: calendar
+            )
+            let settlementCount = try transactionValues(in: month).count {
+                $0.settlesIncomeID == incomeID
+            }
+            guard settlementCount < occurrences.count else {
+                throw FinanceRepositoryError.settlementAlreadyRecorded
+            }
 
-        try markIncomeReceived(
-            incomeID: incomeID,
-            occurrence: occurrences[settlementCount],
-            amount: amount,
-            on: date,
-            account: account
-        )
+            try recordIncomeReceived(
+                source: source,
+                incomeID: incomeID,
+                occurrence: occurrences[settlementCount],
+                amount: amount,
+                on: date,
+                account: account
+            )
+        }
     }
 
     func markIncomeReceived(
@@ -835,11 +888,31 @@ final class FinanceRepository {
         on date: Date,
         account: String = ""
     ) throws {
+        try write {
+            let source: IncomeSourceEntity = try existing(id: incomeID)
+            try recordIncomeReceived(
+                source: source,
+                incomeID: incomeID,
+                occurrence: occurrence,
+                amount: amount,
+                on: date,
+                account: account
+            )
+        }
+    }
+
+    private func recordIncomeReceived(
+        source: IncomeSourceEntity,
+        incomeID: UUID,
+        occurrence: Date,
+        amount: Decimal,
+        on date: Date,
+        account: String
+    ) throws {
         guard amount > .zero else {
             throw FinanceRepositoryError.nonPositiveAmount
         }
 
-        let source: IncomeSourceEntity = try existing(id: incomeID)
         let occurrenceMonth = MonthKey(date: occurrence, calendar: calendar)
         guard MonthKey(date: date, calendar: calendar) == occurrenceMonth else {
             throw FinanceRepositoryError.invalidIncomeOccurrence
@@ -873,7 +946,6 @@ final class FinanceRepository {
             updatedAt: timestamp
         )
         context.insert(transaction)
-        try context.save()
     }
 
     func add(_ transaction: TransactionEntity) throws {
@@ -1007,33 +1079,29 @@ final class FinanceRepository {
     }
 
     private func seedAccountsFromTransactions() throws {
-        let transactions = try fetchOrThrow(
-            FetchDescriptor<TransactionEntity>(
-                sortBy: [SortDescriptor(\TransactionEntity.createdAt)]
-            )
-        )
-        let accounts = try fetchOrThrow(FetchDescriptor<AccountEntity>())
-        var knownIdentities = Set(accounts.map { AccountName.identity($0.name) })
-        var insertedAccount = false
-
-        for transaction in transactions {
-            let name = AccountName.trimmed(transaction.account)
-            let identity = AccountName.identity(name)
-            guard !identity.isEmpty, knownIdentities.insert(identity).inserted else {
-                continue
-            }
-
-            context.insert(
-                AccountEntity(
-                    name: name,
-                    createdAt: transaction.createdAt
+        try write {
+            let transactions = try fetchOrThrow(
+                FetchDescriptor<TransactionEntity>(
+                    sortBy: [SortDescriptor(\TransactionEntity.createdAt)]
                 )
             )
-            insertedAccount = true
-        }
+            let accounts = try fetchOrThrow(FetchDescriptor<AccountEntity>())
+            var knownIdentities = Set(accounts.map { AccountName.identity($0.name) })
 
-        if insertedAccount {
-            try context.save()
+            for transaction in transactions {
+                let name = AccountName.trimmed(transaction.account)
+                let identity = AccountName.identity(name)
+                guard !identity.isEmpty, knownIdentities.insert(identity).inserted else {
+                    continue
+                }
+
+                context.insert(
+                    AccountEntity(
+                        name: name,
+                        createdAt: transaction.createdAt
+                    )
+                )
+            }
         }
     }
 
@@ -1091,6 +1159,24 @@ final class FinanceRepository {
         } catch {
             Self.logger.error("A repository read failed.")
             return fallback
+        }
+    }
+
+    /// Runs a mutation and commits it. On any failure the context is rolled back before the error
+    /// is rethrown, so a failed write cannot leave mutated objects behind. Without this, one
+    /// failure makes every later save() fail, because save() commits the whole context.
+    private func write<Value>(_ body: () throws -> Value) throws -> Value {
+        do {
+            let result = try body()
+            try context.save()
+            return result
+        } catch {
+            let underlyingError = error as NSError
+            Self.logger.error(
+                "Repository write failed. Error domain: \(underlyingError.domain, privacy: .public); code: \(underlyingError.code)."
+            )
+            context.rollback()
+            throw error
         }
     }
 
