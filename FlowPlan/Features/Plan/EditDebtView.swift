@@ -125,7 +125,7 @@ struct EditDebtView: View {
                             Image(systemName: "exclamationmark.triangle")
                         }
                         .font(Typography.supporting)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Palette.warning)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityLabel(
                             "Debt payment warning. \(OrphanedDebtDetector.warningMessage)"

@@ -189,7 +189,7 @@ struct AddTransactionView: View {
         } footer: {
             if !hasValidAmount {
                 Text("Amount must be greater than zero.")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Palette.negative)
             }
         }
         .designSystemRows()
@@ -304,7 +304,7 @@ struct AddTransactionView: View {
         } footer: {
             if trimmedCategory.isEmpty {
                 Text("Select a category.")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Palette.negative)
             }
         }
         .designSystemRows()

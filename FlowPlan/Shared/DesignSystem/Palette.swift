@@ -13,4 +13,8 @@ enum Palette {
     static let accentMuted = Color("accentMuted")
     static let accentLight = Color("accentLight")
     static let hairline = Color("hairline")
+    static let positive = Color("positive")
+    static let negative = Color("negative")
+    static let warning = Color("warning")
+    static let info = Color("info")
 }

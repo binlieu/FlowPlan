@@ -93,7 +93,7 @@ struct TransactionRow: View {
             amount: displayedAmount,
             style: .secondary,
             signed: transaction.type != .transfer,
-            emphasiseNegative: true
+            color: amountColor
         )
     }
 
@@ -122,13 +122,59 @@ struct TransactionRow: View {
     private var iconColor: Color {
         switch transaction.type {
         case .income:
-            return .green
+            return Palette.positive
         case .expense:
-            return .orange
+            return Palette.inkSecondary
         case .savings:
-            return .blue
+            return Palette.info
         case .transfer:
-            return .purple
+            return Palette.info
+        }
+    }
+
+    private var amountColor: Color {
+        switch transaction.type {
+        case .income:
+            return Palette.positive
+        case .expense, .savings, .transfer:
+            return Palette.ink
         }
     }
 }
+
+#if DEBUG
+private struct TransactionTypesPreview: View {
+    var body: some View {
+        List {
+            ForEach(TransactionType.allCases, id: \.rawValue) { type in
+                TransactionRow(
+                    transaction: TransactionSnapshot(
+                        id: UUID(),
+                        date: FlowPlanPreviewData.referenceDate,
+                        amount: 125,
+                        type: type,
+                        category: type.displayName,
+                        detail: "\(type.displayName) example"
+                    ),
+                    account: "Everyday"
+                )
+                .designSystemRows()
+            }
+        }
+        .listStyle(.insetGrouped)
+        .designSystemList()
+    }
+}
+
+#Preview("Transaction Types — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        TransactionTypesPreview()
+    }
+}
+
+#Preview("Transaction Types — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
+        TransactionTypesPreview()
+    }
+}
+#endif

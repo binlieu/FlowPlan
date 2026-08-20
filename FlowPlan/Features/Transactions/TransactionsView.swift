@@ -39,6 +39,10 @@ private struct TransactionsContent: View {
             DesignSystemScreenHeader("Activity")
                 .designSystemScreenHeaderRow()
 
+            activityToolbar
+
+            activitySearchField
+
             MonthNavigationBar()
                 .designSystemRows()
 
@@ -68,23 +72,7 @@ private struct TransactionsContent: View {
         .designSystemList()
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .searchable(
-            text: $viewModel.searchText,
-            placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Description or category"
-        )
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                filterMenu
-
-                Button {
-                    editor = TransactionEditorPresentation()
-                } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel("Add transaction")
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $editor) { editor in
             AddTransactionView(
                 transaction: editor.transaction,
@@ -197,7 +185,7 @@ private struct TransactionsContent: View {
             amount: section.netTotal,
             style: .secondary,
             signed: true,
-            emphasiseNegative: true
+            color: Palette.ink
         )
     }
 
@@ -272,7 +260,7 @@ private struct TransactionsContent: View {
 
             if viewModel.filter.isActive {
                 Divider()
-                Button("Clear Filters", role: .destructive) {
+                Button("Clear Filters") {
                     viewModel.clearFilters()
                 }
             }
@@ -284,6 +272,64 @@ private struct TransactionsContent: View {
             )
         }
         .accessibilityLabel("Filter transactions")
+    }
+
+    private var activityToolbar: some View {
+        HStack(spacing: 8) {
+            Spacer(minLength: 0)
+
+            filterMenu
+                .frame(minWidth: 44, minHeight: 44)
+
+            Button {
+                editor = TransactionEditorPresentation()
+            } label: {
+                Image(systemName: "plus")
+                    .frame(minWidth: 44, minHeight: 44)
+            }
+            .accessibilityLabel("Add transaction")
+        }
+        .font(.headline)
+        .foregroundStyle(Palette.accent)
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 12))
+        .listRowBackground(Palette.background)
+        .listRowSeparator(.hidden)
+    }
+
+    private var activitySearchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Palette.inkSecondary)
+                .accessibilityHidden(true)
+
+            TextField("Description or category", text: $viewModel.searchText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .foregroundStyle(Palette.ink)
+                .accessibilityLabel("Search by description or category")
+
+            if !viewModel.searchText.isEmpty {
+                Button {
+                    viewModel.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Palette.inkSecondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 44)
+        .background(Palette.surface)
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Palette.hairline, lineWidth: 1)
+        }
+        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 16, trailing: 20))
+        .listRowBackground(Palette.background)
+        .listRowSeparator(.hidden)
     }
 
     private var activeFilterChips: some View {

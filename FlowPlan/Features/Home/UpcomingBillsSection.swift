@@ -105,7 +105,7 @@ struct UpcomingBillsSection: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "exclamationmark.circle")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Palette.warning)
                     .accessibilityHidden(true)
 
                 Text(promptMessage(for: occurrences))

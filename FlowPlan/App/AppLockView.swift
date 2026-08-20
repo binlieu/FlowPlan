@@ -25,7 +25,7 @@ struct AppLockView: View {
             if let error = gate.lastError {
                 Text(error.message)
                     .font(.footnote)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Palette.negative)
                     .multilineTextAlignment(.center)
                     .accessibilityLabel("Authentication error: \(error.message)")
             }
