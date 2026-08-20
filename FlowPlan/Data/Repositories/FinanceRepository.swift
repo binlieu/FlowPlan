@@ -15,13 +15,28 @@ enum FinanceRepositoryError: Error, Equatable {
     case settlementMustUseDedicatedMethod
 }
 
+struct StartingBalanceResolution: Equatable {
+    enum Source: Equatable {
+        case explicit
+        case rolledOver(from: MonthKey)
+        case unset
+    }
+
+    let amount: Decimal
+    let source: Source
+}
+
 @Observable
 @MainActor
 final class FinanceRepository {
     @ObservationIgnored private let context: ModelContext
     @ObservationIgnored private let calendar: Calendar
+    @ObservationIgnored private let userDefaults: UserDefaults
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private let shouldFailReads: () -> Bool
+
+    private static let carryBalanceForwardKey = "carryBalanceForward"
+    private static let rolloverMonthLimit = 24
 
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "FlowPlan",
@@ -31,11 +46,13 @@ final class FinanceRepository {
     init(
         context: ModelContext,
         calendar: Calendar = .current,
+        userDefaults: UserDefaults = .standard,
         now: @escaping () -> Date = Date.init,
         shouldFailReads: @escaping () -> Bool = { false }
     ) {
         self.context = context
         self.calendar = calendar
+        self.userDefaults = userDefaults
         self.now = now
         self.shouldFailReads = shouldFailReads
     }
@@ -186,20 +203,113 @@ final class FinanceRepository {
     }
 
     func startingBalance(for month: MonthKey) -> Decimal {
-        read(or: .zero) {
-            try startingBalanceValue(for: month)
+        startingBalanceResolution(for: month).amount
+    }
+
+    func startingBalanceResolution(for month: MonthKey) -> StartingBalanceResolution {
+        read(or: StartingBalanceResolution(amount: .zero, source: .unset)) {
+            try startingBalanceResolutionValue(for: month)
         }
     }
 
     private func startingBalanceValue(for month: MonthKey) throws -> Decimal {
-        let year = month.year
-        let monthNumber = month.month
+        try startingBalanceResolutionValue(for: month).amount
+    }
+
+    private func startingBalanceResolutionValue(
+        for month: MonthKey
+    ) throws -> StartingBalanceResolution {
+        let earliestMonth = month.adding(months: -Self.rolloverMonthLimit)
+        let earliestYear = earliestMonth.year
+        let earliestMonthNumber = earliestMonth.month
+        let targetYear = month.year
+        let targetMonthNumber = month.month
         let predicate = #Predicate<MonthSettingsEntity> { settings in
-            settings.year == year && settings.month == monthNumber
+            (settings.year > earliestYear
+                || (settings.year == earliestYear && settings.month >= earliestMonthNumber))
+                && (settings.year < targetYear
+                    || (settings.year == targetYear && settings.month <= targetMonthNumber))
         }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
-        return try fetchOrThrow(descriptor).first?.startingBalance ?? .zero
+        let settings = try fetchOrThrow(FetchDescriptor(predicate: predicate))
+        let settingsByMonth = Dictionary(
+            uniqueKeysWithValues: settings.map { entity in
+                let value = entity.toDomain()
+                return (value.month, value.startingBalance)
+            }
+        )
+
+        if let explicitBalance = settingsByMonth[month] {
+            return StartingBalanceResolution(amount: explicitBalance, source: .explicit)
+        }
+
+        guard carryBalanceForward else {
+            return StartingBalanceResolution(amount: .zero, source: .unset)
+        }
+
+        let anchorMonth = (1...Self.rolloverMonthLimit)
+            .lazy
+            .map { month.adding(months: -$0) }
+            .first { settingsByMonth[$0] != nil }
+
+        guard
+            let anchorMonth,
+            let anchorBalance = settingsByMonth[anchorMonth]
+        else {
+            return StartingBalanceResolution(
+                amount: .zero,
+                source: .rolledOver(from: month.previous)
+            )
+        }
+
+        let startDate = anchorMonth.startDate(calendar: calendar)
+        let endDate = month.startDate(calendar: calendar)
+        let transactionPredicate = #Predicate<TransactionEntity> { transaction in
+            transaction.date >= startDate && transaction.date < endDate
+        }
+        let transactions = try fetchOrThrow(
+            FetchDescriptor(predicate: transactionPredicate)
+        )
+        let transactionsByMonth = Dictionary(grouping: transactions.map { $0.toDomain() }) {
+            MonthKey(date: $0.date, calendar: calendar)
+        }
+
+        let engine = MonthlyProjectionEngine()
+        var resolvedBalances = [anchorMonth: anchorBalance]
+        var resolvedMonth = anchorMonth
+
+        while resolvedMonth < month {
+            guard let openingBalance = resolvedBalances[resolvedMonth] else {
+                throw FinanceRepositoryError.dataLoadFailed
+            }
+
+            let projection = engine.project(
+                ProjectionInput(
+                    month: resolvedMonth,
+                    referenceDate: resolvedMonth.endDate(calendar: calendar),
+                    startingBalance: openingBalance,
+                    transactions: transactionsByMonth[resolvedMonth, default: []],
+                    calendar: calendar
+                )
+            )
+
+            // Carry actual closing cash only. currentAvailableBalance already subtracts completed
+            // savings, which must stay excluded because savings are not spendable cash.
+            resolvedBalances[resolvedMonth.next] = projection.currentAvailableBalance
+            resolvedMonth = resolvedMonth.next
+        }
+
+        return StartingBalanceResolution(
+            amount: resolvedBalances[month] ?? .zero,
+            source: .rolledOver(from: month.previous)
+        )
+    }
+
+    private var carryBalanceForward: Bool {
+        guard userDefaults.object(forKey: Self.carryBalanceForwardKey) != nil else {
+            return true
+        }
+
+        return userDefaults.bool(forKey: Self.carryBalanceForwardKey)
     }
 
     func addTransaction(_ transaction: TransactionEntity) throws {
@@ -388,6 +498,23 @@ final class FinanceRepository {
             )
         }
 
+        try context.save()
+    }
+
+    func deleteStartingBalance(for month: MonthKey) throws {
+        let year = month.year
+        let monthNumber = month.month
+        let predicate = #Predicate<MonthSettingsEntity> { settings in
+            settings.year == year && settings.month == monthNumber
+        }
+        var descriptor = FetchDescriptor(predicate: predicate)
+        descriptor.fetchLimit = 1
+
+        guard let settings = try fetchOrThrow(descriptor).first else {
+            return
+        }
+
+        context.delete(settings)
         try context.save()
     }
 

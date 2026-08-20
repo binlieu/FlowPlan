@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(ProjectionStore.self) private var projectionStore
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage("autoLockInterval") private var autoLockInterval: AutoLockInterval = .immediately
@@ -19,6 +20,9 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: appState.carryBalanceForward) {
+            projectionStore.refresh()
+        }
     }
 
     private var profileSection: some View {
@@ -45,6 +49,16 @@ struct SettingsView: View {
             }
 
             Toggle("Haptic feedback", isOn: binding(\.isHapticsEnabled))
+
+            Toggle(isOn: binding(\.carryBalanceForward)) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Carry balance forward")
+                    Text("Each month starts with what was left at the end of the previous one.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Toggle("Notifications", isOn: $notificationsEnabled)
         } header: {
             Text("Preferences")

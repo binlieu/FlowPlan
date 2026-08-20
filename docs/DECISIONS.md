@@ -214,3 +214,20 @@ formatter change.
 **Consequence.** Follow-up work must introduce and test transaction semantics across every
 repository mutation before closing QA 1.5 or 1.6. Chart geometry stays unchanged, the slider is
 bounded safely, and the deferred QA findings remain listed in `PROJECT_STATUS.md`.
+
+---
+
+## D-017 — Unset months roll forward actual closing cash
+**Decision.** A month without an explicit starting-balance row derives its opening balance from
+the previous month's `currentAvailableBalance`. Resolution walks back no more than 24 months to
+the latest explicit balance and computes forward in memory. The preference is enabled by default;
+disabling it restores explicit-or-zero behavior.
+
+**Why.** Cash in a real account does not disappear at a month boundary. The actual closing cash
+figure includes received income and paid expenses while excluding money moved to savings. The
+projected month-end figure also includes events that have not happened, so carrying that forecast
+would misstate cash and compound the error across months.
+
+**Consequence.** Explicit values always win. Derived values are never persisted, so changing an
+earlier explicit balance or actual transaction automatically updates every later derived month.
+The UI labels derived values and lets the user delete an explicit override to resume rollover.
