@@ -56,6 +56,7 @@ final class TransactionEntity {
     var settlesBillID: UUID?
     var settlesDebtID: UUID?
     var settlesIncomeID: UUID?
+    var isAutoRecorded: Bool = false
     var createdAt: Date
     var updatedAt: Date
 
@@ -76,6 +77,7 @@ final class TransactionEntity {
         settlesBillID: UUID? = nil,
         settlesDebtID: UUID? = nil,
         settlesIncomeID: UUID? = nil,
+        isAutoRecorded: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -90,6 +92,7 @@ final class TransactionEntity {
         self.settlesBillID = settlesBillID
         self.settlesDebtID = settlesDebtID
         self.settlesIncomeID = settlesIncomeID
+        self.isAutoRecorded = isAutoRecorded
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -112,6 +115,7 @@ final class TransactionEntity {
         settlesBillID = domain.settlesBillID
         settlesDebtID = domain.settlesDebtID
         settlesIncomeID = domain.settlesIncomeID
+        isAutoRecorded = domain.isAutoRecorded
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -126,7 +130,8 @@ final class TransactionEntity {
             detail: detail,
             settlesBillID: settlesBillID,
             settlesDebtID: settlesDebtID,
-            settlesIncomeID: settlesIncomeID
+            settlesIncomeID: settlesIncomeID,
+            isAutoRecorded: isAutoRecorded
         )
     }
 }
@@ -306,6 +311,8 @@ final class DebtEntity {
     var annualInterestRate: Decimal
     var monthlyPayment: Decimal
     var category: String
+    var firstPaymentYear: Int? = nil
+    var firstPaymentMonthNumber: Int? = nil
     var dueDay: Int = 1
     var isAutoPay: Bool = false
     var isPaidThroughBills: Bool
@@ -321,6 +328,7 @@ final class DebtEntity {
         annualInterestRate: Decimal,
         monthlyPayment: Decimal,
         category: String,
+        firstPaymentMonth: MonthKey? = nil,
         dueDay: Int = 1,
         isAutoPay: Bool = false,
         isPaidThroughBills: Bool,
@@ -339,6 +347,8 @@ final class DebtEntity {
         self.annualInterestRate = annualInterestRate.positiveMagnitude
         self.monthlyPayment = monthlyPayment.positiveMagnitude
         self.category = category
+        firstPaymentYear = firstPaymentMonth?.year
+        firstPaymentMonthNumber = firstPaymentMonth?.month
         self.dueDay = min(31, max(1, dueDay))
         self.isAutoPay = isAutoPay
         self.isPaidThroughBills = isPaidThroughBills
@@ -364,6 +374,8 @@ final class DebtEntity {
         annualInterestRate = domain.annualInterestRate.positiveMagnitude
         monthlyPayment = domain.monthlyPayment.positiveMagnitude
         category = domain.category
+        firstPaymentYear = domain.firstPaymentMonth?.year
+        firstPaymentMonthNumber = domain.firstPaymentMonth?.month
         dueDay = domain.dueDay
         isAutoPay = domain.isAutoPay
         isPaidThroughBills = domain.isPaidThroughBills
@@ -380,11 +392,54 @@ final class DebtEntity {
             annualInterestRate: annualInterestRate.positiveMagnitude,
             monthlyPayment: monthlyPayment.positiveMagnitude,
             category: category,
+            firstPaymentMonth: firstPaymentMonth,
             dueDay: dueDay,
             isAutoPay: isAutoPay,
             isPaidThroughBills: isPaidThroughBills,
             isActive: isActive
         )
+    }
+
+    var firstPaymentMonth: MonthKey? {
+        guard let firstPaymentYear, let firstPaymentMonthNumber else {
+            return nil
+        }
+
+        return MonthKey(year: firstPaymentYear, month: firstPaymentMonthNumber)
+    }
+}
+
+enum AutoRecordExclusionKind: String {
+    case bill
+    case debt
+}
+
+@Model
+final class AutoRecordExclusionEntity {
+    #Unique<AutoRecordExclusionEntity>([\.id])
+
+    var id: UUID
+    var kindRaw: String
+    var sourceID: UUID
+    var occurrenceDate: Date
+    var createdAt: Date
+
+    var kind: AutoRecordExclusionKind? {
+        AutoRecordExclusionKind(rawValue: kindRaw)
+    }
+
+    init(
+        id: UUID = UUID(),
+        kind: AutoRecordExclusionKind,
+        sourceID: UUID,
+        occurrenceDate: Date,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        kindRaw = kind.rawValue
+        self.sourceID = sourceID
+        self.occurrenceDate = occurrenceDate
+        self.createdAt = createdAt
     }
 }
 

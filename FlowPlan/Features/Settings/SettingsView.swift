@@ -23,6 +23,9 @@ struct SettingsView: View {
         .onChange(of: appState.carryBalanceForward) {
             projectionStore.refresh()
         }
+        .onChange(of: appState.recordAutopayAutomatically) {
+            projectionStore.refresh()
+        }
     }
 
     private var profileSection: some View {
@@ -49,6 +52,15 @@ struct SettingsView: View {
             }
 
             Toggle("Haptic feedback", isOn: binding(\.isHapticsEnabled))
+
+            Toggle(isOn: binding(\.recordAutopayAutomatically)) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Record auto-pay automatically")
+                    Text("Auto-pay bills and debts are recorded as spent once their due date passes.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             Toggle(isOn: binding(\.carryBalanceForward)) {
                 VStack(alignment: .leading, spacing: 3) {

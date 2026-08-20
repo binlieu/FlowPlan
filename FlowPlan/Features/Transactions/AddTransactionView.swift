@@ -749,7 +749,8 @@ struct AddTransactionView: View {
                         account: trimmedAccount,
                         settlesBillID: transactionToEdit.settlesBillID,
                         settlesDebtID: transactionToEdit.settlesDebtID,
-                        settlesIncomeID: transactionToEdit.settlesIncomeID
+                        settlesIncomeID: transactionToEdit.settlesIncomeID,
+                        isAutoRecorded: transactionToEdit.isAutoRecorded
                     )
                 )
             } else if let selectedSettlement {

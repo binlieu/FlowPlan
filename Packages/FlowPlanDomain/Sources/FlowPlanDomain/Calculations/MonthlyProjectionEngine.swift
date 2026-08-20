@@ -59,28 +59,36 @@ public struct MonthlyProjectionEngine: Sendable {
         // balance remains. One linked expense settles that month's due. Debts paid through bills
         // contribute nothing here because their cash is already represented by remainingBills.
         let referenceMonth = MonthKey(date: input.referenceDate, calendar: input.calendar)
-        let firstDebtPaymentMonth = min(input.month, referenceMonth)
-        let debtSchedule = DebtSchedule(startingIn: firstDebtPaymentMonth)
+        let fallbackFirstDebtPaymentMonth = min(input.month, referenceMonth)
         let debtPaymentTransactions = expenseTransactions.filter {
             $0.settlesBillID == nil && $0.settlesDebtID != nil
         }
         let settledDebtIDs = Set(debtPaymentTransactions.compactMap(\.settlesDebtID))
         let debtPaymentsMade = sum(debtPaymentTransactions.map(\.amount))
         let debtPaymentsDue = separatelyPaidDebts.reduce(Decimal.zero) { total, debt in
-            total + debtSchedule.paymentDue(for: debt, in: input.month)
+            let schedule = DebtSchedule(
+                startingIn: debt.firstPaymentMonth ?? fallbackFirstDebtPaymentMonth
+            )
+            return total + schedule.paymentDue(for: debt, in: input.month)
         }
         let remainingDebtPayments = separatelyPaidDebts.reduce(Decimal.zero) { total, debt in
             guard !settledDebtIDs.contains(debt.id) else {
                 return total
             }
-            return total + debtSchedule.paymentDue(for: debt, in: input.month)
+            let schedule = DebtSchedule(
+                startingIn: debt.firstPaymentMonth ?? fallbackFirstDebtPaymentMonth
+            )
+            return total + schedule.paymentDue(for: debt, in: input.month)
         }
         let debtOccurrences = separatelyPaidDebts.compactMap { debt -> DebtOccurrence? in
-            let amount = debtSchedule.paymentDue(for: debt, in: input.month)
+            let schedule = DebtSchedule(
+                startingIn: debt.firstPaymentMonth ?? fallbackFirstDebtPaymentMonth
+            )
+            let amount = schedule.paymentDue(for: debt, in: input.month)
             guard
                 !settledDebtIDs.contains(debt.id),
                 amount > .zero,
-                let date = debtSchedule.paymentDate(
+                let date = schedule.paymentDate(
                     for: debt,
                     in: input.month,
                     calendar: input.calendar

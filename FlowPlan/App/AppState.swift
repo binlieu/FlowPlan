@@ -17,6 +17,7 @@ final class AppState {
     @ObservationIgnored @AppStorage("isFaceIDEnabled") private var storedIsFaceIDEnabled = false
     @ObservationIgnored @AppStorage("isHapticsEnabled") private var storedIsHapticsEnabled = true
     @ObservationIgnored @AppStorage("carryBalanceForward") private var storedCarryBalanceForward = true
+    @ObservationIgnored @AppStorage("recordAutopayAutomatically") private var storedRecordAutopayAutomatically = true
     @ObservationIgnored @AppStorage("appearancePreference") private var storedAppearancePreference: AppearancePreference = .system
     @ObservationIgnored @AppStorage("isSampleDataEnabled") private var storedIsSampleDataEnabled = false
 
@@ -43,6 +44,10 @@ final class AppState {
 
     var carryBalanceForward: Bool {
         didSet { storedCarryBalanceForward = carryBalanceForward }
+    }
+
+    var recordAutopayAutomatically: Bool {
+        didSet { storedRecordAutopayAutomatically = recordAutopayAutomatically }
     }
 
     var appearancePreference: AppearancePreference {
@@ -90,6 +95,11 @@ final class AppState {
             "carryBalanceForward",
             store: userDefaults
         )
+        _storedRecordAutopayAutomatically = AppStorage(
+            wrappedValue: true,
+            "recordAutopayAutomatically",
+            store: userDefaults
+        )
         _storedAppearancePreference = AppStorage(
             wrappedValue: .system,
             "appearancePreference",
@@ -109,6 +119,7 @@ final class AppState {
         isFaceIDEnabled = _storedIsFaceIDEnabled.wrappedValue
         isHapticsEnabled = _storedIsHapticsEnabled.wrappedValue
         carryBalanceForward = _storedCarryBalanceForward.wrappedValue
+        recordAutopayAutomatically = _storedRecordAutopayAutomatically.wrappedValue
         appearancePreference = _storedAppearancePreference.wrappedValue
         isSampleDataEnabled = _storedIsSampleDataEnabled.wrappedValue
     }

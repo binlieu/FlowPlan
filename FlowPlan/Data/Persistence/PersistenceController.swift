@@ -14,6 +14,7 @@ enum PersistenceController {
         IncomeSourceEntity.self,
         RecurringBillEntity.self,
         DebtEntity.self,
+        AutoRecordExclusionEntity.self,
         BudgetEntity.self,
         SavingsGoalEntity.self,
         MonthSettingsEntity.self

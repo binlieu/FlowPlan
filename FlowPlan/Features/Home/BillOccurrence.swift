@@ -406,30 +406,40 @@ enum OverdueAutopaySettlementAction {
         )
     }
 
-    @discardableResult
-    static func markAllAsPaid(
+    static func overdueNonAutopayOccurrences(
         from occurrences: [HomePaymentOccurrence],
         autoPayDebtIDs: Set<UUID>,
         relativeTo referenceDate: Date,
-        repository: FinanceRepository,
-        projectionStore: ProjectionStore,
         calendar: Calendar
-    ) -> BillSettlementError? {
-        let overdueAutopayOccurrences = overdueAutopayOccurrences(
-            from: occurrences,
-            autoPayDebtIDs: autoPayDebtIDs,
+    ) -> [HomePaymentOccurrence] {
+        HomePaymentOccurrence.sorted(
+            occurrences.filter { occurrence in
+                !occurrence.isAutoPay(autoPayDebtIDs: autoPayDebtIDs)
+                    && !occurrence.isPaidThroughBills
+                    && occurrence.status(
+                        relativeTo: referenceDate,
+                        calendar: calendar
+                    ) == .overdue
+            },
             relativeTo: referenceDate,
             calendar: calendar
         )
+    }
 
-        guard !overdueAutopayOccurrences.isEmpty else {
+    @discardableResult
+    static func markAllAsPaid(
+        _ occurrences: [HomePaymentOccurrence],
+        repository: FinanceRepository,
+        projectionStore: ProjectionStore
+    ) -> BillSettlementError? {
+        guard !occurrences.isEmpty else {
             return nil
         }
 
         defer { projectionStore.refresh() }
 
         var settlementError: BillSettlementError?
-        for occurrence in overdueAutopayOccurrences {
+        for occurrence in occurrences {
             do {
                 switch occurrence {
                 case .bill(let billOccurrence):
@@ -452,6 +462,29 @@ enum OverdueAutopaySettlementAction {
         }
 
         return settlementError
+    }
+
+    @discardableResult
+    static func markAllAsPaid(
+        from occurrences: [HomePaymentOccurrence],
+        autoPayDebtIDs: Set<UUID>,
+        relativeTo referenceDate: Date,
+        repository: FinanceRepository,
+        projectionStore: ProjectionStore,
+        calendar: Calendar
+    ) -> BillSettlementError? {
+        let overdueAutopayOccurrences = overdueAutopayOccurrences(
+            from: occurrences,
+            autoPayDebtIDs: autoPayDebtIDs,
+            relativeTo: referenceDate,
+            calendar: calendar
+        )
+
+        return markAllAsPaid(
+            overdueAutopayOccurrences,
+            repository: repository,
+            projectionStore: projectionStore
+        )
     }
 
     @discardableResult

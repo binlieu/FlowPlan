@@ -27,11 +27,17 @@ struct TransactionRow: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if transaction.isAutoRecorded {
+                        Chip(text: "AUTO", style: .filledNeutral)
+                    }
+                }
             }
             .layoutPriority(1)
 
@@ -47,6 +53,7 @@ struct TransactionRow: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+        .accessibilityValue(transaction.isAutoRecorded ? "Automatically recorded" : "")
         .accessibilityHint("Opens this transaction for editing")
     }
 

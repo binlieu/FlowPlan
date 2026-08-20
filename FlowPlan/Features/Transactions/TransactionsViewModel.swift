@@ -248,7 +248,8 @@ final class TransactionsViewModel {
                 account: account,
                 settlesBillID: transaction.settlesBillID,
                 settlesDebtID: transaction.settlesDebtID,
-                settlesIncomeID: transaction.settlesIncomeID
+                settlesIncomeID: transaction.settlesIncomeID,
+                isAutoRecorded: transaction.isAutoRecorded
             )
         )
         refreshAfterWrite(month: month)
