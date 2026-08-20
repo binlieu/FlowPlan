@@ -263,9 +263,11 @@ struct ExpectedIncomeSection: View {
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: true, vertical: true)
 
-            Text(status(for: occurrence).rawValue)
-                .smallCapsTypography()
-                .foregroundStyle(Palette.accent)
+            let status = status(for: occurrence)
+            OccurrenceStatusLabel(
+                text: status.rawValue,
+                isOverdue: status == .overdue
+            )
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

@@ -9,22 +9,48 @@ struct UpcomingBillsSection: View {
 
     let onSeeAll: () -> Void
 
-    @State private var presentedError: PresentedError?
+    private let calendar: Calendar
+    private let now: () -> Date
+    private let dismissalStore: OverdueAutopayPromptDismissalStore
 
-    init(onSeeAll: @escaping () -> Void = {}) {
+    @State private var presentedError: BillSettlementError?
+    @State private var dismissalRevision = 0
+    @State private var isSettlingAutopayBills = false
+
+    init(
+        onSeeAll: @escaping () -> Void = {},
+        calendar: Calendar = .current,
+        now: @escaping () -> Date = Date.init,
+        userDefaults: UserDefaults = .standard
+    ) {
         self.onSeeAll = onSeeAll
+        self.calendar = calendar
+        self.now = now
+        dismissalStore = OverdueAutopayPromptDismissalStore(userDefaults: userDefaults)
     }
 
     var body: some View {
+        let occurrences = unsettledOccurrences
+        let promptOccurrences = overdueAutopayPromptOccurrences(in: occurrences)
+
         Section {
-            if upcomingBills.isEmpty {
+            if !promptOccurrences.isEmpty {
+                autopayPrompt(for: promptOccurrences)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 10)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+
+            if occurrences.isEmpty {
                 emptyState
                     .padding(.horizontal, 20)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             } else {
-                ForEach(upcomingBills) { occurrence in
+                ForEach(occurrences.prefix(5)) { occurrence in
                     billRow(occurrence)
                         .padding(.horizontal, 20)
                         .listRowInsets(EdgeInsets())
@@ -57,7 +83,7 @@ struct UpcomingBillsSection: View {
 
     private var sectionHeader: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Upcoming")
+            Text("Bills")
                 .sectionHeadingTypography()
                 .foregroundStyle(Palette.ink)
 
@@ -68,6 +94,47 @@ struct UpcomingBillsSection: View {
                 .fontWidth(.condensed)
                 .foregroundStyle(Palette.accent)
                 .textCase(nil)
+        }
+    }
+
+    private func autopayPrompt(for occurrences: [BillOccurrence]) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.circle")
+                    .foregroundStyle(.red)
+                    .accessibilityHidden(true)
+
+                Text("\(occurrences.count) autopay bills were due. Mark them paid?")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 8)
+
+                Button {
+                    dismissPrompt(for: occurrences)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.bold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Palette.inkSecondary)
+                .accessibilityLabel("Dismiss autopay reminder")
+            }
+
+            Button("Mark all as paid") {
+                markAllAutopayBillsAsPaid(occurrences)
+            }
+            .font(.subheadline.weight(.bold))
+            .buttonStyle(.borderedProminent)
+            .tint(Palette.accent)
+            .disabled(isSettlingAutopayBills)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Palette.surface)
+        .overlay {
+            Rectangle().stroke(Palette.hairline, lineWidth: 1)
         }
     }
 
@@ -172,53 +239,78 @@ struct UpcomingBillsSection: View {
                 .fixedSize(horizontal: true, vertical: true)
                 .accessibilityLabel(accessibleMoney(occurrence.bill.amount))
 
-            Text(status(for: occurrence.bill))
-                .smallCapsTypography()
-                .foregroundStyle(Palette.accent)
-                .fixedSize(horizontal: false, vertical: true)
+            let status = status(for: occurrence)
+            OccurrenceStatusLabel(
+                text: status.rawValue,
+                isOverdue: status == .overdue
+            )
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private var upcomingBills: [BillOccurrence] {
+    private var unsettledOccurrences: [BillOccurrence] {
         _ = projectionStore.projection
 
-        let month = appState.selectedMonth
-        let transactions = repository.transactions(in: month)
-        let settledBillIDs: [UUID] = transactions.compactMap { transaction -> UUID? in
-            guard transaction.type == .expense, let billID = transaction.settlesBillID else {
-                return nil
-            }
-            return billID
-        }
-        let settledCounts = Dictionary(grouping: settledBillIDs, by: { $0 }).mapValues(\.count)
-
-        let occurrences = repository.bills()
-            .filter(\.isActive)
-            .flatMap { bill -> [BillOccurrence] in
-                let dates = bill.recurrence.occurrences(in: month, calendar: .current)
-                let settledCount = settledCounts[bill.id, default: 0]
-                return dates.dropFirst(settledCount).map {
-                    BillOccurrence(bill: bill, date: $0)
-                }
-            }
-            .sorted { lhs, rhs in
-                if lhs.date != rhs.date {
-                    return lhs.date < rhs.date
-                }
-                return lhs.bill.name < rhs.bill.name
-            }
-
-        return Array(occurrences.prefix(5))
+        return Self.unsettledOccurrences(
+            repository: repository,
+            month: appState.selectedMonth,
+            relativeTo: now(),
+            calendar: calendar
+        )
     }
 
-    private func status(for bill: PlannedBill) -> String {
-        if bill.isAutoPay {
-            return "AUTO PAY"
+    static func unsettledOccurrences(
+        repository: FinanceRepository,
+        month: MonthKey,
+        relativeTo referenceDate: Date,
+        calendar: Calendar
+    ) -> [BillOccurrence] {
+        BillOccurrenceProvider(
+            repository: repository,
+            calendar: calendar
+        ).unsettledOccurrences(in: month, relativeTo: referenceDate)
+    }
+
+    static func sortedOccurrences(
+        _ occurrences: [BillOccurrence],
+        relativeTo referenceDate: Date,
+        calendar: Calendar
+    ) -> [BillOccurrence] {
+        BillOccurrenceProvider.sortedOccurrences(
+            occurrences,
+            relativeTo: referenceDate,
+            calendar: calendar
+        )
+    }
+
+    private func status(for occurrence: BillOccurrence) -> BillOccurrenceStatus {
+        BillOccurrenceStatus.status(
+            for: occurrence.bill,
+            occurrenceDate: occurrence.date,
+            relativeTo: now(),
+            calendar: calendar
+        )
+    }
+
+    private func overdueAutopayPromptOccurrences(
+        in occurrences: [BillOccurrence]
+    ) -> [BillOccurrence] {
+        _ = dismissalRevision
+
+        let referenceDate = now()
+        let overdueAutopayOccurrences = occurrences.filter { occurrence in
+            occurrence.bill.isAutoPay
+                && BillOccurrenceStatus.status(
+                    for: occurrence.bill,
+                    occurrenceDate: occurrence.date,
+                    relativeTo: referenceDate,
+                    calendar: calendar
+                ) == .overdue
         }
-        if bill.amountType == .estimated {
-            return "ESTIMATED"
-        }
-        return "UPCOMING"
+        return dismissalStore.undismissedOccurrences(
+            in: overdueAutopayOccurrences,
+            calendar: calendar
+        )
     }
 
     private func money(_ amount: Decimal) -> String {
@@ -239,35 +331,34 @@ struct UpcomingBillsSection: View {
             )
             projectionStore.refresh()
         } catch {
-            presentedError = PresentedError(
-                message: "The bill could not be marked as paid. Please try again."
-            )
+            presentedError = .unableToRecord
         }
     }
 
-    private struct BillOccurrence: Identifiable {
-        let bill: PlannedBill
-        let date: Date
-
-        var id: String {
-            "\(bill.id.uuidString)-\(date.timeIntervalSinceReferenceDate)"
+    private func markAllAutopayBillsAsPaid(_ occurrences: [BillOccurrence]) {
+        guard !isSettlingAutopayBills else {
+            return
         }
 
-        var monogram: String {
-            let letters = bill.name.filter(\.isLetter)
-            let source = letters.isEmpty ? bill.name : letters
-            return String(source.prefix(2)).uppercased()
-        }
+        isSettlingAutopayBills = true
+        presentedError = OverdueAutopaySettlementAction.markAllAsPaid(
+            from: occurrences,
+            relativeTo: now(),
+            repository: repository,
+            projectionStore: projectionStore,
+            calendar: calendar
+        )
+        isSettlingAutopayBills = false
     }
 
-    private struct PresentedError: Identifiable {
-        let id = UUID()
-        let message: String
+    private func dismissPrompt(for occurrences: [BillOccurrence]) {
+        dismissalStore.dismiss(occurrences, calendar: calendar)
+        dismissalRevision += 1
     }
 }
 
 #if DEBUG
-#Preview("Upcoming — Light") {
+#Preview("Bills — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
         List {
             UpcomingBillsSection()
@@ -278,7 +369,7 @@ struct UpcomingBillsSection: View {
     }
 }
 
-#Preview("Upcoming — Accessibility") {
+#Preview("Bills — Accessibility") {
     FlowPlanPreviewHost(colorScheme: .dark) {
         List {
             UpcomingBillsSection()
