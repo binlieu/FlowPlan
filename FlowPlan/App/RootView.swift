@@ -48,11 +48,16 @@ struct RootView: View {
         .onChange(of: scenePhase) {
             switch scenePhase {
             case .active:
-                biometricGate.sceneBecameActive()
-            case .inactive, .background:
-                biometricGate.sceneBecameInactive()
+                biometricGate.appDidBecomeActive()
+            case .background:
+                biometricGate.appDidEnterBackground()
+            case .inactive:
+                // Transient system UI — the Face ID prompt itself, a notification banner,
+                // Control Centre, the app switcher preview. The user has not left the app,
+                // so locking here made every successful unlock re-lock instantly.
+                break
             @unknown default:
-                biometricGate.sceneBecameInactive()
+                break
             }
         }
     }

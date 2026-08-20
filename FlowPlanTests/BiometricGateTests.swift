@@ -69,9 +69,9 @@ func biometricGateRelocksAfterConfiguredInterval() async {
     )
     await gate.authenticate()
 
-    gate.sceneBecameInactive()
+    gate.appDidEnterBackground()
     currentDate = currentDate.addingTimeInterval(61)
-    gate.sceneBecameActive()
+    gate.appDidBecomeActive()
 
     #expect(gate.isLocked)
 }
@@ -88,9 +88,9 @@ func biometricGateDoesNotRelockBeforeConfiguredInterval() async {
     )
     await gate.authenticate()
 
-    gate.sceneBecameInactive()
+    gate.appDidEnterBackground()
     currentDate = currentDate.addingTimeInterval(299)
-    gate.sceneBecameActive()
+    gate.appDidBecomeActive()
 
     #expect(!gate.isLocked)
 }
@@ -113,4 +113,64 @@ private final class FakeBiometricAuthenticator: BiometricAuthenticating {
         reasons.append(reason)
         return result
     }
+}
+
+// MARK: - Regression: the prompt must not lock you out of answering it
+//
+// Found on a physical iPhone, not in the simulator: Face ID asked to unlock over and over.
+// Presenting the system biometric prompt drives the app to .inactive, which with the default
+// "Immediately" auto-lock both re-locked the app mid-prompt and left an inactivity timestamp
+// that re-locked it again the instant authentication succeeded and the app returned to .active.
+
+@Test
+@MainActor
+func successfulUnlockSurvivesThePromptsOwnSceneTransitions() async {
+    let gate = BiometricGate(
+        isEnabled: true,
+        autoLockInterval: .immediately,
+        authenticator: FakeBiometricAuthenticator(result: .success(()))
+    )
+    #expect(gate.isLocked)
+
+    // The real sequence: the prompt appears (app goes inactive), the user authenticates,
+    // then the prompt dismisses (app returns to active).
+    gate.appDidEnterBackground()
+    await gate.authenticate()
+    gate.appDidBecomeActive()
+
+    #expect(!gate.isLocked, "A successful Face ID unlock must not be undone by the prompt's own scene transitions")
+}
+
+@Test
+@MainActor
+func genuinelyLeavingTheAppStillLocksImmediately() async {
+    let gate = BiometricGate(
+        isEnabled: true,
+        autoLockInterval: .immediately,
+        authenticator: FakeBiometricAuthenticator(result: .success(()))
+    )
+    await gate.authenticate()
+    #expect(!gate.isLocked)
+
+    // No authentication in flight — this is the user actually backgrounding the app.
+    gate.appDidEnterBackground()
+
+    #expect(gate.isLocked, "Leaving the app must still lock it immediately")
+}
+
+@Test
+@MainActor
+func aFailedUnlockLeavesTheAppLocked() async {
+    let gate = BiometricGate(
+        isEnabled: true,
+        autoLockInterval: .immediately,
+        authenticator: FakeBiometricAuthenticator(result: .failure(.authenticationFailed))
+    )
+
+    gate.appDidEnterBackground()
+    await gate.authenticate()
+    gate.appDidBecomeActive()
+
+    #expect(gate.isLocked)
+    #expect(gate.lastError != nil)
 }

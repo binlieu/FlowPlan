@@ -225,19 +225,28 @@ final class BiometricGate {
         isAuthenticating = true
         lastError = nil
         let result = await authenticator.authenticate(reason: Self.authenticationReason)
-        isAuthenticating = false
 
         switch result {
         case .success:
             isLocked = false
+            // Presenting the biometric prompt drives the app inactive, which records an
+            // inactivity timestamp. Clear it: the prompt is not the user leaving the app, and
+            // leaving it set would re-lock the moment we return to active.
+            becameInactiveAt = nil
         case let .failure(error):
             isLocked = true
             lastError = error
         }
+
+        // Cleared only after the state above has settled, so a scene transition arriving
+        // during the prompt is still recognised as part of authentication.
+        isAuthenticating = false
     }
 
-    func sceneBecameInactive() {
-        guard isEnabled, becameInactiveAt == nil else {
+    func appDidEnterBackground() {
+        // The system biometric prompt makes the app inactive. That is not the user leaving,
+        // so it must not start the auto-lock clock or lock the app mid-authentication.
+        guard isEnabled, !isAuthenticating, becameInactiveAt == nil else {
             return
         }
 
@@ -247,7 +256,13 @@ final class BiometricGate {
         }
     }
 
-    func sceneBecameActive() {
+    func appDidBecomeActive() {
+        // Returning to active because the biometric prompt dismissed is part of unlocking,
+        // not a fresh foreground. Leave the pending state alone so it is not consumed.
+        guard !isAuthenticating else {
+            return
+        }
+
         defer { becameInactiveAt = nil }
         guard
             isEnabled,
