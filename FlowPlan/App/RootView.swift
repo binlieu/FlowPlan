@@ -3,13 +3,64 @@ import SwiftUI
 import FlowPlanDomain
 
 struct RootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(AppState.self) private var appState
     @Environment(FinanceRepository.self) private var repository
     @Environment(ProjectionStore.self) private var projectionStore
 
     @State private var selectedTab = AppTab.home
+    private let biometricAvailability = BiometricAuthenticator().canEvaluate()
+    @State private var biometricGate = BiometricGate(
+        isEnabled: UserDefaults.standard.bool(forKey: "isFaceIDEnabled"),
+        autoLockInterval: AutoLockInterval(
+            rawValue: UserDefaults.standard.string(forKey: "autoLockInterval") ?? ""
+        ) ?? .immediately
+    )
+    @AppStorage("autoLockInterval") private var autoLockInterval: AutoLockInterval = .immediately
 
     var body: some View {
+        ZStack {
+            tabs
+
+            if appState.isFaceIDEnabled, isFaceIDAvailable, biometricGate.isLocked {
+                AppLockView(gate: biometricGate)
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .preferredColorScheme(appState.appearancePreference.colorScheme)
+        .animation(.easeInOut(duration: 0.2), value: biometricGate.isLocked)
+        .onAppear {
+            biometricGate.setAutoLockInterval(autoLockInterval)
+            if appState.isFaceIDEnabled, !isFaceIDAvailable {
+                appState.isFaceIDEnabled = false
+            } else if appState.isFaceIDEnabled != biometricGate.isEnabled {
+                biometricGate.setEnabled(appState.isFaceIDEnabled)
+            }
+        }
+        .onChange(of: appState.isFaceIDEnabled) {
+            biometricGate.setEnabled(appState.isFaceIDEnabled)
+        }
+        .onChange(of: autoLockInterval) {
+            biometricGate.setAutoLockInterval(autoLockInterval)
+        }
+        .onChange(of: scenePhase) {
+            switch scenePhase {
+            case .active:
+                biometricGate.sceneBecameActive()
+            case .inactive, .background:
+                biometricGate.sceneBecameInactive()
+            @unknown default:
+                biometricGate.sceneBecameInactive()
+            }
+        }
+    }
+
+    private var isFaceIDAvailable: Bool {
+        biometricAvailability.isAvailable && biometricAvailability.biometry == .faceID
+    }
+
+    private var tabs: some View {
         TabView(selection: $selectedTab) {
             NavigationStack {
                 HomeView(
@@ -42,12 +93,7 @@ struct RootView: View {
             .tag(AppTab.plan)
 
             NavigationStack {
-                placeholder(
-                    symbol: "chart.line.uptrend.xyaxis",
-                    title: "Insights",
-                    message: "Insights are coming in a later step."
-                )
-                .navigationTitle("Insights")
+                InsightsView()
             }
             .environment(appState)
             .environment(repository)
@@ -56,12 +102,7 @@ struct RootView: View {
             .tag(AppTab.insights)
 
             NavigationStack {
-                placeholder(
-                    symbol: "slider.horizontal.3",
-                    title: "Settings",
-                    message: "Settings are coming in a later step."
-                )
-                .navigationTitle("Settings")
+                SettingsView()
             }
             .environment(appState)
             .environment(repository)
@@ -74,16 +115,25 @@ struct RootView: View {
         .toolbarBackground(.visible, for: .tabBar)
     }
 
-    private func placeholder(symbol: String, title: String, message: String) -> some View {
-        EmptyStateView(symbol: symbol, title: title, message: message)
-    }
-
     private enum AppTab: Hashable {
         case home
         case transactions
         case plan
         case insights
         case settings
+    }
+}
+
+private extension AppearancePreference {
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system:
+            return nil
+        case .light:
+            return .light
+        case .dark:
+            return .dark
+        }
     }
 }
 

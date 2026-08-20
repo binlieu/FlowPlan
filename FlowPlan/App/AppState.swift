@@ -12,7 +12,7 @@ enum AppearancePreference: String, CaseIterable {
 @Observable
 @MainActor
 final class AppState {
-    @ObservationIgnored @AppStorage("userName") private var storedUserName = "Alex"
+    @ObservationIgnored @AppStorage("userName") private var storedUserName = ""
     @ObservationIgnored @AppStorage("currencyCode") private var storedCurrencyCode = "USD"
     @ObservationIgnored @AppStorage("isFaceIDEnabled") private var storedIsFaceIDEnabled = false
     @ObservationIgnored @AppStorage("isHapticsEnabled") private var storedIsHapticsEnabled = true
@@ -61,7 +61,7 @@ final class AppState {
         let defaultCurrencyCode = Locale.current.currency?.identifier ?? "USD"
 
         _storedUserName = AppStorage(
-            wrappedValue: "Alex",
+            wrappedValue: "",
             "userName",
             store: userDefaults
         )

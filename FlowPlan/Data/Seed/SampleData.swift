@@ -3,6 +3,10 @@ import SwiftData
 import FlowPlanDomain
 
 enum SampleData {
+    /// The demo persona. Applied only while sample data is loaded, and cleared when it is
+    /// removed — a real install must never be greeted by someone else’s name.
+    static let personaName = "Alex"
+
     private static let salaryID = id(1)
     private static let sideIncomeID = id(2)
     private static let rentalIncomeID = id(3)

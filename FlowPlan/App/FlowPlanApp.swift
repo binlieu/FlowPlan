@@ -23,6 +23,7 @@ struct FlowPlanApp: App {
         if state.isSampleDataEnabled, !SampleData.isSeeded(context) {
             do {
                 try SampleData.seed(into: context, calendar: .current)
+                if state.userName.isEmpty { state.userName = SampleData.personaName }
             } catch {
                 Self.logger.error("Sample data seeding failed.")
             }
