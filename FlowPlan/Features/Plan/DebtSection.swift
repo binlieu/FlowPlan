@@ -155,7 +155,7 @@ struct DebtSection: View {
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(
-                debt.isPaidThroughBills ? Palette.background : Palette.accentLight,
+                debt.isPaidThroughBills ? Palette.background : PlanTotalRow.accentFill,
                 in: Capsule()
             )
             .overlay {
@@ -167,20 +167,11 @@ struct DebtSection: View {
     }
 
     private var totalRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
-            Text("OUTSIDE MONTHLY BILLS")
-                .smallCapsTypography()
-                .foregroundStyle(Palette.inkSecondary)
-
-            Spacer(minLength: 10)
-
-            Text(money(outsideBillsTotal))
-                .font(.headline.weight(.bold))
-                .fontWidth(.condensed)
-                .monospacedDigit()
-                .foregroundStyle(Palette.ink)
-        }
-        .padding(16)
+        PlanTotalRow(
+            label: "OUTSIDE MONTHLY BILLS",
+            amount: outsideBillsTotal,
+            signed: false
+        )
     }
 
     private func payoffText(for debt: Debt) -> Text {
