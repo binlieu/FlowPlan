@@ -35,9 +35,7 @@ struct ProjectionHeroCard: View {
         }
         .buttonStyle(.plain)
         .navigationDestination(isPresented: $isShowingBreakdown) {
-            // TODO(spec-04): ProjectionDetailView
-            Text("Breakdown")
-                .navigationTitle("Projection Breakdown")
+            ProjectionDetailView(projection: projection)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
