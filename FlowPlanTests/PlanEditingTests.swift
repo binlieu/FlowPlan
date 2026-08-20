@@ -226,6 +226,144 @@ func monthlyBillsTotalMatchesProjectionCardRecurringBills() throws {
 
 @Test
 @MainActor
+func everyPlanSectionTotalMatchesItsProjectionFieldAndCardRow() throws {
+    let environment = try PlanEditingEnvironment(startingBalance: 1_200)
+    try addCompletePlan(to: environment)
+    environment.projectionStore.refresh()
+
+    let projection = environment.projectionStore.projection
+    let planTotals: [(rowID: String, amount: Decimal, direction: ProjectionCardRow.Direction)] = [
+        ("plannedIncome", projection.plannedIncomeTotal, .addition),
+        ("plannedBills", PlanView.monthlyBillsTotal(for: projection), .deduction),
+        ("debtPayments", projection.debtPaymentsDue, .deduction),
+        (
+            "plannedSpending",
+            SpendingBudgetSection.totalRowContent(
+                plannedTotal: PlanView.spendingBudgetTotal(for: projection)
+            ).amount,
+            .deduction
+        ),
+        (
+            "savingsTarget",
+            SavingsGoalSection.totalRowContent(
+                plannedTotal: PlanView.savingsGoalTotal(for: projection)
+            ).amount,
+            .deduction
+        )
+    ]
+    let projectionFields = [
+        projection.plannedIncomeTotal,
+        projection.plannedBillsTotal,
+        projection.debtPaymentsDue,
+        projection.plannedSpendingTotal,
+        projection.savingsTarget
+    ]
+    let cardRows = MonthlyProjectionCard.rows(for: projection)
+
+    #expect(planTotals.map { $0.amount } == projectionFields)
+
+    for planTotal in planTotals {
+        let cardRow = try #require(cardRows.first { $0.id == planTotal.rowID })
+        #expect(planTotal.amount == cardRow.amount)
+        #expect(planTotal.direction == cardRow.direction)
+    }
+}
+
+@Test
+@MainActor
+func addingAndRemovingBudgetCategoryMovesSpendingTotal() throws {
+    let environment = try PlanEditingEnvironment()
+    let groceriesID = UUID()
+    let diningID = UUID()
+
+    try environment.repository.addBudget(
+        BudgetEntity(id: groceriesID, category: "Groceries", monthlyLimit: 800)
+    )
+    environment.projectionStore.refresh()
+    let firstTotal = PlanView.spendingBudgetTotal(
+        for: environment.projectionStore.projection
+    )
+
+    try environment.repository.addBudget(
+        BudgetEntity(id: diningID, category: "Dining", monthlyLimit: 1_250)
+    )
+    environment.projectionStore.refresh()
+    let addedTotal = PlanView.spendingBudgetTotal(
+        for: environment.projectionStore.projection
+    )
+
+    try environment.repository.deleteBudget(id: groceriesID)
+    environment.projectionStore.refresh()
+    let removedTotal = PlanView.spendingBudgetTotal(
+        for: environment.projectionStore.projection
+    )
+
+    #expect(firstTotal == 800)
+    #expect(addedTotal == 2_050)
+    #expect(removedTotal == 1_250)
+    #expect(
+        SpendingBudgetSection.totalRowContent(plannedTotal: addedTotal)
+            == SpendingBudgetSection.TotalRowContent(
+                label: "TOTAL SPENDING BUDGET",
+                amount: 2_050
+            )
+    )
+}
+
+@Test
+@MainActor
+func secondSavingsGoalIsIncludedInSavingsTotal() throws {
+    let environment = try PlanEditingEnvironment()
+
+    try environment.repository.addSavingsGoal(
+        SavingsGoalEntity(
+            name: "Emergency Fund",
+            targetAmount: 20_000,
+            monthlyTarget: 1_250
+        )
+    )
+    try environment.repository.addSavingsGoal(
+        SavingsGoalEntity(
+            name: "Vacation",
+            targetAmount: 8_000,
+            monthlyTarget: 750
+        )
+    )
+    environment.projectionStore.refresh()
+
+    let projection = environment.projectionStore.projection
+    let totalRow = SavingsGoalSection.totalRowContent(
+        plannedTotal: PlanView.savingsGoalTotal(for: projection)
+    )
+
+    #expect(environment.repository.savingsPlans().count == 2)
+    #expect(projection.savingsTarget == 2_000)
+    #expect(totalRow.amount == projection.savingsTarget)
+    #expect(totalRow.label == "TOTAL SAVINGS GOAL")
+}
+
+@Test
+@MainActor
+func emptySpendingAndSavingsSectionsStillProvideZeroTotalRows() throws {
+    let environment = try PlanEditingEnvironment()
+    let projection = environment.projectionStore.projection
+    let spendingTotal = SpendingBudgetSection.totalRowContent(
+        plannedTotal: PlanView.spendingBudgetTotal(for: projection)
+    )
+    let savingsTotal = SavingsGoalSection.totalRowContent(
+        plannedTotal: PlanView.savingsGoalTotal(for: projection)
+    )
+
+    #expect(environment.repository.budgets(for: environment.month).isEmpty)
+    #expect(environment.repository.savingsPlans().isEmpty)
+    #expect(spendingTotal.label == "TOTAL SPENDING BUDGET")
+    #expect(spendingTotal.amount == .zero)
+    #expect(savingsTotal.label == "TOTAL SAVINGS GOAL")
+    #expect(savingsTotal.amount == .zero)
+}
+
+@Test
+@MainActor
 func addingBudgetCategoryLowersProjectionByItsUnspentRemainder() throws {
     let environment = try PlanEditingEnvironment(startingBalance: 2_000)
 

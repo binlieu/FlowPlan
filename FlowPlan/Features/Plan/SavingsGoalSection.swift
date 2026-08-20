@@ -10,9 +10,15 @@ struct SavingsGoalSection: View {
 
     let plans: [SavingsPlan]
     let projection: MonthlyProjection
+    let plannedTotal: Decimal
     let onAdd: () -> Void
     let onEdit: (SavingsPlan) -> Void
     let onPreviewTarget: (Decimal?) -> Void
+
+    struct TotalRowContent: Equatable {
+        let label: String
+        let amount: Decimal
+    }
 
     @State private var sliderValue = 0.0
     @State private var sliderUpperBound = 4_000.0
@@ -25,19 +31,24 @@ struct SavingsGoalSection: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader
 
-            VStack(alignment: .leading, spacing: 16) {
-                if let plan = plans.first {
-                    goalSummary(plan)
-                    slider
-                } else {
-                    Text("Add a savings goal to reserve money in your monthly plan.")
-                        .font(Typography.supporting)
-                        .foregroundStyle(Palette.inkSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let plan = plans.first {
+                        goalSummary(plan)
+                        slider
+                    } else {
+                        Text("Add a savings goal to reserve money in your monthly plan.")
+                            .font(Typography.supporting)
+                            .foregroundStyle(Palette.inkSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+
+                Divider()
+                totalRow
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
             .background(Palette.surface)
             .overlay {
                 Rectangle().stroke(Palette.hairline, lineWidth: 1)
@@ -114,6 +125,23 @@ struct SavingsGoalSection: View {
                     .contentShape(Rectangle())
             }
         }
+    }
+
+    private var totalRow: some View {
+        let content = Self.totalRowContent(plannedTotal: plannedTotal)
+
+        return PlanTotalRow(
+            label: content.label,
+            amount: content.amount,
+            signed: false
+        )
+    }
+
+    static func totalRowContent(plannedTotal: Decimal) -> TotalRowContent {
+        TotalRowContent(
+            label: "TOTAL SAVINGS GOAL",
+            amount: plannedTotal
+        )
     }
 
     private func goalSummary(_ plan: SavingsPlan) -> some View {

@@ -6,8 +6,14 @@ struct SpendingBudgetSection: View {
 
     let budgets: [BudgetAllocation]
     let transactions: [TransactionSnapshot]
+    let plannedTotal: Decimal
     let onAdd: () -> Void
     let onEdit: (BudgetAllocation) -> Void
+
+    struct TotalRowContent: Equatable {
+        let label: String
+        let amount: Decimal
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -29,6 +35,9 @@ struct SpendingBudgetSection: View {
                         }
                     }
                 }
+
+                Divider()
+                totalRow
             }
             .background(Palette.surface)
             .overlay {
@@ -92,16 +101,35 @@ struct SpendingBudgetSection: View {
         .accessibilityHint("Opens budget editor")
     }
 
+    private var totalRow: some View {
+        let content = Self.totalRowContent(plannedTotal: plannedTotal)
+
+        return PlanTotalRow(
+            label: content.label,
+            amount: content.amount,
+            signed: false
+        )
+    }
+
+    static func totalRowContent(plannedTotal: Decimal) -> TotalRowContent {
+        TotalRowContent(
+            label: "TOTAL SPENDING BUDGET",
+            amount: plannedTotal
+        )
+    }
+
     private func spentAmount(for category: String) -> Decimal {
-        transactions
-            .filter {
-                $0.type == .expense
-                    && $0.settlesBillID == nil
-                    && $0.settlesDebtID == nil
-                    && $0.category == category
-            }
-            .map(\.amount)
-            .reduce(.zero, +)
+        var total: Decimal = .zero
+
+        for transaction in transactions where
+            transaction.type == .expense
+                && transaction.settlesBillID == nil
+                && transaction.settlesDebtID == nil
+                && transaction.category == category {
+            total += transaction.amount
+        }
+
+        return total
     }
 
     private func footerText(difference: Decimal, isOverBudget: Bool) -> String {
