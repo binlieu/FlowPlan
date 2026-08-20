@@ -16,7 +16,7 @@ struct PlanView: View {
 
                 StartingBalanceSection()
 
-                ExpectedIncomeSection(
+                PlanExpectedIncomeSection(
                     sources: repository.incomeSources(),
                     plannedTotal: projectionStore.projection.plannedIncomeTotal,
                     onAdd: { presentedEditor = .newIncome },

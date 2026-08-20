@@ -462,12 +462,12 @@ struct AddTransactionView: View {
 
         let calendar = Calendar.current
         let month = MonthKey(date: date, calendar: calendar)
-        let viewModel = TransactionsViewModel(
+        let occurrences = Self.unsettledOccurrences(
+            for: transactionType,
+            in: month,
             repository: repository,
-            projectionStore: projectionStore,
             calendar: calendar
         )
-        let occurrences = viewModel.unsettledOccurrences(for: transactionType, in: month)
         settlementOccurrences = occurrences
 
         if let selectedSettlementID,
@@ -484,6 +484,18 @@ struct AddTransactionView: View {
             }
             return lhs.occurrenceDate < rhs.occurrenceDate
         }?.id
+    }
+
+    static func unsettledOccurrences(
+        for type: TransactionType,
+        in month: MonthKey,
+        repository: FinanceRepository,
+        calendar: Calendar
+    ) -> [TransactionSettlementOccurrence] {
+        TransactionSettlementOccurrenceProvider(
+            repository: repository,
+            calendar: calendar
+        ).unsettledOccurrences(for: type, in: month)
     }
 
     private func applySettlementDefaults() {

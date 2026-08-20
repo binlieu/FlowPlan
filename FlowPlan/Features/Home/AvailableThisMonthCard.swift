@@ -3,11 +3,19 @@ import FlowPlanDomain
 
 struct AvailableThisMonthCard: View {
     @Environment(AppState.self) private var appState
+    @Environment(FinanceRepository.self) private var repository
+    @Environment(ProjectionStore.self) private var projectionStore
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let projection: MonthlyProjection
     let completeness: ProjectionCompleteness
     let onOpenPlan: () -> Void
+
+    @State private var startingBalanceText = ""
+    @State private var startingBalanceError: String?
+    @State private var isSavingStartingBalance = false
+
+    @FocusState private var isStartingBalanceFocused: Bool
 
     init(
         projection: MonthlyProjection,
@@ -24,12 +32,13 @@ struct AvailableThisMonthCard: View {
             TickCard {
                 firstRunContent
             }
+            .onChange(of: projection.month) {
+                resetStartingBalanceForm()
+            }
         } else {
             TickCard {
                 availableContent
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(heroAccessibilityLabel)
         }
     }
 
@@ -45,6 +54,8 @@ struct AvailableThisMonthCard: View {
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel(accessibleAvailableAmount)
+
+            zeroBalanceExplanation
 
             Divider()
                 .overlay(Palette.hairline)
@@ -80,17 +91,83 @@ struct AvailableThisMonthCard: View {
                 .sectionHeadingTypography()
                 .foregroundStyle(Palette.ink)
 
-            Text("Add your expected income to see where the month will land.")
+            Text("Enter your starting balance, then add your expected income to see where the month will land.")
                 .font(Typography.body)
                 .foregroundStyle(Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Button("Go to Plan", action: onOpenPlan)
+            HStack(spacing: 12) {
+                TextField("Starting balance", text: $startingBalanceText)
+                    .font(.title2.weight(.bold))
+                    .fontWidth(.condensed)
+                    .monospacedDigit()
+                    .keyboardType(.decimalPad)
+                    .focused($isStartingBalanceFocused)
+                    .onSubmit(saveStartingBalance)
+                    .accessibilityLabel("Starting balance amount")
+
+                Text(appState.currencyCode)
+                    .smallCapsTypography()
+                    .foregroundStyle(Palette.inkSecondary)
+            }
+            .padding(14)
+            .background(Palette.surface)
+            .overlay {
+                Rectangle().stroke(Palette.hairline, lineWidth: 1)
+            }
+
+            if let startingBalanceError {
+                Text(startingBalanceError)
+                    .font(Typography.supporting)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Button("Save starting balance", action: saveStartingBalance)
                 .font(.headline)
                 .foregroundStyle(Palette.surface)
                 .buttonStyle(.borderedProminent)
                 .tint(Palette.accent)
-                .padding(.top, 4)
+                .disabled(isSavingStartingBalance)
+
+            Button("Go to Plan", action: onOpenPlan)
+                .font(.headline)
+                .foregroundStyle(Palette.accent)
+                .buttonStyle(.plain)
+                .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private var zeroBalanceExplanation: some View {
+        let explanation = Self.zeroBalanceExplanation(
+            projection: projection,
+            completeness: completeness,
+            hasRecordedActivity: !projectionStore.currentTransactions.isEmpty
+        )
+
+        if explanation.isVisible {
+            VStack(alignment: .leading, spacing: 8) {
+                if explanation.showsExpectedIncome {
+                    Text(
+                        "No income recorded as received yet — "
+                            + "\(money(projection.remainingExpectedIncome)) "
+                            + "still expected this month."
+                    )
+                    .font(Typography.supporting)
+                    .foregroundStyle(Palette.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if explanation.showsStartingBalancePrompt {
+                    Button("Set your starting balance in Plan.", action: onOpenPlan)
+                        .font(Typography.supporting.weight(.semibold))
+                        .foregroundStyle(Palette.accent)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .accessibilityHint("Opens Plan")
+                }
+            }
         }
     }
 
@@ -158,14 +235,6 @@ struct AvailableThisMonthCard: View {
         "Available this month, \(accessibleMoney(projection.currentAvailableBalance))"
     }
 
-    private var heroAccessibilityLabel: String {
-        "Available this month, \(accessibleMoney(projection.currentAvailableBalance)). "
-            + "This is the current balance after received income, paid expenses, and completed savings. "
-            + "Expected income, \(accessibleMoney(projection.totalExpectedIncome)); "
-            + "expenses paid, \(accessibleMoney(projection.expensesPaid)); "
-            + "savings completed, \(accessibleMoney(projection.savingsCompleted))."
-    }
-
     private func money(_ amount: Decimal) -> String {
         MoneyFormatter.string(amount, currencyCode: appState.currencyCode)
     }
@@ -183,11 +252,68 @@ struct AvailableThisMonthCard: View {
         MoneyFormatter.accessibleString(amount, currencyCode: appState.currencyCode)
     }
 
+    private func saveStartingBalance() {
+        guard !isSavingStartingBalance else {
+            return
+        }
+        guard let balance = PlanAmountParser.decimal(from: startingBalanceText) else {
+            startingBalanceError = "Enter a valid amount."
+            return
+        }
+
+        isSavingStartingBalance = true
+        defer { isSavingStartingBalance = false }
+
+        do {
+            try repository.setStartingBalance(balance, for: appState.selectedMonth)
+            startingBalanceText = PlanAmountParser.text(balance)
+            startingBalanceError = nil
+            isStartingBalanceFocused = false
+            projectionStore.refresh()
+        } catch {
+            startingBalanceError = "The starting balance could not be saved. Please try again."
+        }
+    }
+
+    private func resetStartingBalanceForm() {
+        startingBalanceText = ""
+        startingBalanceError = nil
+        isStartingBalanceFocused = false
+    }
+
+    static func zeroBalanceExplanation(
+        projection: MonthlyProjection,
+        completeness: ProjectionCompleteness,
+        hasRecordedActivity: Bool
+    ) -> ZeroBalanceExplanation {
+        guard projection.currentAvailableBalance == .zero, !hasRecordedActivity else {
+            return ZeroBalanceExplanation(
+                showsExpectedIncome: false,
+                showsStartingBalancePrompt: false
+            )
+        }
+
+        return ZeroBalanceExplanation(
+            showsExpectedIncome: projection.remainingExpectedIncome > .zero
+                && projection.incomeReceived == .zero,
+            showsStartingBalancePrompt: !completeness.hasStartingBalance
+        )
+    }
+
     private struct AvailableMetric {
         let label: String
         let displayValue: String
         let accessibleValue: String
         let color: Color
+    }
+
+    struct ZeroBalanceExplanation: Equatable {
+        let showsExpectedIncome: Bool
+        let showsStartingBalancePrompt: Bool
+
+        var isVisible: Bool {
+            showsExpectedIncome || showsStartingBalancePrompt
+        }
     }
 }
 

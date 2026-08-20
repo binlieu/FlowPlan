@@ -1,7 +1,7 @@
 import SwiftUI
 import FlowPlanDomain
 
-struct ExpectedIncomeSection: View {
+struct PlanExpectedIncomeSection: View {
     @Environment(AppState.self) private var appState
 
     let sources: [PlannedIncome]

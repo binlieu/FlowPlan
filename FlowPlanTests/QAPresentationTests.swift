@@ -115,6 +115,103 @@ func projectionStoreCachesTransactionsAndStructuredInsights() throws {
     )
 }
 
+@Test
+func zeroBalanceIncomeExplanationRequiresExpectedUnreceivedIncomeAndNoActivity() {
+    let calendar = presentationTestCalendar
+    let month = MonthKey(year: 2026, month: 8)
+    let referenceDate = presentationTestDate(day: 20, hour: 12, calendar: calendar)
+    let income = PlannedIncome(
+        id: UUID(),
+        name: "Salary",
+        expectedAmount: 1_000,
+        recurrence: RecurrenceRule(
+            frequency: .monthly,
+            anchorDate: presentationTestDate(day: 5, hour: 12, calendar: calendar)
+        ),
+        isActive: true
+    )
+    let engine = MonthlyProjectionEngine()
+
+    let expectedIncomeProjection = engine.project(
+        ProjectionInput(
+            month: month,
+            referenceDate: referenceDate,
+            startingBalance: .zero,
+            incomeSources: [income],
+            calendar: calendar
+        )
+    )
+    let expectedIncomeExplanation = AvailableThisMonthCard.zeroBalanceExplanation(
+        projection: expectedIncomeProjection,
+        completeness: expectedIncomeProjection.completeness,
+        hasRecordedActivity: false
+    )
+
+    #expect(expectedIncomeExplanation.showsExpectedIncome)
+    #expect(expectedIncomeExplanation.showsStartingBalancePrompt)
+
+    let explicitlyEnteredZeroCompleteness = ProjectionCompleteness(
+        hasStartingBalance: true,
+        hasPlannedIncome: expectedIncomeProjection.completeness.hasPlannedIncome,
+        hasBills: expectedIncomeProjection.completeness.hasBills,
+        hasSpendingBudget: expectedIncomeProjection.completeness.hasSpendingBudget,
+        hasSavingsGoal: expectedIncomeProjection.completeness.hasSavingsGoal
+    )
+    let explicitlyEnteredZeroExplanation = AvailableThisMonthCard.zeroBalanceExplanation(
+        projection: expectedIncomeProjection,
+        completeness: explicitlyEnteredZeroCompleteness,
+        hasRecordedActivity: false
+    )
+
+    #expect(explicitlyEnteredZeroExplanation.showsExpectedIncome)
+    #expect(!explicitlyEnteredZeroExplanation.showsStartingBalancePrompt)
+
+    let noIncomeProjection = engine.project(
+        ProjectionInput(
+            month: month,
+            referenceDate: referenceDate,
+            startingBalance: .zero,
+            calendar: calendar
+        )
+    )
+    let noIncomeExplanation = AvailableThisMonthCard.zeroBalanceExplanation(
+        projection: noIncomeProjection,
+        completeness: noIncomeProjection.completeness,
+        hasRecordedActivity: false
+    )
+
+    #expect(!noIncomeExplanation.showsExpectedIncome)
+
+    let activityAtZeroProjection = engine.project(
+        ProjectionInput(
+            month: month,
+            referenceDate: referenceDate,
+            startingBalance: 100,
+            incomeSources: [income],
+            transactions: [
+                TransactionSnapshot(
+                    id: UUID(),
+                    date: presentationTestDate(day: 10, hour: 12, calendar: calendar),
+                    amount: 100,
+                    type: .expense,
+                    category: "Other",
+                    detail: "Recorded expense"
+                )
+            ],
+            calendar: calendar
+        )
+    )
+    let activityExplanation = AvailableThisMonthCard.zeroBalanceExplanation(
+        projection: activityAtZeroProjection,
+        completeness: activityAtZeroProjection.completeness,
+        hasRecordedActivity: true
+    )
+
+    #expect(activityAtZeroProjection.currentAvailableBalance == .zero)
+    #expect(activityAtZeroProjection.remainingExpectedIncome == 1_000)
+    #expect(!activityExplanation.isVisible)
+}
+
 @Test func savingsSliderTargetClampsBeforeIntegerConversion() {
     #expect(SavingsGoalSection.decimalTarget(from: 124.6) == 125)
     #expect(SavingsGoalSection.decimalTarget(from: -50) == .zero)

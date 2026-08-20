@@ -33,6 +33,92 @@ struct TransactionSettlementOccurrence: Identifiable, Hashable {
     }
 }
 
+@MainActor
+struct TransactionSettlementOccurrenceProvider {
+    let repository: FinanceRepository
+    let calendar: Calendar
+
+    init(repository: FinanceRepository, calendar: Calendar = .current) {
+        self.repository = repository
+        self.calendar = calendar
+    }
+
+    func unsettledOccurrences(
+        for type: TransactionType,
+        in month: MonthKey
+    ) -> [TransactionSettlementOccurrence] {
+        let transactions = repository.transactions(in: month)
+
+        let occurrences: [TransactionSettlementOccurrence]
+        switch type {
+        case .income:
+            let settledCounts = settlementCounts(
+                transactions
+                    .filter { $0.type == .income }
+                    .compactMap(\.settlesIncomeID)
+            )
+            occurrences = repository.incomeSources()
+                .filter(\.isActive)
+                .flatMap { source in
+                    source.recurrence.occurrences(in: month, calendar: calendar)
+                        .dropFirst(settledCounts[source.id, default: 0])
+                        .map { occurrenceDate in
+                            TransactionSettlementOccurrence(
+                                kind: .income,
+                                sourceID: source.id,
+                                name: source.name,
+                                amount: source.expectedAmount,
+                                category: "Income",
+                                occurrenceDate: occurrenceDate
+                            )
+                        }
+                }
+        case .expense:
+            let settledCounts = settlementCounts(
+                transactions
+                    .filter { $0.type == .expense }
+                    .compactMap(\.settlesBillID)
+            )
+            occurrences = repository.bills()
+                .filter(\.isActive)
+                .flatMap { bill in
+                    bill.recurrence.occurrences(in: month, calendar: calendar)
+                        .dropFirst(settledCounts[bill.id, default: 0])
+                        .prefix(1)
+                        .map { occurrenceDate in
+                            TransactionSettlementOccurrence(
+                                kind: .bill,
+                                sourceID: bill.id,
+                                name: bill.name,
+                                amount: bill.amount,
+                                category: bill.category,
+                                occurrenceDate: occurrenceDate
+                            )
+                        }
+                }
+        case .savings, .transfer:
+            occurrences = []
+        }
+
+        return occurrences.sorted { lhs, rhs in
+            if lhs.occurrenceDate != rhs.occurrenceDate {
+                return lhs.occurrenceDate < rhs.occurrenceDate
+            }
+
+            let nameOrder = lhs.name.localizedCaseInsensitiveCompare(rhs.name)
+            if nameOrder != .orderedSame {
+                return nameOrder == .orderedAscending
+            }
+
+            return lhs.sourceID.uuidString < rhs.sourceID.uuidString
+        }
+    }
+
+    private func settlementCounts(_ sourceIDs: [UUID]) -> [UUID: Int] {
+        Dictionary(grouping: sourceIDs, by: { $0 }).mapValues(\.count)
+    }
+}
+
 @Observable
 @MainActor
 final class TransactionsViewModel {
@@ -127,62 +213,10 @@ final class TransactionsViewModel {
         for type: TransactionType,
         in month: MonthKey
     ) -> [TransactionSettlementOccurrence] {
-        let transactions = repository.transactions(in: month)
-
-        let occurrences: [TransactionSettlementOccurrence]
-        switch type {
-        case .income:
-            let settledCounts = settlementCounts(
-                transactions.compactMap(\.settlesIncomeID)
-            )
-            occurrences = repository.incomeSources()
-                .filter(\.isActive)
-                .flatMap { source in
-                    source.recurrence.occurrences(in: month, calendar: calendar)
-                        .dropFirst(settledCounts[source.id, default: 0])
-                        .prefix(1)
-                        .map { occurrenceDate in
-                            TransactionSettlementOccurrence(
-                                kind: .income,
-                                sourceID: source.id,
-                                name: source.name,
-                                amount: source.expectedAmount,
-                                category: "Income",
-                                occurrenceDate: occurrenceDate
-                            )
-                        }
-                }
-        case .expense:
-            let settledCounts = settlementCounts(
-                transactions.compactMap(\.settlesBillID)
-            )
-            occurrences = repository.bills()
-                .filter(\.isActive)
-                .flatMap { bill in
-                    bill.recurrence.occurrences(in: month, calendar: calendar)
-                        .dropFirst(settledCounts[bill.id, default: 0])
-                        .prefix(1)
-                        .map { occurrenceDate in
-                            TransactionSettlementOccurrence(
-                                kind: .bill,
-                                sourceID: bill.id,
-                                name: bill.name,
-                                amount: bill.amount,
-                                category: bill.category,
-                                occurrenceDate: occurrenceDate
-                            )
-                        }
-                }
-        case .savings, .transfer:
-            occurrences = []
-        }
-
-        return occurrences.sorted { lhs, rhs in
-            if lhs.occurrenceDate != rhs.occurrenceDate {
-                return lhs.occurrenceDate < rhs.occurrenceDate
-            }
-            return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
-        }
+        TransactionSettlementOccurrenceProvider(
+            repository: repository,
+            calendar: calendar
+        ).unsettledOccurrences(for: type, in: month)
     }
 
     func updateTransaction(
@@ -237,10 +271,6 @@ final class TransactionsViewModel {
     private func refreshAfterWrite(month: MonthKey) {
         projectionStore.refresh()
         load(month: month)
-    }
-
-    private func settlementCounts(_ sourceIDs: [UUID]) -> [UUID: Int] {
-        Dictionary(grouping: sourceIDs, by: { $0 }).mapValues(\.count)
     }
 
     private func categories(in month: MonthKey) -> [String] {

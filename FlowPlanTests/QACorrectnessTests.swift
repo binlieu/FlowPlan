@@ -42,7 +42,14 @@ func enteredPaycheckCanSettlePlannedIncomeWithoutDoubleCounting() throws {
     #expect(before.remainingExpectedIncome == 1_000)
     #expect(after.totalExpectedIncome == before.totalExpectedIncome)
     #expect(after.incomeReceived == 1_000)
-    #expect(after.remainingExpectedIncome == .zero)
+    #expect(
+        after.currentAvailableBalance
+            == before.currentAvailableBalance + 1_000
+    )
+    #expect(
+        after.remainingExpectedIncome
+            == before.remainingExpectedIncome - 1_000
+    )
     #expect(after.projectedEndOfMonthBalance == before.projectedEndOfMonthBalance)
 }
 
@@ -92,29 +99,156 @@ func markIncomeReceivedRejectsDuplicateOccurrence() throws {
             anchorDate: occurrence
         )
     )
-    try environment.repository.markIncomeReceived(
-        incomeID: incomeID,
-        occurrence: occurrence,
-        amount: 1_000,
-        on: occurrence
+    let unsettledOccurrence = try #require(
+        ExpectedIncomeSection.unsettledOccurrences(
+            repository: environment.repository,
+            month: environment.month,
+            calendar: environment.calendar
+        ).first
     )
 
-    do {
-        try environment.repository.markIncomeReceived(
-            incomeID: incomeID,
-            occurrence: occurrence,
-            amount: 1_000,
-            on: occurrence
-        )
-        Issue.record("A second settlement of the same income occurrence should fail.")
-    } catch {
-        #expect(error as? FinanceRepositoryError == .settlementAlreadyRecorded)
-    }
+    let firstResult = ExpectedIncomeSettlementAction.markAsReceived(
+        unsettledOccurrence,
+        amount: 1_000,
+        repository: environment.repository,
+        projectionStore: environment.projectionStore,
+        calendar: environment.calendar
+    )
+    let secondResult = ExpectedIncomeSettlementAction.markAsReceived(
+        unsettledOccurrence,
+        amount: 1_000,
+        repository: environment.repository,
+        projectionStore: environment.projectionStore,
+        calendar: environment.calendar
+    )
+
+    #expect(firstResult == nil)
+    #expect(secondResult == .alreadyReceived)
+    #expect(
+        secondResult?.message
+            == "This income occurrence has already been marked as received."
+    )
 
     #expect(
         environment.repository.transactions(in: environment.month).count {
             $0.settlesIncomeID == incomeID
         } == 1
+    )
+}
+
+@Test
+@MainActor
+func expectedIncomeOccurrenceStatusUsesCalendarDays() {
+    let calendar = QACorrectnessEnvironment.testCalendar
+    let referenceDate = QACorrectnessEnvironment.date(day: 20, calendar: calendar)
+
+    #expect(
+        ExpectedIncomeOccurrenceStatus.status(
+            for: QACorrectnessEnvironment.date(day: 19, calendar: calendar),
+            relativeTo: referenceDate,
+            calendar: calendar
+        ) == .overdue
+    )
+    #expect(
+        ExpectedIncomeOccurrenceStatus.status(
+            for: QACorrectnessEnvironment.date(day: 21, calendar: calendar),
+            relativeTo: referenceDate,
+            calendar: calendar
+        ) == .expected
+    )
+    #expect(
+        ExpectedIncomeOccurrenceStatus.status(
+            for: QACorrectnessEnvironment.date(day: 20, calendar: calendar),
+            relativeTo: referenceDate,
+            calendar: calendar
+        ) == .expected
+    )
+}
+
+@Test
+@MainActor
+func homeAndAddTransactionOfferTheSameUnsettledIncomeOccurrences() throws {
+    let environment = try QACorrectnessEnvironment()
+    let incomeID = UUID()
+
+    try environment.repository.addIncomeSource(
+        IncomeSourceEntity(
+            id: incomeID,
+            name: "Weekly salary",
+            expectedAmount: 1_000,
+            frequency: .weekly,
+            anchorDate: environment.date(day: 2)
+        )
+    )
+    try environment.repository.markIncomeReceived(
+        incomeID: incomeID,
+        occurrence: environment.date(day: 2),
+        amount: 1_000,
+        on: environment.date(day: 2)
+    )
+    environment.projectionStore.refresh()
+
+    let homeOccurrences = ExpectedIncomeSection.unsettledOccurrences(
+        repository: environment.repository,
+        month: environment.month,
+        calendar: environment.calendar
+    )
+    let pickerOccurrences = AddTransactionView.unsettledOccurrences(
+        for: .income,
+        in: environment.month,
+        repository: environment.repository,
+        calendar: environment.calendar
+    )
+
+    #expect(homeOccurrences == pickerOccurrences)
+    #expect(
+        homeOccurrences.map(\.occurrenceDate)
+            == [9, 16, 23, 30].map { environment.date(day: $0) }
+    )
+}
+
+@Test
+@MainActor
+func partialIncomeReceiptSettlesOccurrenceAndCreditsActualAmount() throws {
+    let environment = try QACorrectnessEnvironment()
+
+    try environment.repository.addIncomeSource(
+        IncomeSourceEntity(
+            name: "Salary",
+            expectedAmount: 1_000,
+            frequency: .monthly,
+            anchorDate: environment.date(day: 5)
+        )
+    )
+    environment.projectionStore.refresh()
+    let before = environment.projectionStore.projection
+    let occurrence = try #require(
+        ExpectedIncomeSection.unsettledOccurrences(
+            repository: environment.repository,
+            month: environment.month,
+            calendar: environment.calendar
+        ).first
+    )
+
+    let result = ExpectedIncomeSettlementAction.markAsReceived(
+        occurrence,
+        amount: 900,
+        repository: environment.repository,
+        projectionStore: environment.projectionStore,
+        calendar: environment.calendar
+    )
+
+    let after = environment.projectionStore.projection
+    #expect(result == nil)
+    #expect(after.currentAvailableBalance == before.currentAvailableBalance + 900)
+    #expect(after.incomeReceived == 900)
+    #expect(after.remainingExpectedIncome == .zero)
+    #expect(
+        ExpectedIncomeSection.unsettledOccurrences(
+            repository: environment.repository,
+            month: environment.month,
+            calendar: environment.calendar
+        ).isEmpty
     )
 }
 
@@ -275,8 +409,7 @@ private struct QACorrectnessEnvironment {
         startingBalance: Decimal = .zero,
         shouldFailReads: @escaping () -> Bool = { false }
     ) throws {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        let calendar = Self.testCalendar
         self.calendar = calendar
 
         let container = try PersistenceController.inMemory()
@@ -320,7 +453,13 @@ private struct QACorrectnessEnvironment {
         Self.date(day: day, calendar: calendar)
     }
 
-    private static func date(day: Int, calendar: Calendar) -> Date {
+    static var testCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        return calendar
+    }
+
+    static func date(day: Int, calendar: Calendar) -> Date {
         var components = DateComponents()
         components.calendar = calendar
         components.timeZone = calendar.timeZone

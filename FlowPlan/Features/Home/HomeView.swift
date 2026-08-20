@@ -64,6 +64,8 @@ struct HomeView: View {
                     .homeListRow()
             }
 
+            ExpectedIncomeSection(onSeeAll: onSeeAllBills)
+
             UpcomingBillsSection(onSeeAll: onSeeAllBills)
 
             QuickAddRow()
