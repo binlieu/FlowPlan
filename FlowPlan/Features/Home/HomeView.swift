@@ -64,9 +64,17 @@ struct HomeView: View {
                     .homeListRow()
             }
 
-            ExpectedIncomeSection(onSeeAll: onSeeAllBills)
+            ExpectedIncomeSection(
+                onSeeAll: onSeeAllBills,
+                calendar: calendar,
+                now: now
+            )
 
-            UpcomingBillsSection(onSeeAll: onSeeAllBills)
+            UpcomingBillsSection(
+                onSeeAll: onSeeAllBills,
+                calendar: calendar,
+                now: now
+            )
 
             QuickAddRow()
                 .padding(.horizontal, contentHorizontalPadding)
