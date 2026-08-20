@@ -207,14 +207,88 @@ struct EditIncomeView: View {
 }
 
 enum PlanAmountParser {
-    static func decimal(from text: String) -> Decimal? {
-        let normalized = text
-            .replacingOccurrences(of: ",", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX"))
+    static func decimal(from text: String, locale: Locale = .current) -> Decimal? {
+        let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty else {
+            return nil
+        }
+
+        let decimalSeparator = locale.decimalSeparator ?? "."
+        let groupingSeparator = locale.groupingSeparator ?? ""
+
+        if value.contains(decimalSeparator) {
+            let normalized = removingGroupingSeparator(
+                groupingSeparator,
+                from: value,
+                decimalSeparator: decimalSeparator
+            )
+            guard isValidDecimal(normalized, decimalSeparator: decimalSeparator) else {
+                return nil
+            }
+            return Decimal(string: normalized, locale: locale)
+        }
+
+        if let decimal = posixDecimal(from: value) {
+            return decimal
+        }
+
+        let normalized = removingGroupingSeparator(
+            groupingSeparator,
+            from: value,
+            decimalSeparator: decimalSeparator
+        )
+        return posixDecimal(from: normalized)
     }
 
-    static func text(_ amount: Decimal) -> String {
-        NSDecimalNumber(decimal: amount).stringValue
+    static func text(_ amount: Decimal, locale: Locale = .current) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = locale
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        formatter.minimumFractionDigits = 2
+        formatter.maximumFractionDigits = 16
+        formatter.generatesDecimalNumbers = true
+
+        return formatter.string(from: NSDecimalNumber(decimal: amount))
+            ?? NSDecimalNumber(decimal: amount).stringValue
+    }
+
+    private static func removingGroupingSeparator(
+        _ groupingSeparator: String,
+        from text: String,
+        decimalSeparator: String
+    ) -> String {
+        guard !groupingSeparator.isEmpty, groupingSeparator != decimalSeparator else {
+            return text
+        }
+        return text.replacingOccurrences(of: groupingSeparator, with: "")
+    }
+
+    private static func posixDecimal(from text: String) -> Decimal? {
+        guard isValidDecimal(text, decimalSeparator: ".") else {
+            return nil
+        }
+        return Decimal(string: text, locale: Locale(identifier: "en_US_POSIX"))
+    }
+
+    private static func isValidDecimal(_ text: String, decimalSeparator: String) -> Bool {
+        var unsigned = text
+        if unsigned.first == "+" || unsigned.first == "-" {
+            unsigned.removeFirst()
+        }
+
+        guard !unsigned.isEmpty else {
+            return false
+        }
+
+        let components = unsigned.components(separatedBy: decimalSeparator)
+        guard components.count <= 2 else {
+            return false
+        }
+
+        let hasDigit = components.contains { !$0.isEmpty }
+        return hasDigit && components.allSatisfy { component in
+            component.allSatisfy(\.isNumber)
+        }
     }
 }
