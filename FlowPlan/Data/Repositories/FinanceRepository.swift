@@ -662,6 +662,14 @@ final class FinanceRepository {
         }
     }
 
+    func setDebtPaidThroughBills(id: UUID, isPaidThroughBills: Bool) throws {
+        try write {
+            let stored: DebtEntity = try existing(id: id)
+            stored.isPaidThroughBills = isPaidThroughBills
+            stored.updatedAt = now()
+        }
+    }
+
     func deleteDebt(id: UUID) throws {
         try write {
             let debt: DebtEntity = try existing(id: id)

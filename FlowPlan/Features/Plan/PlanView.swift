@@ -8,11 +8,14 @@ struct PlanView: View {
 
     @State private var presentedEditor: PresentedEditor?
     @State private var previewProjection: MonthlyProjection?
+    @State private var presentedError: WriteErrorPresentation?
 
     var body: some View {
         // Repository fetches return domain values. Tracking the write token makes SwiftUI rerun
         // these fetches even when a successful write leaves the projection unchanged.
         let _ = projectionStore.dataVersion
+        let bills = repository.bills()
+        let debts = repository.debts()
 
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 30) {
@@ -28,17 +31,19 @@ struct PlanView: View {
                 )
 
                 MonthlyBillsSection(
-                    bills: repository.bills(),
+                    bills: bills,
                     onAdd: { presentedEditor = .newBill },
                     onEdit: { presentedEditor = .bill($0) }
                 )
 
                 DebtSection(
-                    debts: repository.debts(),
+                    debts: debts,
+                    bills: bills,
                     originalBalances: repository.debtOriginalBalances(),
                     outsideBillsTotal: projectionForDisplay.debtPaymentsDue,
                     onAdd: { presentedEditor = .newDebt },
-                    onEdit: { presentedEditor = .debt($0) }
+                    onEdit: { presentedEditor = .debt($0) },
+                    onCountSeparately: countSeparately
                 )
 
                 SpendingBudgetSection(
@@ -83,6 +88,13 @@ struct PlanView: View {
         }
         .sheet(item: $presentedEditor) { editor in
             editorView(editor)
+        }
+        .alert(item: $presentedError) { error in
+            Alert(
+                title: Text(error.title),
+                message: Text(error.message),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
 
@@ -145,6 +157,23 @@ struct PlanView: View {
         previewProjection = projectionStore.simulate(
             WhatIfScenario(savingsTargetOverride: target)
         ).simulated
+    }
+
+    private func countSeparately(_ debt: Debt) {
+        do {
+            try repository.setDebtPaidThroughBills(
+                id: debt.id,
+                isPaidThroughBills: false
+            )
+            projectionStore.refresh()
+        } catch {
+            presentedError = WriteErrorPresentation(
+                operation: .update,
+                subject: "debt",
+                error: error,
+                guidance: "The payment is still marked as paid through Monthly Bills. Please try again."
+            )
+        }
     }
 
     private enum PresentedEditor: Identifiable {

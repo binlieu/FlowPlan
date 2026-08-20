@@ -354,7 +354,9 @@ struct AddTransactionView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
+            .foregroundStyle(Palette.onAccentFill)
             .buttonStyle(.borderedProminent)
+            .tint(Palette.accentFill)
             .controlSize(.large)
             .font(.headline)
             .disabled(!canSave || isSaving)

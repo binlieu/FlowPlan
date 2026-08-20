@@ -63,8 +63,9 @@ struct UpcomingBillsSection: View {
                                 markAsPaid(occurrence)
                             } label: {
                                 Label("Mark as paid", systemImage: "checkmark.circle")
+                                    .foregroundStyle(Palette.onAccentFill)
                             }
-                            .tint(Palette.accent)
+                            .tint(Palette.accentFill)
                         }
                 }
             }
@@ -128,8 +129,9 @@ struct UpcomingBillsSection: View {
                 markAllPromptPaymentsAsPaid(occurrences)
             }
             .font(.subheadline.weight(.bold))
+            .foregroundStyle(Palette.onAccentFill)
             .buttonStyle(.borderedProminent)
-            .tint(Palette.accent)
+            .tint(Palette.accentFill)
             .disabled(isSettlingPromptPayments)
         }
         .frame(maxWidth: .infinity, alignment: .leading)

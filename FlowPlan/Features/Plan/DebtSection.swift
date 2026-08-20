@@ -5,10 +5,12 @@ struct DebtSection: View {
     @Environment(AppState.self) private var appState
 
     let debts: [Debt]
+    let bills: [PlannedBill]
     let originalBalances: [UUID: Decimal]
     let outsideBillsTotal: Decimal
     let onAdd: () -> Void
     let onEdit: (Debt) -> Void
+    let onCountSeparately: (Debt) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -59,60 +61,90 @@ struct DebtSection: View {
     }
 
     private func debtRow(_ debt: Debt) -> some View {
-        Button {
-            onEdit(debt)
-        } label: {
-            VStack(alignment: .leading, spacing: 11) {
-                HStack(alignment: .firstTextBaseline, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(debt.name)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(Palette.ink)
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                onEdit(debt)
+            } label: {
+                VStack(alignment: .leading, spacing: 11) {
+                    HStack(alignment: .firstTextBaseline, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(debt.name)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Palette.ink)
 
-                        Text(aprText(for: debt))
+                            Text(aprText(for: debt))
+                                .font(Typography.supporting)
+                                .foregroundStyle(Palette.inkSecondary)
+                        }
+
+                        Spacer(minLength: 10)
+
+                        Text(money(debt.currentBalance))
+                            .font(.headline.weight(.bold))
+                            .fontWidth(.condensed)
+                            .monospacedDigit()
+                            .foregroundStyle(Palette.ink)
+                    }
+
+                    ProgressView(value: progress(for: debt))
+                        .tint(Palette.accent)
+                        .accessibilityLabel("Debt payoff progress")
+                        .accessibilityValue("\(paidPercentage(for: debt)) percent paid off")
+
+                    HStack(alignment: .center, spacing: 10) {
+                        Text("\(paidPercentage(for: debt))% paid off")
                             .font(Typography.supporting)
                             .foregroundStyle(Palette.inkSecondary)
+
+                        Spacer(minLength: 8)
+
+                        if debt.isAutoPay {
+                            Chip(text: "AUTO PAY", style: .filledNeutral)
+                        }
+
+                        debtStatus(debt)
                     }
 
-                    Spacer(minLength: 10)
-
-                    Text(money(debt.currentBalance))
-                        .font(.headline.weight(.bold))
-                        .fontWidth(.condensed)
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.ink)
-                }
-
-                ProgressView(value: progress(for: debt))
-                    .tint(Palette.accent)
-                    .accessibilityLabel("Debt payoff progress")
-                    .accessibilityValue("\(paidPercentage(for: debt)) percent paid off")
-
-                HStack(alignment: .center, spacing: 10) {
-                    Text("\(paidPercentage(for: debt))% paid off")
+                    payoffText(for: debt)
                         .font(Typography.supporting)
-                        .foregroundStyle(Palette.inkSecondary)
-
-                    Spacer(minLength: 8)
-
-                    if debt.isAutoPay {
-                        Chip(text: "AUTO PAY", style: .filledNeutral)
-                    }
-
-                    debtStatus(debt)
+                        .foregroundStyle(payoffColor(for: debt))
                 }
-
-                payoffText(for: debt)
-                    .font(Typography.supporting)
-                    .foregroundStyle(payoffColor(for: debt))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .contentShape(Rectangle())
+                .opacity(debt.isActive ? 1 : 0.55)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .contentShape(Rectangle())
-            .opacity(debt.isActive ? 1 : 0.55)
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens debt editor")
+
+            if OrphanedDebtDetector.isOrphaned(debt, bills: bills) {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(OrphanedDebtDetector.warningMessage)
+                            .font(Typography.supporting)
+                            .foregroundStyle(Palette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Button("Count it separately") {
+                            onCountSeparately(debt)
+                        }
+                        .font(Typography.supporting.weight(.semibold))
+                        .foregroundStyle(Palette.accent)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 44, alignment: .leading)
+                        .accessibilityHint("Includes this debt payment in the projection")
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Debt payment warning")
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens debt editor")
     }
 
     private func debtStatus(_ debt: Debt) -> some View {
