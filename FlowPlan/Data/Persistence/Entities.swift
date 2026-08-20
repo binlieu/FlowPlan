@@ -2,6 +2,45 @@ import Foundation
 import SwiftData
 import FlowPlanDomain
 
+struct Account: Identifiable, Hashable {
+    let id: UUID
+    let name: String
+}
+
+enum AccountName {
+    static func trimmed(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func identity(_ value: String) -> String {
+        trimmed(value)
+            .folding(options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+    }
+}
+
+@Model
+final class AccountEntity {
+    #Unique<AccountEntity>([\.id])
+
+    var id: UUID
+    var name: String
+    var createdAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.createdAt = createdAt
+    }
+
+    func toValue() -> Account {
+        Account(id: id, name: name)
+    }
+}
+
 @Model
 final class TransactionEntity {
     #Unique<TransactionEntity>([\.id])

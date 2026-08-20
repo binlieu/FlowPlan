@@ -69,6 +69,10 @@ struct SettingsView: View {
 
     private var organizationSection: some View {
         Section {
+            NavigationLink("Accounts") {
+                AccountsSettingsView()
+            }
+
             NavigationLink("Categories") {
                 CategoriesSettingsView()
             }

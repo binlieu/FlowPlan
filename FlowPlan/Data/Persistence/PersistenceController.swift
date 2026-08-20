@@ -9,6 +9,7 @@ enum PersistenceController {
     )
 
     static let schema = Schema([
+        AccountEntity.self,
         TransactionEntity.self,
         IncomeSourceEntity.self,
         RecurringBillEntity.self,

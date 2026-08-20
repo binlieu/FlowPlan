@@ -4,9 +4,10 @@ import FlowPlanDomain
 struct TransactionFilter: Hashable {
     var type: TransactionTypeFilter = .all
     var categories: Set<String> = []
+    var account: String?
 
     var isActive: Bool {
-        type != .all || !categories.isEmpty
+        type != .all || !categories.isEmpty || account != nil
     }
 
     mutating func toggleCategory(_ category: String) {
@@ -21,9 +22,18 @@ struct TransactionFilter: Hashable {
         self = TransactionFilter()
     }
 
-    func matches(_ transaction: TransactionSnapshot) -> Bool {
+    func matches(_ transaction: TransactionSnapshot, account transactionAccount: String = "") -> Bool {
         type.matches(transaction.type)
             && (categories.isEmpty || categories.contains(transaction.category))
+            && matchesAccount(transactionAccount)
+    }
+
+    private func matchesAccount(_ transactionAccount: String) -> Bool {
+        guard let account else {
+            return true
+        }
+
+        return AccountName.identity(account) == AccountName.identity(transactionAccount)
     }
 }
 

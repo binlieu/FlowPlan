@@ -5,6 +5,12 @@ struct TransactionRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let transaction: TransactionSnapshot
+    let account: String
+
+    init(transaction: TransactionSnapshot, account: String = "") {
+        self.transaction = transaction
+        self.account = account
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -21,7 +27,7 @@ struct TransactionRow: View {
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(transaction.category)
+                Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
@@ -55,6 +61,15 @@ struct TransactionRow: View {
         }
 
         return transaction.type.netAmount(for: transaction.amount)
+    }
+
+    private var subtitle: String {
+        let trimmedAccount = account.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedAccount.isEmpty else {
+            return transaction.category
+        }
+
+        return "\(transaction.category) · \(trimmedAccount)"
     }
 
     private var iconColor: Color {

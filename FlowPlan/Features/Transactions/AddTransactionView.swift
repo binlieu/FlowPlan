@@ -14,6 +14,7 @@ struct AddTransactionView: View {
     private let onSaved: () -> Void
 
     @Query private var storedTransactions: [TransactionEntity]
+    @Query(sort: \AccountEntity.name) private var managedAccountEntities: [AccountEntity]
 
     @State private var transactionType: TransactionType
     @State private var amount: Decimal?
@@ -28,6 +29,8 @@ struct AddTransactionView: View {
     @State private var selectedSettlementID: String?
     @State private var isPresentingNewCategory = false
     @State private var newCategory = ""
+    @State private var isAddingNewAccount = false
+    @State private var newAccount = ""
     @State private var presentedError: PresentedError?
     @State private var isSaving = false
     @State private var didConfigureInitialDate = false
@@ -218,8 +221,62 @@ struct AddTransactionView: View {
                 displayedComponents: [.date]
             )
 
-            TextField("Account", text: $account)
-                .textContentType(.organizationName)
+            Menu {
+                Button {
+                    account = ""
+                    isAddingNewAccount = false
+                    newAccount = ""
+                } label: {
+                    if trimmedAccount.isEmpty {
+                        Label("No account", systemImage: "checkmark")
+                    } else {
+                        Text("No account")
+                    }
+                }
+
+                ForEach(accountOptions, id: \.self) { accountName in
+                    Button {
+                        account = accountName
+                        isAddingNewAccount = false
+                        newAccount = ""
+                    } label: {
+                        if AccountName.identity(accountName) == AccountName.identity(account) {
+                            Label(accountName, systemImage: "checkmark")
+                        } else {
+                            Text(accountName)
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button {
+                    newAccount = ""
+                    isAddingNewAccount = true
+                } label: {
+                    Label("New account…", systemImage: "plus")
+                }
+            } label: {
+                HStack {
+                    Label("Account", systemImage: "creditcard")
+                    Spacer()
+                    Text(trimmedAccount.isEmpty ? "None" : trimmedAccount)
+                        .foregroundStyle(trimmedAccount.isEmpty ? .secondary : .primary)
+                }
+                .contentShape(Rectangle())
+            }
+
+            if isAddingNewAccount {
+                HStack {
+                    TextField("New account name", text: $newAccount)
+                        .textContentType(.organizationName)
+
+                    Button("Add") {
+                        addNewAccount()
+                    }
+                    .disabled(!canAddNewAccount)
+                }
+            }
         } header: {
             Text("Details")
         } footer: {
@@ -370,6 +427,41 @@ struct AddTransactionView: View {
         newCategory.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var trimmedNewAccount: String {
+        newAccount.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var accountOptions: [String] {
+        Self.accountOptions(
+            managedAccounts: managedAccountEntities.map { $0.toValue() },
+            storedValue: account
+        )
+    }
+
+    static func accountOptions(managedAccounts: [Account], storedValue: String) -> [String] {
+        var namesByIdentity: [String: String] = [:]
+
+        for name in managedAccounts.map(\.name) + [storedValue] {
+            let trimmedName = AccountName.trimmed(name)
+            let identity = AccountName.identity(trimmedName)
+            if !identity.isEmpty, namesByIdentity[identity] == nil {
+                namesByIdentity[identity] = trimmedName
+            }
+        }
+
+        return namesByIdentity.values.sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
+    }
+
+    private var canAddNewAccount: Bool {
+        let identity = AccountName.identity(trimmedNewAccount)
+        return !identity.isEmpty
+            && !managedAccountEntities.contains {
+                AccountName.identity($0.name) == identity
+            }
+    }
+
     private func configureInitialState() {
         loadCategories()
 
@@ -451,6 +543,23 @@ struct AddTransactionView: View {
             }
         }
         newCategory = ""
+    }
+
+    private func addNewAccount() {
+        guard canAddNewAccount else {
+            return
+        }
+
+        do {
+            try repository.addAccount(named: trimmedNewAccount)
+            account = trimmedNewAccount
+            newAccount = ""
+            isAddingNewAccount = false
+        } catch {
+            presentedError = PresentedError(
+                message: "The account could not be added. Please try again."
+            )
+        }
     }
 
     private func loadSettlementOccurrences() {
@@ -572,14 +681,16 @@ struct AddTransactionView: View {
                         incomeID: selectedSettlement.sourceID,
                         occurrence: selectedSettlement.occurrenceDate,
                         amount: amount,
-                        on: date
+                        on: date,
+                        account: trimmedAccount
                     )
                 case .bill:
                     try repository.markBillPaid(
                         billID: selectedSettlement.sourceID,
                         occurrence: selectedSettlement.occurrenceDate,
                         amount: amount,
-                        on: date
+                        on: date,
+                        account: trimmedAccount
                     )
                 }
             } else {
