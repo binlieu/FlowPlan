@@ -97,6 +97,7 @@ struct SpendingBudgetSection: View {
             .filter {
                 $0.type == .expense
                     && $0.settlesBillID == nil
+                    && $0.settlesDebtID == nil
                     && $0.category == category
             }
             .map(\.amount)

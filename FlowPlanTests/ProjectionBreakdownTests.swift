@@ -27,6 +27,7 @@ func seededProjectionBreakdownHasStableRowIDsAndOrder() throws {
         "currentAvailable",
         "remainingIncome",
         "remainingBills",
+        "remainingDebt",
         "remainingSpending",
         "remainingSavings",
         "projectedBalance"

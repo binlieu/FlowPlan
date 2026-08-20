@@ -1,6 +1,6 @@
 # FlowPlan Project Status
 
-Updated: 2026-08-19
+Updated: 2026-08-20
 
 ## Completed
 
@@ -14,10 +14,11 @@ Updated: 2026-08-19
   Face ID lock, sample data, import, and export flows
 - [x] Centralised currency presentation and Decimal-based financial calculations
 - [x] Accessibility and Dynamic Type fixes from the second QA pass
+- [x] Debt modelling, bounded payoff schedules, bill-overlap protection, settlement, persistence,
+  and Plan editing
 
 ## Deferred Post-MVP
 
-- Debt modelling and its bill-reconciliation rules
 - Account management beyond the existing transaction account field
 - iCloud sync
 - Home-screen and lock-screen widgets
@@ -47,8 +48,8 @@ These items are deferred under D-016 rather than addressed with isolated fixes.
 
 ## Test Status
 
-- PASS — 87 `FlowPlanDomain` tests.
-- 45 app tests are defined and type-check. Simulator execution is blocked by the
+- PASS — 98 `FlowPlanDomain` tests.
+- 84 app tests are defined and type-check. Simulator execution is blocked by the
   environment described above.
 - PASS — domain purity checks; no `USD` or `en_US` literals remain under
   `Packages/FlowPlanDomain/Sources`.

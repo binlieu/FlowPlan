@@ -63,6 +63,12 @@ struct MonthlyProjectionCard: View {
                 direction: .deduction
             ),
             ProjectionCardRow(
+                id: "debtPayments",
+                label: "Debt payments",
+                amount: projection.debtPaymentsDue,
+                direction: .deduction
+            ),
+            ProjectionCardRow(
                 id: "plannedSpending",
                 label: "Planned spending",
                 amount: projection.plannedSpendingTotal,

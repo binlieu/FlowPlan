@@ -29,6 +29,14 @@ struct PlanView: View {
                     onEdit: { presentedEditor = .bill($0) }
                 )
 
+                DebtSection(
+                    debts: repository.debts(),
+                    originalBalances: repository.debtOriginalBalances(),
+                    outsideBillsTotal: projectionForDisplay.debtPaymentsDue,
+                    onAdd: { presentedEditor = .newDebt },
+                    onEdit: { presentedEditor = .debt($0) }
+                )
+
                 SpendingBudgetSection(
                     budgets: repository.budgets(for: appState.selectedMonth),
                     transactions: repository.transactions(in: appState.selectedMonth),
@@ -109,6 +117,10 @@ struct PlanView: View {
             EditBillView()
         case .bill(let bill):
             EditBillView(bill: bill)
+        case .newDebt:
+            EditDebtView()
+        case .debt(let debt):
+            EditDebtView(debt: debt)
         case .newBudget:
             EditBudgetView()
         case .budget(let budget):
@@ -136,6 +148,8 @@ struct PlanView: View {
         case income(PlannedIncome)
         case newBill
         case bill(PlannedBill)
+        case newDebt
+        case debt(Debt)
         case newBudget
         case budget(BudgetAllocation)
         case newSavingsGoal
@@ -151,6 +165,10 @@ struct PlanView: View {
                 "new-bill"
             case .bill(let bill):
                 "bill-\(bill.id.uuidString)"
+            case .newDebt:
+                "new-debt"
+            case .debt(let debt):
+                "debt-\(debt.id.uuidString)"
             case .newBudget:
                 "new-budget"
             case .budget(let budget):

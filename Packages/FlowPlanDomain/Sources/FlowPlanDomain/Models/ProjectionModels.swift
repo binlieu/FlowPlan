@@ -18,6 +18,7 @@ public struct ProjectionInput: Sendable {
     public let startingBalance: Decimal
     public let incomeSources: [PlannedIncome]
     public let bills: [PlannedBill]
+    public let debts: [Debt]
     public let budgets: [BudgetAllocation]
     public let savingsPlans: [SavingsPlan]
     public let transactions: [TransactionSnapshot]
@@ -30,6 +31,7 @@ public struct ProjectionInput: Sendable {
         startingBalance: Decimal,
         incomeSources: [PlannedIncome] = [],
         bills: [PlannedBill] = [],
+        debts: [Debt] = [],
         budgets: [BudgetAllocation] = [],
         savingsPlans: [SavingsPlan] = [],
         transactions: [TransactionSnapshot] = [],
@@ -41,6 +43,7 @@ public struct ProjectionInput: Sendable {
         self.startingBalance = startingBalance
         self.incomeSources = incomeSources
         self.bills = bills
+        self.debts = debts
         self.budgets = budgets
         self.savingsPlans = savingsPlans
         self.transactions = transactions
@@ -147,6 +150,9 @@ public struct MonthlyProjection: Hashable, Sendable {
     public let expensesPaid: Decimal
     public let remainingBills: Decimal
     public let billsPaid: Decimal
+    public let debtPaymentsDue: Decimal
+    public let debtPaymentsMade: Decimal
+    public let remainingDebtPayments: Decimal
     public let projectedVariableSpending: Decimal
     public let actualVariableSpending: Decimal
     public let remainingVariableSpending: Decimal
@@ -183,6 +189,9 @@ public struct MonthlyProjection: Hashable, Sendable {
         expensesPaid: Decimal,
         remainingBills: Decimal,
         billsPaid: Decimal,
+        debtPaymentsDue: Decimal = .zero,
+        debtPaymentsMade: Decimal = .zero,
+        remainingDebtPayments: Decimal = .zero,
         projectedVariableSpending: Decimal,
         actualVariableSpending: Decimal,
         remainingVariableSpending: Decimal,
@@ -213,6 +222,9 @@ public struct MonthlyProjection: Hashable, Sendable {
         self.expensesPaid = expensesPaid
         self.remainingBills = remainingBills
         self.billsPaid = billsPaid
+        self.debtPaymentsDue = debtPaymentsDue
+        self.debtPaymentsMade = debtPaymentsMade
+        self.remainingDebtPayments = remainingDebtPayments
         self.projectedVariableSpending = projectedVariableSpending
         self.actualVariableSpending = actualVariableSpending
         self.remainingVariableSpending = remainingVariableSpending

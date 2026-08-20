@@ -54,6 +54,7 @@ final class TransactionEntity {
     var note: String
     var account: String
     var settlesBillID: UUID?
+    var settlesDebtID: UUID?
     var settlesIncomeID: UUID?
     var createdAt: Date
     var updatedAt: Date
@@ -73,6 +74,7 @@ final class TransactionEntity {
         note: String = "",
         account: String = "",
         settlesBillID: UUID? = nil,
+        settlesDebtID: UUID? = nil,
         settlesIncomeID: UUID? = nil,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -86,6 +88,7 @@ final class TransactionEntity {
         self.note = note
         self.account = account
         self.settlesBillID = settlesBillID
+        self.settlesDebtID = settlesDebtID
         self.settlesIncomeID = settlesIncomeID
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -107,6 +110,7 @@ final class TransactionEntity {
         self.note = note
         self.account = account
         settlesBillID = domain.settlesBillID
+        settlesDebtID = domain.settlesDebtID
         settlesIncomeID = domain.settlesIncomeID
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -121,6 +125,7 @@ final class TransactionEntity {
             category: category,
             detail: detail,
             settlesBillID: settlesBillID,
+            settlesDebtID: settlesDebtID,
             settlesIncomeID: settlesIncomeID
         )
     }
@@ -285,6 +290,89 @@ final class RecurringBillEntity {
                 endDate: endDate
             ),
             isAutoPay: isAutoPay,
+            isActive: isActive
+        )
+    }
+}
+
+@Model
+final class DebtEntity {
+    #Unique<DebtEntity>([\.id])
+
+    var id: UUID
+    var name: String
+    var currentBalance: Decimal
+    var originalBalance: Decimal
+    var annualInterestRate: Decimal
+    var monthlyPayment: Decimal
+    var category: String
+    var isPaidThroughBills: Bool
+    var isActive: Bool
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        currentBalance: Decimal,
+        originalBalance: Decimal? = nil,
+        annualInterestRate: Decimal,
+        monthlyPayment: Decimal,
+        category: String,
+        isPaidThroughBills: Bool,
+        isActive: Bool = true,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        let normalizedBalance = currentBalance.positiveMagnitude
+        self.id = id
+        self.name = name
+        self.currentBalance = normalizedBalance
+        self.originalBalance = max(
+            normalizedBalance,
+            originalBalance?.positiveMagnitude ?? normalizedBalance
+        )
+        self.annualInterestRate = annualInterestRate.positiveMagnitude
+        self.monthlyPayment = monthlyPayment.positiveMagnitude
+        self.category = category
+        self.isPaidThroughBills = isPaidThroughBills
+        self.isActive = isActive
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    init(
+        domain: Debt,
+        originalBalance: Decimal? = nil,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date()
+    ) {
+        let normalizedBalance = domain.currentBalance.positiveMagnitude
+        id = domain.id
+        name = domain.name
+        currentBalance = normalizedBalance
+        self.originalBalance = max(
+            normalizedBalance,
+            originalBalance?.positiveMagnitude ?? normalizedBalance
+        )
+        annualInterestRate = domain.annualInterestRate.positiveMagnitude
+        monthlyPayment = domain.monthlyPayment.positiveMagnitude
+        category = domain.category
+        isPaidThroughBills = domain.isPaidThroughBills
+        isActive = domain.isActive
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    func toDomain() -> Debt {
+        Debt(
+            id: id,
+            name: name,
+            currentBalance: currentBalance.positiveMagnitude,
+            annualInterestRate: annualInterestRate.positiveMagnitude,
+            monthlyPayment: monthlyPayment.positiveMagnitude,
+            category: category,
+            isPaidThroughBills: isPaidThroughBills,
             isActive: isActive
         )
     }

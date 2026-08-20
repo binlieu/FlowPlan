@@ -99,6 +99,12 @@ final class FinanceRepository {
                     startingBalance: try startingBalanceValue(for: month),
                     incomeSources: try incomeSourceValues(),
                     bills: try billValues(),
+                    debts: try debtValuesForProjection(
+                        startingIn: min(
+                            month,
+                            MonthKey(date: referenceDate, calendar: calendar)
+                        )
+                    ),
                     budgets: try budgetValues(for: month),
                     savingsPlans: try savingsPlanValues(),
                     transactions: try transactionValues(in: month),
@@ -231,6 +237,64 @@ final class FinanceRepository {
             sortBy: [SortDescriptor(\RecurringBillEntity.name)]
         )
         return try fetchOrThrow(descriptor).map { $0.toDomain() }
+    }
+
+    func debts() -> [Debt] {
+        read(or: []) {
+            try debtValues()
+        }
+    }
+
+    private func debtValues() throws -> [Debt] {
+        try debtEntities().map { $0.toDomain() }
+    }
+
+    private func debtEntities() throws -> [DebtEntity] {
+        let descriptor = FetchDescriptor<DebtEntity>(
+            sortBy: [SortDescriptor(\DebtEntity.name)]
+        )
+        return try fetchOrThrow(descriptor)
+    }
+
+    private func debtValuesForProjection(startingIn month: MonthKey) throws -> [Debt] {
+        let debtPayments = try transactionValues(in: month).filter {
+            $0.type == .expense && $0.settlesDebtID != nil
+        }
+        let paymentsByDebtID = Dictionary(grouping: debtPayments) { $0.settlesDebtID }
+        let schedule = DebtSchedule()
+
+        return try debtEntities().map { entity in
+            let debt = entity.toDomain()
+            let payments = paymentsByDebtID[debt.id, default: []]
+            let projectionBalance = payments.reduce(debt.currentBalance) { balance, payment in
+                schedule.balanceBeforePayment(
+                    of: payment.amount,
+                    remainingBalance: balance,
+                    annualInterestRate: debt.annualInterestRate
+                )
+            }
+
+            return Debt(
+                id: debt.id,
+                name: debt.name,
+                currentBalance: projectionBalance,
+                annualInterestRate: debt.annualInterestRate,
+                monthlyPayment: debt.monthlyPayment,
+                category: debt.category,
+                isPaidThroughBills: debt.isPaidThroughBills,
+                isActive: debt.isActive
+            )
+        }
+    }
+
+    func debtOriginalBalances() -> [UUID: Decimal] {
+        read(or: [:]) {
+            Dictionary(
+                uniqueKeysWithValues: try fetchOrThrow(FetchDescriptor<DebtEntity>()).map {
+                    ($0.id, $0.originalBalance)
+                }
+            )
+        }
     }
 
     func savingsPlans() -> [SavingsPlan] {
@@ -393,7 +457,11 @@ final class FinanceRepository {
     }
 
     func addTransaction(_ transaction: TransactionEntity) throws {
-        guard transaction.settlesBillID == nil, transaction.settlesIncomeID == nil else {
+        guard
+            transaction.settlesBillID == nil,
+            transaction.settlesDebtID == nil,
+            transaction.settlesIncomeID == nil
+        else {
             throw FinanceRepositoryError.settlementMustUseDedicatedMethod
         }
 
@@ -405,7 +473,11 @@ final class FinanceRepository {
     }
 
     func updateTransaction(_ transaction: TransactionEntity) throws {
-        guard transaction.settlesBillID == nil, transaction.settlesIncomeID == nil else {
+        guard
+            transaction.settlesBillID == nil,
+            transaction.settlesDebtID == nil,
+            transaction.settlesIncomeID == nil
+        else {
             throw FinanceRepositoryError.settlementMustUseDedicatedMethod
         }
 
@@ -497,6 +569,44 @@ final class FinanceRepository {
 
         bill.updatedAt = timestamp
         context.delete(bill)
+        try context.save()
+    }
+
+    func addDebt(_ debt: DebtEntity) throws {
+        normalize(debt)
+        debt.category = try canonicalCategory(debt.category)
+        debt.updatedAt = now()
+        context.insert(debt)
+        try context.save()
+    }
+
+    func updateDebt(_ debt: DebtEntity) throws {
+        let stored: DebtEntity = try existing(id: debt.id)
+        let normalizedBalance = debt.currentBalance.positiveMagnitude
+        stored.name = debt.name
+        stored.currentBalance = normalizedBalance
+        stored.originalBalance = max(stored.originalBalance, normalizedBalance)
+        stored.annualInterestRate = debt.annualInterestRate.positiveMagnitude
+        stored.monthlyPayment = debt.monthlyPayment.positiveMagnitude
+        stored.category = try canonicalCategory(debt.category)
+        stored.isPaidThroughBills = debt.isPaidThroughBills
+        stored.isActive = debt.isActive
+        stored.updatedAt = now()
+        try context.save()
+    }
+
+    func deleteDebt(id: UUID) throws {
+        let debt: DebtEntity = try existing(id: id)
+        let linkedTransactions = try transactionsLinkedToDebt(id)
+        let timestamp = now()
+
+        for transaction in linkedTransactions {
+            transaction.settlesDebtID = nil
+            transaction.updatedAt = timestamp
+        }
+
+        debt.updatedAt = timestamp
+        context.delete(debt)
         try context.save()
     }
 
@@ -646,6 +756,47 @@ final class FinanceRepository {
         try context.save()
     }
 
+    func markDebtPaymentMade(
+        debtID: UUID,
+        amount: Decimal,
+        on date: Date,
+        account: String = ""
+    ) throws {
+        guard amount > .zero else {
+            throw FinanceRepositoryError.nonPositiveAmount
+        }
+
+        let debt: DebtEntity = try existing(id: debtID)
+        let month = MonthKey(date: date, calendar: calendar)
+        let settlementCount = try transactionValues(in: month).count {
+            $0.settlesDebtID == debtID
+        }
+        guard settlementCount == 0 else {
+            throw FinanceRepositoryError.settlementAlreadyRecorded
+        }
+
+        let timestamp = now()
+        let transaction = TransactionEntity(
+            date: date,
+            amount: amount,
+            type: .expense,
+            category: try canonicalCategory(debt.category),
+            detail: debt.name,
+            account: AccountName.trimmed(account),
+            settlesDebtID: debtID,
+            createdAt: timestamp,
+            updatedAt: timestamp
+        )
+
+        debt.currentBalance = DebtSchedule().remainingBalance(
+            afterPaymentOf: amount,
+            for: debt.toDomain()
+        )
+        debt.updatedAt = timestamp
+        context.insert(transaction)
+        try context.save()
+    }
+
     func markIncomeReceived(
         incomeID: UUID,
         amount: Decimal,
@@ -735,6 +886,10 @@ final class FinanceRepository {
         try addBill(bill)
     }
 
+    func add(_ debt: DebtEntity) throws {
+        try addDebt(debt)
+    }
+
     func add(_ budget: BudgetEntity) throws {
         try addBudget(budget)
     }
@@ -755,6 +910,10 @@ final class FinanceRepository {
         try updateBill(bill)
     }
 
+    func update(_ debt: DebtEntity) throws {
+        try updateDebt(debt)
+    }
+
     func update(_ budget: BudgetEntity) throws {
         try updateBudget(budget)
     }
@@ -773,6 +932,10 @@ final class FinanceRepository {
 
     func delete(_ bill: RecurringBillEntity) throws {
         try deleteBill(id: bill.id)
+    }
+
+    func delete(_ debt: DebtEntity) throws {
+        try deleteDebt(id: debt.id)
     }
 
     func delete(_ budget: BudgetEntity) throws {
@@ -802,6 +965,16 @@ final class FinanceRepository {
         goal.currentAmount = goal.currentAmount.positiveMagnitude
     }
 
+    private func normalize(_ debt: DebtEntity) {
+        debt.currentBalance = debt.currentBalance.positiveMagnitude
+        debt.originalBalance = max(
+            debt.currentBalance,
+            debt.originalBalance.positiveMagnitude
+        )
+        debt.annualInterestRate = debt.annualInterestRate.positiveMagnitude
+        debt.monthlyPayment = debt.monthlyPayment.positiveMagnitude
+    }
+
     private func canonicalCategory(_ category: String) throws -> String {
         let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedCategory.isEmpty else {
@@ -810,6 +983,7 @@ final class FinanceRepository {
 
         let storedCategories = try fetchOrThrow(FetchDescriptor<BudgetEntity>()).map(\.category)
             + fetchOrThrow(FetchDescriptor<RecurringBillEntity>()).map(\.category)
+            + fetchOrThrow(FetchDescriptor<DebtEntity>()).map(\.category)
             + fetchOrThrow(FetchDescriptor<TransactionEntity>()).map(\.category)
         let identity = categoryIdentity(trimmedCategory)
 
@@ -858,6 +1032,13 @@ final class FinanceRepository {
     private func transactionsLinkedToBill(_ id: UUID) throws -> [TransactionEntity] {
         let predicate = #Predicate<TransactionEntity> { transaction in
             transaction.settlesBillID == id
+        }
+        return try fetchOrThrow(FetchDescriptor(predicate: predicate))
+    }
+
+    private func transactionsLinkedToDebt(_ id: UUID) throws -> [TransactionEntity] {
+        let predicate = #Predicate<TransactionEntity> { transaction in
+            transaction.settlesDebtID == id
         }
         return try fetchOrThrow(FetchDescriptor(predicate: predicate))
     }
@@ -927,6 +1108,7 @@ private protocol IdentifiedPersistentModel: PersistentModel {
 extension TransactionEntity: IdentifiedPersistentModel {}
 extension IncomeSourceEntity: IdentifiedPersistentModel {}
 extension RecurringBillEntity: IdentifiedPersistentModel {}
+extension DebtEntity: IdentifiedPersistentModel {}
 extension BudgetEntity: IdentifiedPersistentModel {}
 extension SavingsGoalEntity: IdentifiedPersistentModel {}
 extension AccountEntity: IdentifiedPersistentModel {}

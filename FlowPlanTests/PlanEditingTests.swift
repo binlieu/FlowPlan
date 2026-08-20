@@ -223,6 +223,7 @@ func projectionCardReconcilesWithNonZeroStartingBalance() throws {
         "Starting balance",
         "Expected income",
         "Recurring bills",
+        "Debt payments",
         "Planned spending",
         "Savings goal"
     ])
@@ -230,6 +231,7 @@ func projectionCardReconcilesWithNonZeroStartingBalance() throws {
         projection.startingBalance,
         projection.plannedIncomeTotal,
         projection.plannedBillsTotal,
+        projection.debtPaymentsDue,
         projection.plannedSpendingTotal,
         projection.savingsTarget
     ])
@@ -243,7 +245,7 @@ func projectionCardReconcilesForMonthWithNoPlan() throws {
     let projection = environment.projectionStore.projection
     let rows = MonthlyProjectionCard.rows(for: projection)
 
-    #expect(rows.count == 5)
+    #expect(rows.count == 6)
     #expect(rows.allSatisfy { $0.amount == .zero })
     expectProjectionCardReconciles(projection)
 }

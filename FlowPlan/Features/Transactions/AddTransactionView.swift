@@ -671,6 +671,7 @@ struct AddTransactionView: View {
                         note: trimmedNote,
                         account: trimmedAccount,
                         settlesBillID: transactionToEdit.settlesBillID,
+                        settlesDebtID: transactionToEdit.settlesDebtID,
                         settlesIncomeID: transactionToEdit.settlesIncomeID
                     )
                 )
