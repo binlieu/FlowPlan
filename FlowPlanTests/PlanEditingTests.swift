@@ -93,12 +93,59 @@ func addingBillLowersProjectionForEveryOccurrenceInMonth() throws {
     environment.projectionStore.refresh()
 
     #expect(environment.projectionStore.projection.plannedBillsTotal == 200)
+    #expect(environment.repository.bills().reduce(Decimal.zero) { $0 + $1.amount } == 100)
+    #expect(
+        MonthlyBillsSection.totalRowContent(
+            plannedTotal: environment.projectionStore.projection.plannedBillsTotal
+        ).amount == 200
+    )
     #expect(environment.projectionStore.projection.projectedEndOfMonthBalance == before - 200)
 }
 
 @Test
 @MainActor
-func deactivatingBillRemovesItFromRemainingBills() throws {
+func monthlyBillsTotalDisplaysProjectionTotalForSeveralBills() throws {
+    let environment = try PlanEditingEnvironment()
+
+    try environment.repository.addBill(
+        RecurringBillEntity(
+            name: "Rent",
+            amount: 1_850,
+            amountType: .fixed,
+            category: "Housing",
+            frequency: .monthly,
+            anchorDate: environment.date(day: 1)
+        )
+    )
+    try environment.repository.addBill(
+        RecurringBillEntity(
+            name: "Utilities",
+            amount: 542.98,
+            amountType: .variable,
+            category: "Utilities",
+            frequency: .monthly,
+            anchorDate: environment.date(day: 15)
+        )
+    )
+    environment.projectionStore.refresh()
+
+    let projection = environment.projectionStore.projection
+    let totalRow = MonthlyBillsSection.totalRowContent(
+        plannedTotal: projection.plannedBillsTotal
+    )
+
+    #expect(projection.plannedBillsTotal == 2_392.98)
+    #expect(totalRow.amount == projection.plannedBillsTotal)
+    #expect(totalRow.label == "TOTAL MONTHLY BILLS")
+    #expect(
+        MonthlyBillsSection.formattedTotal(totalRow.amount, currencyCode: "USD")
+            == "-$2,392.98"
+    )
+}
+
+@Test
+@MainActor
+func deactivatingBillLowersMonthlyBillsTotal() throws {
     let environment = try PlanEditingEnvironment(startingBalance: 2_000)
     let billID = UUID()
     let anchorDate = environment.date(day: 12)
@@ -115,7 +162,12 @@ func deactivatingBillRemovesItFromRemainingBills() throws {
         )
     )
     environment.projectionStore.refresh()
+    let activeTotal = MonthlyBillsSection.totalRowContent(
+        plannedTotal: environment.projectionStore.projection.plannedBillsTotal
+    ).amount
+
     #expect(environment.projectionStore.projection.remainingBills == 90)
+    #expect(activeTotal == 90)
 
     try environment.repository.updateBill(
         RecurringBillEntity(
@@ -130,8 +182,46 @@ func deactivatingBillRemovesItFromRemainingBills() throws {
         )
     )
     environment.projectionStore.refresh()
+    let inactiveTotal = MonthlyBillsSection.totalRowContent(
+        plannedTotal: environment.projectionStore.projection.plannedBillsTotal
+    ).amount
 
     #expect(environment.projectionStore.projection.remainingBills == .zero)
+    #expect(environment.projectionStore.projection.plannedBillsTotal == .zero)
+    #expect(inactiveTotal == .zero)
+    #expect(inactiveTotal < activeTotal)
+}
+
+@Test
+@MainActor
+func monthlyBillsTotalRowShowsNegativeZeroWhenThereAreNoBills() throws {
+    let environment = try PlanEditingEnvironment()
+    let totalRow = MonthlyBillsSection.totalRowContent(
+        plannedTotal: environment.projectionStore.projection.plannedBillsTotal
+    )
+
+    #expect(environment.repository.bills().isEmpty)
+    #expect(totalRow.amount == .zero)
+    #expect(MonthlyBillsSection.formattedTotal(totalRow.amount, currencyCode: "USD") == "-$0")
+}
+
+@Test
+@MainActor
+func monthlyBillsTotalMatchesProjectionCardRecurringBills() throws {
+    let environment = try PlanEditingEnvironment()
+    try addCompletePlan(to: environment)
+    environment.projectionStore.refresh()
+
+    let projection = environment.projectionStore.projection
+    let planTotal = MonthlyBillsSection.totalRowContent(
+        plannedTotal: PlanView.monthlyBillsTotal(for: projection)
+    )
+    let projectionCardTotal = try #require(
+        MonthlyProjectionCard.rows(for: projection).first { $0.id == "plannedBills" }
+    )
+
+    #expect(planTotal.amount == projectionCardTotal.amount)
+    #expect(projectionCardTotal.direction == .deduction)
 }
 
 @Test

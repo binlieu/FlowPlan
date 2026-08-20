@@ -32,6 +32,7 @@ struct PlanView: View {
 
                 MonthlyBillsSection(
                     bills: bills,
+                    plannedTotal: Self.monthlyBillsTotal(for: projectionForDisplay),
                     onAdd: { presentedEditor = .newBill },
                     onEdit: { presentedEditor = .bill($0) }
                 )
@@ -120,6 +121,10 @@ struct PlanView: View {
 
     private var projectionForDisplay: MonthlyProjection {
         previewProjection ?? projectionStore.projection
+    }
+
+    static func monthlyBillsTotal(for projection: MonthlyProjection) -> Decimal {
+        projection.plannedBillsTotal
     }
 
     @ViewBuilder

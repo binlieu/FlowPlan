@@ -5,8 +5,14 @@ struct MonthlyBillsSection: View {
     @Environment(AppState.self) private var appState
 
     let bills: [PlannedBill]
+    let plannedTotal: Decimal
     let onAdd: () -> Void
     let onEdit: (PlannedBill) -> Void
+
+    struct TotalRowContent: Equatable {
+        let label: String
+        let amount: Decimal
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -27,7 +33,11 @@ struct MonthlyBillsSection: View {
                             Divider()
                         }
                     }
+
+                    Divider()
                 }
+
+                totalRow
             }
             .background(Palette.surface)
             .overlay {
@@ -101,6 +111,37 @@ struct MonthlyBillsSection: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens bill editor")
+    }
+
+    private var totalRow: some View {
+        let content = Self.totalRowContent(plannedTotal: plannedTotal)
+
+        return HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Text(content.label)
+                .smallCapsTypography()
+                .foregroundStyle(Palette.inkSecondary)
+
+            Spacer(minLength: 12)
+
+            Text(Self.formattedTotal(content.amount, currencyCode: appState.currencyCode))
+                .valueTypography()
+                .monospacedDigit()
+                .foregroundStyle(Palette.ink)
+        }
+        .padding(16)
+        .background(Palette.accentLight)
+        .accessibilityElement(children: .combine)
+    }
+
+    static func totalRowContent(plannedTotal: Decimal) -> TotalRowContent {
+        TotalRowContent(
+            label: "TOTAL MONTHLY BILLS",
+            amount: plannedTotal
+        )
+    }
+
+    static func formattedTotal(_ amount: Decimal, currencyCode: String) -> String {
+        "-\(MoneyFormatter.string(amount, currencyCode: currencyCode, style: .compact))"
     }
 
     private func money(_ amount: Decimal) -> String {
