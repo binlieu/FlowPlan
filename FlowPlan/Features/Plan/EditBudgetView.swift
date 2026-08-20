@@ -18,6 +18,7 @@ struct EditBudgetView: View {
     @State private var isSaving = false
     @State private var isShowingDeleteConfirmation = false
     @State private var presentedError: PresentedError?
+    @State private var hasAttemptedSave = false
 
     init(budget: BudgetAllocation? = nil) {
         self.budget = budget
@@ -31,14 +32,24 @@ struct EditBudgetView: View {
         NavigationStack {
             Form {
                 Section("Budget") {
-                    TextField("Category", text: $category)
-                        .textInputAutocapitalization(.words)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Category", text: $category)
+                            .textInputAutocapitalization(.words)
+                        PlanValidationMessage(
+                            message: visible(categoryValidationMessage, for: category)
+                        )
+                    }
 
-                    TextField("Monthly limit", text: $limitText)
-                        .font(.largeTitle.weight(.bold))
-                        .fontWidth(.condensed)
-                        .monospacedDigit()
-                        .keyboardType(.decimalPad)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Monthly limit", text: $limitText)
+                            .font(.largeTitle.weight(.bold))
+                            .fontWidth(.condensed)
+                            .monospacedDigit()
+                            .keyboardType(.decimalPad)
+                        PlanValidationMessage(
+                            message: visible(limitValidationMessage, for: limitText)
+                        )
+                    }
                 }
 
                 Section("Applies") {
@@ -71,7 +82,7 @@ struct EditBudgetView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", action: save)
-                        .disabled(!isValid || isSaving)
+                        .disabled(isSaving)
                 }
             }
             .onAppear(perform: loadStoredScope)
@@ -107,7 +118,23 @@ struct EditBudgetView: View {
     }
 
     private var isValid: Bool {
-        !trimmedCategory.isEmpty && parsedLimit.map { $0 > .zero } == true
+        categoryValidationMessage == nil && limitValidationMessage == nil
+    }
+
+    private var categoryValidationMessage: String? {
+        PlanEditorValidation.requiredText(category, message: "Enter a budget category.")
+    }
+
+    private var limitValidationMessage: String? {
+        PlanEditorValidation.positiveAmount(
+            limitText,
+            message: "Enter a monthly limit greater than zero."
+        )
+    }
+
+    private func visible(_ message: String?, for input: String) -> String? {
+        let hasInput = !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return hasAttemptedSave || hasInput ? message : nil
     }
 
     private var scopeDescription: String {
@@ -141,6 +168,7 @@ struct EditBudgetView: View {
     }
 
     private func save() {
+        hasAttemptedSave = true
         guard let limit = parsedLimit, isValid else {
             return
         }

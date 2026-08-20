@@ -306,6 +306,7 @@ final class DebtEntity {
     var annualInterestRate: Decimal
     var monthlyPayment: Decimal
     var category: String
+    var dueDay: Int = 1
     var isPaidThroughBills: Bool
     var isActive: Bool
     var createdAt: Date
@@ -319,6 +320,7 @@ final class DebtEntity {
         annualInterestRate: Decimal,
         monthlyPayment: Decimal,
         category: String,
+        dueDay: Int = 1,
         isPaidThroughBills: Bool,
         isActive: Bool = true,
         createdAt: Date = Date(),
@@ -335,6 +337,7 @@ final class DebtEntity {
         self.annualInterestRate = annualInterestRate.positiveMagnitude
         self.monthlyPayment = monthlyPayment.positiveMagnitude
         self.category = category
+        self.dueDay = min(31, max(1, dueDay))
         self.isPaidThroughBills = isPaidThroughBills
         self.isActive = isActive
         self.createdAt = createdAt
@@ -358,6 +361,7 @@ final class DebtEntity {
         annualInterestRate = domain.annualInterestRate.positiveMagnitude
         monthlyPayment = domain.monthlyPayment.positiveMagnitude
         category = domain.category
+        dueDay = domain.dueDay
         isPaidThroughBills = domain.isPaidThroughBills
         isActive = domain.isActive
         self.createdAt = createdAt
@@ -372,6 +376,7 @@ final class DebtEntity {
             annualInterestRate: annualInterestRate.positiveMagnitude,
             monthlyPayment: monthlyPayment.positiveMagnitude,
             category: category,
+            dueDay: dueDay,
             isPaidThroughBills: isPaidThroughBills,
             isActive: isActive
         )

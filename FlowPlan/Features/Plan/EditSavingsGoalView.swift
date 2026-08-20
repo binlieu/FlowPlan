@@ -21,6 +21,7 @@ struct EditSavingsGoalView: View {
     @State private var isSaving = false
     @State private var isShowingDeleteConfirmation = false
     @State private var presentedError: PresentedError?
+    @State private var hasAttemptedSave = false
 
     init(plan: SavingsPlan? = nil) {
         self.plan = plan
@@ -34,17 +35,36 @@ struct EditSavingsGoalView: View {
         NavigationStack {
             Form {
                 Section("Savings goal") {
-                    TextField("Name", text: $name)
-                        .textInputAutocapitalization(.words)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Name", text: $name)
+                            .textInputAutocapitalization(.words)
+                        PlanValidationMessage(message: visible(nameValidationMessage, for: name))
+                    }
 
-                    TextField("Monthly target", text: $monthlyTargetText)
-                        .font(.largeTitle.weight(.bold))
-                        .fontWidth(.condensed)
-                        .monospacedDigit()
-                        .keyboardType(.decimalPad)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Monthly target", text: $monthlyTargetText)
+                            .font(.largeTitle.weight(.bold))
+                            .fontWidth(.condensed)
+                            .monospacedDigit()
+                            .keyboardType(.decimalPad)
+                        PlanValidationMessage(
+                            message: visible(
+                                monthlyTargetValidationMessage,
+                                for: monthlyTargetText
+                            )
+                        )
+                    }
 
-                    TextField("Overall target", text: $overallTargetText)
-                        .keyboardType(.decimalPad)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Overall target", text: $overallTargetText)
+                            .keyboardType(.decimalPad)
+                        PlanValidationMessage(
+                            message: visible(
+                                overallTargetValidationMessage,
+                                for: overallTargetText
+                            )
+                        )
+                    }
                 }
 
                 Section("Target date") {
@@ -82,7 +102,7 @@ struct EditSavingsGoalView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", action: save)
-                        .disabled(!isValid || isSaving)
+                        .disabled(isSaving)
                 }
             }
             .onAppear(perform: loadStoredGoal)
@@ -122,9 +142,32 @@ struct EditSavingsGoalView: View {
     }
 
     private var isValid: Bool {
-        !trimmedName.isEmpty
-            && parsedMonthlyTarget.map { $0 > .zero } == true
-            && parsedOverallTarget.map { $0 > .zero } == true
+        nameValidationMessage == nil
+            && monthlyTargetValidationMessage == nil
+            && overallTargetValidationMessage == nil
+    }
+
+    private var nameValidationMessage: String? {
+        PlanEditorValidation.requiredText(name, message: "Enter a savings goal name.")
+    }
+
+    private var monthlyTargetValidationMessage: String? {
+        PlanEditorValidation.positiveAmount(
+            monthlyTargetText,
+            message: "Enter a monthly target greater than zero."
+        )
+    }
+
+    private var overallTargetValidationMessage: String? {
+        PlanEditorValidation.positiveAmount(
+            overallTargetText,
+            message: "Enter an overall target greater than zero."
+        )
+    }
+
+    private func visible(_ message: String?, for input: String) -> String? {
+        let hasInput = !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return hasAttemptedSave || hasInput ? message : nil
     }
 
     private func loadStoredGoal() {
@@ -148,6 +191,7 @@ struct EditSavingsGoalView: View {
     }
 
     private func save() {
+        hasAttemptedSave = true
         guard
             let monthlyTarget = parsedMonthlyTarget,
             let overallTarget = parsedOverallTarget,

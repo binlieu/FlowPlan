@@ -30,8 +30,10 @@ struct UpcomingBillsSection: View {
     }
 
     var body: some View {
-        let occurrences = unsettledOccurrences
-        let promptOccurrences = overdueAutopayPromptOccurrences(in: occurrences)
+        let occurrences = unsettledPaymentOccurrences
+        let promptOccurrences = overdueAutopayPromptOccurrences(
+            in: occurrences.compactMap(\.billOccurrence)
+        )
 
         Section {
             if !promptOccurrences.isEmpty {
@@ -51,7 +53,7 @@ struct UpcomingBillsSection: View {
                     .listRowSeparator(.hidden)
             } else {
                 ForEach(occurrences.prefix(5)) { occurrence in
-                    billRow(occurrence)
+                    paymentRow(occurrence)
                         .padding(.horizontal, 20)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Palette.background)
@@ -74,7 +76,7 @@ struct UpcomingBillsSection: View {
         }
         .alert(item: $presentedError) { error in
             Alert(
-                title: Text("Unable to mark bill as paid"),
+                title: Text("Unable to mark payment as paid"),
                 message: Text(error.message),
                 dismissButton: .default(Text("OK"))
             )
@@ -144,7 +146,7 @@ struct UpcomingBillsSection: View {
                 .font(.headline)
                 .foregroundStyle(Palette.ink)
 
-            Text("There are no unpaid bill occurrences left this month.")
+            Text("There are no unpaid bills or debt payments left this month.")
                 .font(Typography.supporting)
                 .foregroundStyle(Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -158,19 +160,19 @@ struct UpcomingBillsSection: View {
     }
 
     @ViewBuilder
-    private func billRow(_ occurrence: BillOccurrence) -> some View {
+    private func paymentRow(_ occurrence: HomePaymentOccurrence) -> some View {
         if dynamicTypeSize.isAccessibilitySize {
-            accessibilityBillRow(occurrence)
+            accessibilityPaymentRow(occurrence)
         } else {
-            standardBillRow(occurrence)
+            standardPaymentRow(occurrence)
         }
     }
 
-    private func standardBillRow(_ occurrence: BillOccurrence) -> some View {
+    private func standardPaymentRow(_ occurrence: HomePaymentOccurrence) -> some View {
         HStack(alignment: .center, spacing: 14) {
             monogram(for: occurrence)
 
-            billDescription(for: occurrence)
+            paymentDescription(for: occurrence)
 
             Spacer(minLength: 8)
 
@@ -184,12 +186,12 @@ struct UpcomingBillsSection: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func accessibilityBillRow(_ occurrence: BillOccurrence) -> some View {
+    private func accessibilityPaymentRow(_ occurrence: HomePaymentOccurrence) -> some View {
         HStack(alignment: .top, spacing: 14) {
             monogram(for: occurrence)
 
             VStack(alignment: .leading, spacing: 12) {
-                billDescription(for: occurrence)
+                paymentDescription(for: occurrence)
                 amountAndStatus(for: occurrence, alignment: .leading)
             }
         }
@@ -202,7 +204,7 @@ struct UpcomingBillsSection: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func monogram(for occurrence: BillOccurrence) -> some View {
+    private func monogram(for occurrence: HomePaymentOccurrence) -> some View {
         Text(occurrence.monogram)
             .smallCapsTypography()
             .foregroundStyle(Palette.accent)
@@ -213,9 +215,9 @@ struct UpcomingBillsSection: View {
             .accessibilityHidden(true)
     }
 
-    private func billDescription(for occurrence: BillOccurrence) -> some View {
+    private func paymentDescription(for occurrence: HomePaymentOccurrence) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(occurrence.bill.name)
+            Text(occurrence.name)
                 .font(.body.weight(.medium))
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -227,33 +229,58 @@ struct UpcomingBillsSection: View {
     }
 
     private func amountAndStatus(
-        for occurrence: BillOccurrence,
+        for occurrence: HomePaymentOccurrence,
         alignment: HorizontalAlignment
     ) -> some View {
         VStack(alignment: alignment, spacing: 5) {
-            Text(money(occurrence.bill.amount))
+            Text(money(occurrence.amount))
                 .font(.headline.weight(.bold))
                 .fontWidth(.condensed)
                 .monospacedDigit()
                 .foregroundStyle(Palette.ink)
                 .fixedSize(horizontal: true, vertical: true)
-                .accessibilityLabel(accessibleMoney(occurrence.bill.amount))
+                .accessibilityLabel(accessibleMoney(occurrence.amount))
 
             let status = status(for: occurrence)
-            OccurrenceStatusLabel(
-                text: status.rawValue,
-                isOverdue: status == .overdue
-            )
+            HStack(spacing: 6) {
+                if occurrence.isDebt {
+                    debtChip
+                }
+
+                if !occurrence.isDebt || status == .overdue {
+                    OccurrenceStatusLabel(
+                        text: status.rawValue,
+                        isOverdue: status == .overdue
+                    )
+                }
+            }
             .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private var unsettledOccurrences: [BillOccurrence] {
-        _ = projectionStore.projection
+    private var debtChip: some View {
+        Text("DEBT")
+            .smallCapsTypography()
+            .foregroundStyle(Palette.accent)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Palette.accentLight, in: Capsule())
+            .overlay {
+                Capsule().stroke(Palette.accentMuted, lineWidth: 1)
+            }
+    }
 
-        return Self.unsettledOccurrences(
+    private var unsettledPaymentOccurrences: [HomePaymentOccurrence] {
+        let billOccurrences = Self.unsettledOccurrences(
             repository: repository,
             month: appState.selectedMonth,
+            relativeTo: now(),
+            calendar: calendar
+        )
+
+        return Self.paymentOccurrences(
+            bills: billOccurrences,
+            debts: projectionStore.projection.debtOccurrences,
             relativeTo: now(),
             calendar: calendar
         )
@@ -283,13 +310,26 @@ struct UpcomingBillsSection: View {
         )
     }
 
-    private func status(for occurrence: BillOccurrence) -> BillOccurrenceStatus {
-        BillOccurrenceStatus.status(
-            for: occurrence.bill,
-            occurrenceDate: occurrence.date,
-            relativeTo: now(),
+    static func paymentOccurrences(
+        bills: [BillOccurrence],
+        debts: [DebtOccurrence],
+        relativeTo referenceDate: Date,
+        calendar: Calendar
+    ) -> [HomePaymentOccurrence] {
+        let billPayments = bills.map(HomePaymentOccurrence.bill)
+        let debtPayments = debts
+            .filter { !$0.isPaidThroughBills }
+            .map(HomePaymentOccurrence.debt)
+
+        return HomePaymentOccurrence.sorted(
+            billPayments + debtPayments,
+            relativeTo: referenceDate,
             calendar: calendar
         )
+    }
+
+    private func status(for occurrence: HomePaymentOccurrence) -> BillOccurrenceStatus {
+        occurrence.status(relativeTo: now(), calendar: calendar)
     }
 
     private func overdueAutopayPromptOccurrences(
@@ -321,18 +361,12 @@ struct UpcomingBillsSection: View {
         MoneyFormatter.accessibleString(amount, currencyCode: appState.currencyCode)
     }
 
-    private func markAsPaid(_ occurrence: BillOccurrence) {
-        do {
-            try repository.markBillPaid(
-                billID: occurrence.bill.id,
-                occurrence: occurrence.date,
-                amount: occurrence.bill.amount,
-                on: occurrence.date
-            )
-            projectionStore.refresh()
-        } catch {
-            presentedError = .unableToRecord
-        }
+    private func markAsPaid(_ occurrence: HomePaymentOccurrence) {
+        presentedError = HomePaymentSettlementAction.markAsPaid(
+            occurrence,
+            repository: repository,
+            projectionStore: projectionStore
+        )
     }
 
     private func markAllAutopayBillsAsPaid(_ occurrences: [BillOccurrence]) {

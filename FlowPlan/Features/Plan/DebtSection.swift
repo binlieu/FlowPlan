@@ -154,22 +154,29 @@ struct DebtSection: View {
                 return Text("Paid off")
             }
 
+            let dueText = "Due \(DebtDueDayText.ordinal(debt.dueDay))"
             let selectedOrCurrentMonth = min(
                 appState.selectedMonth,
                 MonthKey(date: Date(), calendar: .current)
             )
             switch DebtSchedule().payoffMonth(for: debt, startingIn: selectedOrCurrentMonth) {
             case .value(let month):
-                return Text("\(count) payments left · paid off \(monthTitle(month))")
+                return Text(
+                    "\(dueText) · \(count) payments left · paid off \(monthTitle(month))"
+                )
             case .neverAmortises:
-                return Text("Payment does not cover interest")
+                return Text("\(dueText) · Payment does not cover interest")
             case .exceedsMaximumTerm:
-                return Text("Payoff is more than 50 years away")
+                return Text("\(dueText) · Payoff is more than 50 years away")
             }
         case .neverAmortises:
-            return Text("Payment does not cover interest")
+            return Text(
+                "Due \(DebtDueDayText.ordinal(debt.dueDay)) · Payment does not cover interest"
+            )
         case .exceedsMaximumTerm:
-            return Text("Payoff is more than 50 years away")
+            return Text(
+                "Due \(DebtDueDayText.ordinal(debt.dueDay)) · Payoff is more than 50 years away"
+            )
         }
     }
 

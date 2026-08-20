@@ -13,11 +13,13 @@ struct EditDebtView: View {
     @State private var aprText: String
     @State private var paymentText: String
     @State private var category: String
+    @State private var dueDay: Int
     @State private var isPaidThroughBills: Bool
     @State private var isActive: Bool
     @State private var isSaving = false
     @State private var isShowingDeleteOptions = false
     @State private var presentedError: PresentedError?
+    @State private var hasAttemptedSave = false
 
     init(debt: Debt? = nil) {
         self.debt = debt
@@ -32,6 +34,7 @@ struct EditDebtView: View {
             initialValue: debt.map { PlanAmountParser.text($0.monthlyPayment) } ?? ""
         )
         _category = State(initialValue: debt?.category ?? "")
+        _dueDay = State(initialValue: debt?.dueDay ?? 1)
         _isPaidThroughBills = State(initialValue: debt?.isPaidThroughBills ?? false)
         _isActive = State(initialValue: debt?.isActive ?? true)
     }
@@ -40,20 +43,50 @@ struct EditDebtView: View {
         NavigationStack {
             Form {
                 Section("Debt") {
-                    TextField("Name", text: $name)
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Name", text: $name)
+                            .textInputAutocapitalization(.words)
+                        PlanValidationMessage(message: visible(nameValidationMessage, for: name))
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Balance remaining", text: $balanceText)
+                            .keyboardType(.decimalPad)
+                        PlanValidationMessage(
+                            message: visible(balanceValidationMessage, for: balanceText)
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("APR percent (optional)", text: $aprText)
+                            .keyboardType(.decimalPad)
+                        PlanValidationMessage(
+                            message: visible(aprValidationMessage, for: aprText)
+                        )
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Monthly payment", text: $paymentText)
+                            .keyboardType(.decimalPad)
+                        PlanValidationMessage(
+                            message: visible(paymentValidationMessage, for: paymentText)
+                        )
+                    }
+
+                    TextField("Category (optional)", text: $category)
                         .textInputAutocapitalization(.words)
+                }
 
-                    TextField("Balance remaining", text: $balanceText)
-                        .keyboardType(.decimalPad)
+                Section("Payment date") {
+                    Picker("Due day", selection: $dueDay) {
+                        ForEach(1...31, id: \.self) { day in
+                            Text(DebtDueDayText.ordinal(day)).tag(day)
+                        }
+                    }
 
-                    TextField("APR percent", text: $aprText)
-                        .keyboardType(.decimalPad)
-
-                    TextField("Monthly payment", text: $paymentText)
-                        .keyboardType(.decimalPad)
-
-                    TextField("Category", text: $category)
-                        .textInputAutocapitalization(.words)
+                    Text("Due on the \(DebtDueDayText.ordinal(dueDay)) of each month")
+                        .font(Typography.supporting)
+                        .foregroundStyle(Palette.inkSecondary)
                 }
 
                 Section {
@@ -88,7 +121,7 @@ struct EditDebtView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save", action: save)
-                        .disabled(!isValid || isSaving)
+                        .disabled(isSaving)
                 }
             }
             .confirmationDialog(
@@ -123,7 +156,7 @@ struct EditDebtView: View {
     }
 
     private var parsedAPRPercentage: Decimal? {
-        PlanAmountParser.decimal(from: aprText)
+        PlanEditorValidation.optionalDebtAPRPercentage(aprText)
     }
 
     private var parsedPayment: Decimal? {
@@ -134,8 +167,8 @@ struct EditDebtView: View {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private var trimmedCategory: String {
-        category.trimmingCharacters(in: .whitespacesAndNewlines)
+    private var resolvedCategory: String {
+        PlanEditorValidation.debtCategory(category)
     }
 
     private var resolvedName: String {
@@ -143,14 +176,44 @@ struct EditDebtView: View {
     }
 
     private var isValid: Bool {
-        !trimmedName.isEmpty
-            && !trimmedCategory.isEmpty
-            && parsedBalance.map { $0 >= .zero } == true
-            && parsedAPRPercentage.map { $0 >= .zero } == true
-            && parsedPayment.map { $0 > .zero } == true
+        nameValidationMessage == nil
+            && balanceValidationMessage == nil
+            && aprValidationMessage == nil
+            && paymentValidationMessage == nil
+    }
+
+    private var nameValidationMessage: String? {
+        PlanEditorValidation.requiredText(name, message: "Enter a debt name.")
+    }
+
+    private var balanceValidationMessage: String? {
+        PlanEditorValidation.nonnegativeAmount(
+            balanceText,
+            message: "Enter a balance of zero or more."
+        )
+    }
+
+    private var aprValidationMessage: String? {
+        PlanEditorValidation.optionalNonnegativeAmount(
+            aprText,
+            message: "Enter an APR of zero or more, or leave it blank."
+        )
+    }
+
+    private var paymentValidationMessage: String? {
+        PlanEditorValidation.positiveAmount(
+            paymentText,
+            message: "Enter a monthly payment."
+        )
+    }
+
+    private func visible(_ message: String?, for input: String) -> String? {
+        let hasInput = !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return hasAttemptedSave || hasInput ? message : nil
     }
 
     private func save() {
+        hasAttemptedSave = true
         guard
             let balance = parsedBalance,
             let aprPercentage = parsedAPRPercentage,
@@ -169,7 +232,8 @@ struct EditDebtView: View {
                 currentBalance: balance,
                 annualInterestRate: aprPercentage / 100,
                 monthlyPayment: payment,
-                category: trimmedCategory,
+                category: resolvedCategory,
+                dueDay: dueDay,
                 isPaidThroughBills: isPaidThroughBills,
                 isActive: isActive
             )
@@ -200,6 +264,7 @@ struct EditDebtView: View {
                     annualInterestRate: debt.annualInterestRate,
                     monthlyPayment: debt.monthlyPayment,
                     category: debt.category,
+                    dueDay: debt.dueDay,
                     isPaidThroughBills: debt.isPaidThroughBills,
                     isActive: false
                 )

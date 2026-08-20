@@ -75,6 +75,28 @@ public struct MonthlyProjectionEngine: Sendable {
             }
             return total + debtSchedule.paymentDue(for: debt, in: input.month)
         }
+        let debtOccurrences = separatelyPaidDebts.compactMap { debt -> DebtOccurrence? in
+            let amount = debtSchedule.paymentDue(for: debt, in: input.month)
+            guard
+                !settledDebtIDs.contains(debt.id),
+                amount > .zero,
+                let date = debtSchedule.paymentDate(
+                    for: debt,
+                    in: input.month,
+                    calendar: input.calendar
+                )
+            else {
+                return nil
+            }
+
+            return DebtOccurrence(
+                debtID: debt.id,
+                name: debt.name,
+                date: date,
+                amount: amount,
+                isPaidThroughBills: debt.isPaidThroughBills
+            )
+        }
 
         // Rule 5: expenses not linked to bills or debts are discretionary spending.
         let discretionaryExpenses = expenseTransactions.filter {
@@ -237,6 +259,7 @@ public struct MonthlyProjectionEngine: Sendable {
             debtPaymentsDue: debtPaymentsDue,
             debtPaymentsMade: debtPaymentsMade,
             remainingDebtPayments: remainingDebtPayments,
+            debtOccurrences: debtOccurrences,
             projectedVariableSpending: projectedVariableSpending,
             actualVariableSpending: actualVariableSpending,
             remainingVariableSpending: remainingVariableSpending,

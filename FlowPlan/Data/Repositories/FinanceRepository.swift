@@ -281,6 +281,7 @@ final class FinanceRepository {
                 annualInterestRate: debt.annualInterestRate,
                 monthlyPayment: debt.monthlyPayment,
                 category: debt.category,
+                dueDay: debt.dueDay,
                 isPaidThroughBills: debt.isPaidThroughBills,
                 isActive: debt.isActive
             )
@@ -574,7 +575,7 @@ final class FinanceRepository {
 
     func addDebt(_ debt: DebtEntity) throws {
         normalize(debt)
-        debt.category = try canonicalCategory(debt.category)
+        debt.category = try canonicalCategory(defaultDebtCategory(for: debt.category))
         debt.updatedAt = now()
         context.insert(debt)
         try context.save()
@@ -588,7 +589,8 @@ final class FinanceRepository {
         stored.originalBalance = max(stored.originalBalance, normalizedBalance)
         stored.annualInterestRate = debt.annualInterestRate.positiveMagnitude
         stored.monthlyPayment = debt.monthlyPayment.positiveMagnitude
-        stored.category = try canonicalCategory(debt.category)
+        stored.category = try canonicalCategory(defaultDebtCategory(for: debt.category))
+        stored.dueDay = min(31, max(1, debt.dueDay))
         stored.isPaidThroughBills = debt.isPaidThroughBills
         stored.isActive = debt.isActive
         stored.updatedAt = now()
@@ -973,6 +975,12 @@ final class FinanceRepository {
         )
         debt.annualInterestRate = debt.annualInterestRate.positiveMagnitude
         debt.monthlyPayment = debt.monthlyPayment.positiveMagnitude
+        debt.dueDay = min(31, max(1, debt.dueDay))
+    }
+
+    private func defaultDebtCategory(for category: String) -> String {
+        let trimmedCategory = category.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedCategory.isEmpty ? "Debt" : trimmedCategory
     }
 
     private func canonicalCategory(_ category: String) throws -> String {

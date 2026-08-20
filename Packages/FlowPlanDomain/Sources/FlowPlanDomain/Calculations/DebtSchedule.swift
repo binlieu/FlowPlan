@@ -97,6 +97,26 @@ public struct DebtSchedule: Sendable {
         return .zero
     }
 
+    /// Returns the debt's clamped due date in `month`, or `nil` when no payment remains.
+    public func paymentDate(
+        for debt: Debt,
+        in month: MonthKey,
+        calendar: Calendar
+    ) -> Date? {
+        guard paymentDue(for: debt, in: month) > .zero else {
+            return nil
+        }
+
+        var components = DateComponents()
+        components.calendar = calendar
+        components.timeZone = calendar.timeZone
+        components.year = month.year
+        components.month = month.month
+        components.day = min(debt.dueDay, month.dayCount(calendar: calendar))
+
+        return calendar.date(from: components)
+    }
+
     /// Applies an actual payment to principal after the month's rounded interest charge.
     public func remainingBalance(
         afterPaymentOf amount: Decimal,

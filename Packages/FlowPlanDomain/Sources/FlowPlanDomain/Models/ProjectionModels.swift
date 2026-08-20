@@ -132,6 +132,30 @@ public struct ProjectionLineItem: Identifiable, Hashable, Sendable {
     }
 }
 
+public struct DebtOccurrence: Identifiable, Hashable, Sendable {
+    public let debtID: UUID
+    public let name: String
+    public let date: Date
+    public let amount: Decimal
+    public let isPaidThroughBills: Bool
+
+    public var id: UUID { debtID }
+
+    public init(
+        debtID: UUID,
+        name: String,
+        date: Date,
+        amount: Decimal,
+        isPaidThroughBills: Bool
+    ) {
+        self.debtID = debtID
+        self.name = name
+        self.date = date
+        self.amount = amount
+        self.isPaidThroughBills = isPaidThroughBills
+    }
+}
+
 public struct MonthlyProjection: Hashable, Sendable {
     public let month: MonthKey
 
@@ -153,6 +177,10 @@ public struct MonthlyProjection: Hashable, Sendable {
     public let debtPaymentsDue: Decimal
     public let debtPaymentsMade: Decimal
     public let remainingDebtPayments: Decimal
+
+    /// Unsettled, separately paid debt payments dated within this projection month.
+    public let debtOccurrences: [DebtOccurrence]
+
     public let projectedVariableSpending: Decimal
     public let actualVariableSpending: Decimal
     public let remainingVariableSpending: Decimal
@@ -192,6 +220,7 @@ public struct MonthlyProjection: Hashable, Sendable {
         debtPaymentsDue: Decimal = .zero,
         debtPaymentsMade: Decimal = .zero,
         remainingDebtPayments: Decimal = .zero,
+        debtOccurrences: [DebtOccurrence] = [],
         projectedVariableSpending: Decimal,
         actualVariableSpending: Decimal,
         remainingVariableSpending: Decimal,
@@ -225,6 +254,7 @@ public struct MonthlyProjection: Hashable, Sendable {
         self.debtPaymentsDue = debtPaymentsDue
         self.debtPaymentsMade = debtPaymentsMade
         self.remainingDebtPayments = remainingDebtPayments
+        self.debtOccurrences = debtOccurrences
         self.projectedVariableSpending = projectedVariableSpending
         self.actualVariableSpending = actualVariableSpending
         self.remainingVariableSpending = remainingVariableSpending
