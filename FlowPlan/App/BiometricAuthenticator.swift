@@ -142,38 +142,61 @@ struct BiometricAuthenticator: BiometricAuthenticating {
     }
 }
 
-enum AutoLockInterval: String, CaseIterable, Identifiable, Sendable {
-    case immediately
+enum AutoLockInterval: CaseIterable, Identifiable, RawRepresentable, Sendable {
     case oneMinute
     case fiveMinutes
-    case never
+
+    static let storageKey = "autoLockInterval"
+    static let defaultValue = AutoLockInterval.oneMinute
+
+    init?(rawValue: String) {
+        switch rawValue {
+        case "oneMinute":
+            self = .oneMinute
+        case "fiveMinutes":
+            self = .fiveMinutes
+        case "immediately", "never":
+            self = .oneMinute
+        default:
+            return nil
+        }
+    }
+
+    var rawValue: String {
+        switch self {
+        case .oneMinute:
+            return "oneMinute"
+        case .fiveMinutes:
+            return "fiveMinutes"
+        }
+    }
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .immediately:
-            return "Immediately"
         case .oneMinute:
             return "1 minute"
         case .fiveMinutes:
             return "5 minutes"
-        case .never:
-            return "Never"
         }
     }
 
-    fileprivate var duration: TimeInterval? {
+    fileprivate var duration: TimeInterval {
         switch self {
-        case .immediately:
-            return 0
         case .oneMinute:
             return 60
         case .fiveMinutes:
             return 300
-        case .never:
-            return nil
         }
+    }
+
+    static func storedValue(in userDefaults: UserDefaults) -> AutoLockInterval {
+        guard let rawValue = userDefaults.string(forKey: storageKey) else {
+            return defaultValue
+        }
+
+        return AutoLockInterval(rawValue: rawValue) ?? defaultValue
     }
 }
 
@@ -251,9 +274,6 @@ final class BiometricGate {
         }
 
         becameInactiveAt = now()
-        if autoLockInterval == .immediately {
-            isLocked = true
-        }
     }
 
     func appDidBecomeActive() {
@@ -267,13 +287,12 @@ final class BiometricGate {
         guard
             isEnabled,
             !isLocked,
-            let inactiveDate = becameInactiveAt,
-            let duration = autoLockInterval.duration
+            let inactiveDate = becameInactiveAt
         else {
             return
         }
 
-        if now().timeIntervalSince(inactiveDate) >= duration {
+        if now().timeIntervalSince(inactiveDate) >= autoLockInterval.duration {
             isLocked = true
         }
     }

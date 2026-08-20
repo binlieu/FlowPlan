@@ -5,7 +5,8 @@ struct SettingsView: View {
     @Environment(ProjectionStore.self) private var projectionStore
 
     @AppStorage("notificationsEnabled") private var notificationsEnabled = false
-    @AppStorage("autoLockInterval") private var autoLockInterval: AutoLockInterval = .immediately
+    @AppStorage(AutoLockInterval.storageKey)
+    private var autoLockInterval: AutoLockInterval = .oneMinute
 
     private let biometricAvailability = BiometricAuthenticator().canEvaluate()
 
@@ -155,14 +156,15 @@ struct SettingsView: View {
         let shortVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
 
-        switch (shortVersion, build) {
-        case let (.some(version), .some(build)):
-            return "\(version) (\(build))"
-        case let (.some(version), .none):
-            return version
-        default:
-            return "1.0"
+        guard let shortVersion, !shortVersion.isEmpty else {
+            return "Unavailable"
         }
+
+        if let build, !build.isEmpty {
+            return "\(shortVersion) (\(build))"
+        }
+
+        return shortVersion
     }
 
     private func binding<Value>(_ keyPath: ReferenceWritableKeyPath<AppState, Value>) -> Binding<Value> {

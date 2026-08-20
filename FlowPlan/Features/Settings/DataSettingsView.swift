@@ -64,16 +64,6 @@ struct DataSettingsView: View {
                 Text("Turning this on adds the built-in sample records once. Turning it off does not delete records.")
             }
 
-            Section("Cloud") {
-                HStack {
-                    Label("iCloud sync", systemImage: "icloud")
-                    Spacer()
-                    Text("Coming soon")
-                        .foregroundStyle(.secondary)
-                }
-                .foregroundStyle(.secondary)
-            }
-
             Section {
                 Button("Erase all data", role: .destructive) {
                     eraseConfirmation = ""

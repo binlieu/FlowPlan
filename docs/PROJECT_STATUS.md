@@ -48,8 +48,8 @@ These items are deferred under D-016 rather than addressed with isolated fixes.
 
 ## Test Status
 
-- PASS — 98 `FlowPlanDomain` tests.
-- 84 app tests are defined and type-check. Simulator execution is blocked by the
+- PASS — 106 `FlowPlanDomain` tests.
+- 135 app tests are defined and type-check. Simulator execution is blocked by the
   environment described above.
 - PASS — domain purity checks; no `USD` or `en_US` literals remain under
   `Packages/FlowPlanDomain/Sources`.

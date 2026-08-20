@@ -7,7 +7,7 @@ import Testing
 func biometricGateStartsLockedWhenEnabled() {
     let gate = BiometricGate(
         isEnabled: true,
-        autoLockInterval: .immediately,
+        autoLockInterval: .oneMinute,
         authenticator: FakeBiometricAuthenticator(result: .success(()))
     )
 
@@ -19,7 +19,7 @@ func biometricGateStartsLockedWhenEnabled() {
 func biometricGateStartsUnlockedWhenDisabled() {
     let gate = BiometricGate(
         isEnabled: false,
-        autoLockInterval: .immediately,
+        autoLockInterval: .oneMinute,
         authenticator: FakeBiometricAuthenticator(result: .success(()))
     )
 
@@ -32,7 +32,7 @@ func biometricGateUnlocksAfterSuccessfulAuthentication() async {
     let authenticator = FakeBiometricAuthenticator(result: .success(()))
     let gate = BiometricGate(
         isEnabled: true,
-        autoLockInterval: .immediately,
+        autoLockInterval: .oneMinute,
         authenticator: authenticator
     )
 
@@ -47,7 +47,7 @@ func biometricGateUnlocksAfterSuccessfulAuthentication() async {
 func biometricGateStaysLockedAfterFailedAuthentication() async {
     let gate = BiometricGate(
         isEnabled: true,
-        autoLockInterval: .immediately,
+        autoLockInterval: .oneMinute,
         authenticator: FakeBiometricAuthenticator(result: .failure(.authenticationFailed))
     )
 
@@ -118,16 +118,15 @@ private final class FakeBiometricAuthenticator: BiometricAuthenticating {
 // MARK: - Regression: the prompt must not lock you out of answering it
 //
 // Found on a physical iPhone, not in the simulator: Face ID asked to unlock over and over.
-// Presenting the system biometric prompt drives the app to .inactive, which with the default
-// "Immediately" auto-lock both re-locked the app mid-prompt and left an inactivity timestamp
-// that re-locked it again the instant authentication succeeded and the app returned to .active.
+// Presenting the system biometric prompt drives the app to .inactive. The prompt must not leave
+// an inactivity timestamp that could re-lock the app after authentication succeeds.
 
 @Test
 @MainActor
 func successfulUnlockSurvivesThePromptsOwnSceneTransitions() async {
     let gate = BiometricGate(
         isEnabled: true,
-        autoLockInterval: .immediately,
+        autoLockInterval: .oneMinute,
         authenticator: FakeBiometricAuthenticator(result: .success(()))
     )
     #expect(gate.isLocked)
@@ -143,19 +142,25 @@ func successfulUnlockSurvivesThePromptsOwnSceneTransitions() async {
 
 @Test
 @MainActor
-func genuinelyLeavingTheAppStillLocksImmediately() async {
+func genuinelyLeavingTheAppStartsTheAutoLockInterval() async {
+    var currentDate = Date(timeIntervalSinceReferenceDate: 3_000)
     let gate = BiometricGate(
         isEnabled: true,
-        autoLockInterval: .immediately,
-        authenticator: FakeBiometricAuthenticator(result: .success(()))
+        autoLockInterval: .oneMinute,
+        authenticator: FakeBiometricAuthenticator(result: .success(())),
+        now: { currentDate }
     )
     await gate.authenticate()
     #expect(!gate.isLocked)
 
     // No authentication in flight — this is the user actually backgrounding the app.
     gate.appDidEnterBackground()
+    #expect(!gate.isLocked, "Backgrounding must not lock before the configured interval")
 
-    #expect(gate.isLocked, "Leaving the app must still lock it immediately")
+    currentDate = currentDate.addingTimeInterval(60)
+    gate.appDidBecomeActive()
+
+    #expect(gate.isLocked, "Returning after the configured interval must lock the app")
 }
 
 @Test
@@ -163,7 +168,7 @@ func genuinelyLeavingTheAppStillLocksImmediately() async {
 func aFailedUnlockLeavesTheAppLocked() async {
     let gate = BiometricGate(
         isEnabled: true,
-        autoLockInterval: .immediately,
+        autoLockInterval: .oneMinute,
         authenticator: FakeBiometricAuthenticator(result: .failure(.authenticationFailed))
     )
 
@@ -173,4 +178,32 @@ func aFailedUnlockLeavesTheAppLocked() async {
 
     #expect(gate.isLocked)
     #expect(gate.lastError != nil)
+}
+
+@Test
+func immediatelyStoredAutoLockIntervalMigratesToOneMinute() throws {
+    let defaults = try isolatedTestUserDefaults()
+    defaults.set("immediately", forKey: AutoLockInterval.storageKey)
+
+    #expect(AutoLockInterval.storedValue(in: defaults) == .oneMinute)
+}
+
+@Test
+func neverStoredAutoLockIntervalMigratesToOneMinute() throws {
+    let defaults = try isolatedTestUserDefaults()
+    defaults.set("never", forKey: AutoLockInterval.storageKey)
+
+    #expect(AutoLockInterval.storedValue(in: defaults) == .oneMinute)
+}
+
+@Test
+func unsetAutoLockIntervalDefaultsToOneMinute() throws {
+    let defaults = try isolatedTestUserDefaults()
+
+    #expect(AutoLockInterval.storedValue(in: defaults) == .oneMinute)
+}
+
+@Test
+func autoLockIntervalOffersOnlyOneAndFiveMinutes() {
+    #expect(AutoLockInterval.allCases == [.oneMinute, .fiveMinutes])
 }

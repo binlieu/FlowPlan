@@ -12,11 +12,10 @@ struct RootView: View {
     private let biometricAvailability = BiometricAuthenticator().canEvaluate()
     @State private var biometricGate = BiometricGate(
         isEnabled: UserDefaults.standard.bool(forKey: "isFaceIDEnabled"),
-        autoLockInterval: AutoLockInterval(
-            rawValue: UserDefaults.standard.string(forKey: "autoLockInterval") ?? ""
-        ) ?? .immediately
+        autoLockInterval: AutoLockInterval.storedValue(in: .standard)
     )
-    @AppStorage("autoLockInterval") private var autoLockInterval: AutoLockInterval = .immediately
+    @AppStorage(AutoLockInterval.storageKey)
+    private var autoLockInterval: AutoLockInterval = .oneMinute
 
     var body: some View {
         ZStack {
