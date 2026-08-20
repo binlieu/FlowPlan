@@ -9,6 +9,7 @@ struct CategoriesSettingsView: View {
 
     @Query private var transactions: [TransactionEntity]
     @Query private var bills: [RecurringBillEntity]
+    @Query private var debts: [DebtEntity]
     @Query private var budgets: [BudgetEntity]
 
     @AppStorage("incomeCategories") private var storedIncomeCategories = ""
@@ -145,6 +146,7 @@ struct CategoriesSettingsView: View {
         case .expense:
             used = transactions.filter { $0.type == .expense }.map(\.category)
                 + bills.map(\.category)
+                + debts.map(\.category)
                 + budgets.map(\.category)
         }
 
@@ -197,6 +199,10 @@ struct CategoriesSettingsView: View {
                 bill.category = newName
                 bill.updatedAt = timestamp
             }
+            for debt in debts where debt.category == oldName {
+                debt.category = newName
+                debt.updatedAt = timestamp
+            }
             for budget in budgets where budget.category == oldName {
                 budget.category = newName
                 budget.updatedAt = timestamp
@@ -233,6 +239,7 @@ struct CategoriesSettingsView: View {
         case .expense:
             return transactions.count { $0.type == .expense && $0.category == category.name }
                 + bills.count { $0.category == category.name }
+                + debts.count { $0.category == category.name }
                 + budgets.count { $0.category == category.name }
         }
     }

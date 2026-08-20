@@ -12,6 +12,7 @@ struct DataSettingsView: View {
     @Query private var transactions: [TransactionEntity]
     @Query private var incomeSources: [IncomeSourceEntity]
     @Query private var bills: [RecurringBillEntity]
+    @Query private var debts: [DebtEntity]
     @Query private var budgets: [BudgetEntity]
     @Query private var savingsGoals: [SavingsGoalEntity]
     @Query private var monthSettings: [MonthSettingsEntity]
@@ -146,6 +147,7 @@ struct DataSettingsView: View {
                 transactions: transactions.map(TransactionRecord.init),
                 incomeSources: incomeSources.map(IncomeSourceRecord.init),
                 bills: bills.map(BillRecord.init),
+                debts: debts.map(DebtRecord.init),
                 budgets: budgets.map(BudgetRecord.init),
                 savingsGoals: savingsGoals.map(SavingsGoalRecord.init),
                 monthSettings: monthSettings.map(MonthSettingsRecord.init)
@@ -196,6 +198,7 @@ struct DataSettingsView: View {
         var transactionIDs = Set(transactions.map(\.id))
         var incomeIDs = Set(incomeSources.map(\.id))
         var billIDs = Set(bills.map(\.id))
+        var debtIDs = Set(debts.map(\.id))
         var budgetIDs = Set(budgets.map(\.id))
         var savingsIDs = Set(savingsGoals.map(\.id))
         var settingIDs = Set(monthSettings.map(\.id))
@@ -205,6 +208,7 @@ struct DataSettingsView: View {
         count += payload.transactions.count { transactionIDs.insert($0.id).inserted }
         count += payload.incomeSources.count { incomeIDs.insert($0.id).inserted }
         count += payload.bills.count { billIDs.insert($0.id).inserted }
+        count += payload.debts.count { debtIDs.insert($0.id).inserted }
         count += payload.budgets.count { budgetIDs.insert($0.id).inserted }
         count += payload.savingsGoals.count { savingsIDs.insert($0.id).inserted }
         count += payload.monthSettings.count { record in
@@ -224,6 +228,7 @@ struct DataSettingsView: View {
             var transactionIDs = Set(transactions.map(\.id))
             var incomeIDs = Set(incomeSources.map(\.id))
             var billIDs = Set(bills.map(\.id))
+            var debtIDs = Set(debts.map(\.id))
             var budgetIDs = Set(budgets.map(\.id))
             var savingsIDs = Set(savingsGoals.map(\.id))
             var settingIDs = Set(monthSettings.map(\.id))
@@ -237,6 +242,9 @@ struct DataSettingsView: View {
                 importedEntities.append(try record.entity())
             }
             for record in payload.bills where billIDs.insert(record.id).inserted {
+                importedEntities.append(try record.entity())
+            }
+            for record in payload.debts where debtIDs.insert(record.id).inserted {
                 importedEntities.append(try record.entity())
             }
             for record in payload.budgets where budgetIDs.insert(record.id).inserted {
@@ -288,6 +296,7 @@ struct DataSettingsView: View {
             transactions.forEach(modelContext.delete)
             incomeSources.forEach(modelContext.delete)
             bills.forEach(modelContext.delete)
+            debts.forEach(modelContext.delete)
             budgets.forEach(modelContext.delete)
             savingsGoals.forEach(modelContext.delete)
             monthSettings.forEach(modelContext.delete)
@@ -339,6 +348,7 @@ private struct FlowPlanExport: Codable {
     let transactions: [TransactionRecord]
     let incomeSources: [IncomeSourceRecord]
     let bills: [BillRecord]
+    let debts: [DebtRecord]
     let budgets: [BudgetRecord]
     let savingsGoals: [SavingsGoalRecord]
     let monthSettings: [MonthSettingsRecord]
@@ -347,6 +357,7 @@ private struct FlowPlanExport: Codable {
         transactions: [TransactionRecord],
         incomeSources: [IncomeSourceRecord],
         bills: [BillRecord],
+        debts: [DebtRecord],
         budgets: [BudgetRecord],
         savingsGoals: [SavingsGoalRecord],
         monthSettings: [MonthSettingsRecord]
@@ -355,9 +366,22 @@ private struct FlowPlanExport: Codable {
         self.transactions = transactions
         self.incomeSources = incomeSources
         self.bills = bills
+        self.debts = debts
         self.budgets = budgets
         self.savingsGoals = savingsGoals
         self.monthSettings = monthSettings
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
+        transactions = try container.decode([TransactionRecord].self, forKey: .transactions)
+        incomeSources = try container.decode([IncomeSourceRecord].self, forKey: .incomeSources)
+        bills = try container.decode([BillRecord].self, forKey: .bills)
+        debts = try container.decodeIfPresent([DebtRecord].self, forKey: .debts) ?? []
+        budgets = try container.decode([BudgetRecord].self, forKey: .budgets)
+        savingsGoals = try container.decode([SavingsGoalRecord].self, forKey: .savingsGoals)
+        monthSettings = try container.decode([MonthSettingsRecord].self, forKey: .monthSettings)
     }
 
     func validate() throws {
@@ -368,6 +392,9 @@ private struct FlowPlanExport: Codable {
         let values = transactions.map(\.amount)
             + incomeSources.map(\.expectedAmount)
             + bills.map(\.amount)
+            + debts.flatMap {
+                [$0.currentBalance, $0.originalBalance, $0.annualInterestRate, $0.monthlyPayment]
+            }
             + budgets.map(\.monthlyLimit)
             + savingsGoals.flatMap { [$0.targetAmount, $0.monthlyTarget, $0.currentAmount] }
             + monthSettings.map(\.startingBalance)
@@ -378,6 +405,7 @@ private struct FlowPlanExport: Codable {
         _ = try transactions.map { try $0.entity() }
         _ = try incomeSources.map { try $0.entity() }
         _ = try bills.map { try $0.entity() }
+        _ = try debts.map { try $0.entity() }
         _ = try budgets.map { try $0.entity() }
         _ = try savingsGoals.map { try $0.entity() }
         _ = try monthSettings.map { try $0.entity() }
@@ -417,6 +445,7 @@ private struct TransactionRecord: Codable {
     let note: String
     let account: String
     let settlesBillID: UUID?
+    let settlesDebtID: UUID?
     let settlesIncomeID: UUID?
     let createdAt: Date
     let updatedAt: Date
@@ -431,6 +460,7 @@ private struct TransactionRecord: Codable {
         note = entity.note
         account = entity.account
         settlesBillID = entity.settlesBillID
+        settlesDebtID = entity.settlesDebtID
         settlesIncomeID = entity.settlesIncomeID
         createdAt = entity.createdAt
         updatedAt = entity.updatedAt
@@ -450,7 +480,61 @@ private struct TransactionRecord: Codable {
             note: note,
             account: account,
             settlesBillID: settlesBillID,
+            settlesDebtID: settlesDebtID,
             settlesIncomeID: settlesIncomeID,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+}
+
+private struct DebtRecord: Codable {
+    let id: UUID
+    let name: String
+    let currentBalance: DecimalValue
+    let originalBalance: DecimalValue
+    let annualInterestRate: DecimalValue
+    let monthlyPayment: DecimalValue
+    let category: String
+    let isPaidThroughBills: Bool
+    let isActive: Bool
+    let createdAt: Date
+    let updatedAt: Date
+
+    init(_ entity: DebtEntity) {
+        id = entity.id
+        name = entity.name
+        currentBalance = DecimalValue(entity.currentBalance)
+        originalBalance = DecimalValue(entity.originalBalance)
+        annualInterestRate = DecimalValue(entity.annualInterestRate)
+        monthlyPayment = DecimalValue(entity.monthlyPayment)
+        category = entity.category
+        isPaidThroughBills = entity.isPaidThroughBills
+        isActive = entity.isActive
+        createdAt = entity.createdAt
+        updatedAt = entity.updatedAt
+    }
+
+    func entity() throws -> DebtEntity {
+        guard
+            let currentBalance = currentBalance.decimal,
+            let originalBalance = originalBalance.decimal,
+            let annualInterestRate = annualInterestRate.decimal,
+            let monthlyPayment = monthlyPayment.decimal
+        else {
+            throw DataSettingsError.invalidDecimal
+        }
+
+        return DebtEntity(
+            id: id,
+            name: name,
+            currentBalance: currentBalance,
+            originalBalance: originalBalance,
+            annualInterestRate: annualInterestRate,
+            monthlyPayment: monthlyPayment,
+            category: category,
+            isPaidThroughBills: isPaidThroughBills,
+            isActive: isActive,
             createdAt: createdAt,
             updatedAt: updatedAt
         )

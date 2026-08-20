@@ -15,6 +15,9 @@ public struct MonthlyProjectionEngine: Sendable {
 
         let activeIncome = input.incomeSources.filter(\.isActive)
         let activeBills = input.bills.filter(\.isActive)
+        let separatelyPaidDebts = input.debts.filter {
+            $0.isActive && !$0.isPaidThroughBills
+        }
 
         let incomeOccurrences = activeIncome.map { source in
             (source, source.recurrence.occurrences(in: input.month, calendar: input.calendar))
@@ -52,8 +55,31 @@ public struct MonthlyProjectionEngine: Sendable {
             return total + (entry.0.amount * Decimal(remainingOccurrenceCount))
         }
 
-        // Rule 5: expenses not linked to bills are discretionary spending.
-        let discretionaryExpenses = expenseTransactions.filter { $0.settlesBillID == nil }
+        // Rule 19: active debts outside Monthly Bills contribute one scheduled payment while a
+        // balance remains. One linked expense settles that month's due. Debts paid through bills
+        // contribute nothing here because their cash is already represented by remainingBills.
+        let referenceMonth = MonthKey(date: input.referenceDate, calendar: input.calendar)
+        let firstDebtPaymentMonth = min(input.month, referenceMonth)
+        let debtSchedule = DebtSchedule(startingIn: firstDebtPaymentMonth)
+        let debtPaymentTransactions = expenseTransactions.filter {
+            $0.settlesBillID == nil && $0.settlesDebtID != nil
+        }
+        let settledDebtIDs = Set(debtPaymentTransactions.compactMap(\.settlesDebtID))
+        let debtPaymentsMade = sum(debtPaymentTransactions.map(\.amount))
+        let debtPaymentsDue = separatelyPaidDebts.reduce(Decimal.zero) { total, debt in
+            total + debtSchedule.paymentDue(for: debt, in: input.month)
+        }
+        let remainingDebtPayments = separatelyPaidDebts.reduce(Decimal.zero) { total, debt in
+            guard !settledDebtIDs.contains(debt.id) else {
+                return total
+            }
+            return total + debtSchedule.paymentDue(for: debt, in: input.month)
+        }
+
+        // Rule 5: expenses not linked to bills or debts are discretionary spending.
+        let discretionaryExpenses = expenseTransactions.filter {
+            $0.settlesBillID == nil && $0.settlesDebtID == nil
+        }
         let actualVariableSpending = sum(discretionaryExpenses.map(\.amount))
 
         // Rule 6: each category contributes only its unspent budget, never a negative remainder.
@@ -68,8 +94,8 @@ public struct MonthlyProjectionEngine: Sendable {
         }
         let projectedVariableSpending = actualVariableSpending + remainingVariableSpending
 
-        // Rule 7: paid expenses combine linked bills and discretionary actuals.
-        let expensesPaid = billsPaid + actualVariableSpending
+        // Rule 7: paid expenses combine linked bills, linked debts, and discretionary actuals.
+        let expensesPaid = billsPaid + debtPaymentsMade + actualVariableSpending
 
         // Rule 8: savings actuals retire the aggregate monthly savings target.
         let savingsCompleted = sum(savingsTransactions.map(\.amount))
@@ -86,6 +112,7 @@ public struct MonthlyProjectionEngine: Sendable {
         let projectedEndOfMonthBalance = currentAvailableBalance
             + remainingExpectedIncome
             - remainingBills
+            - remainingDebtPayments
             - remainingVariableSpending
             - remainingSavingsGoal
 
@@ -101,6 +128,7 @@ public struct MonthlyProjectionEngine: Sendable {
         let plannedEndOfMonthBalance = input.startingBalance
             + plannedIncome
             - plannedBills
+            - debtPaymentsDue
             - plannedBudgets
             - savingsTarget
         let varianceVsPlan = projectedEndOfMonthBalance - plannedEndOfMonthBalance
@@ -109,6 +137,7 @@ public struct MonthlyProjectionEngine: Sendable {
         let spendableRemaining = currentAvailableBalance
             + remainingExpectedIncome
             - remainingBills
+            - remainingDebtPayments
             - remainingSavingsGoal
 
         // Rule 13: days remaining are inclusive for an in-month reference day.
@@ -169,6 +198,12 @@ public struct MonthlyProjectionEngine: Sendable {
                 kind: .deduction
             ),
             ProjectionLineItem(
+                id: "remainingDebt",
+                label: "Debt payments",
+                amount: -remainingDebtPayments,
+                kind: .deduction
+            ),
+            ProjectionLineItem(
                 id: "remainingSpending",
                 label: "Remaining spending",
                 amount: -remainingVariableSpending,
@@ -199,6 +234,9 @@ public struct MonthlyProjectionEngine: Sendable {
             expensesPaid: expensesPaid,
             remainingBills: remainingBills,
             billsPaid: billsPaid,
+            debtPaymentsDue: debtPaymentsDue,
+            debtPaymentsMade: debtPaymentsMade,
+            remainingDebtPayments: remainingDebtPayments,
             projectedVariableSpending: projectedVariableSpending,
             actualVariableSpending: actualVariableSpending,
             remainingVariableSpending: remainingVariableSpending,
@@ -229,6 +267,7 @@ public struct MonthlyProjectionEngine: Sendable {
             startingBalance: input.startingBalance,
             incomeSources: input.incomeSources,
             bills: input.bills,
+            debts: input.debts,
             budgets: input.budgets,
             savingsPlans: overriddenSavingsPlans(
                 input.savingsPlans,

@@ -227,14 +227,15 @@ import FlowPlanDomain
     )
     #expect(result.breakdown.map(\.id) == [
         "currentAvailable", "remainingIncome", "remainingBills",
-        "remainingSpending", "remainingSavings", "projectedBalance"
+        "remainingDebt", "remainingSpending", "remainingSavings", "projectedBalance"
     ])
     #expect(result.breakdown.map(\.kind) == [
-        .opening, .addition, .deduction, .deduction, .deduction, .total
+        .opening, .addition, .deduction, .deduction, .deduction, .deduction, .total
     ])
     #expect(result.breakdown[2].amount < .zero)
-    #expect(result.breakdown[3].amount < .zero)
+    #expect(result.breakdown[3].amount == .zero)
     #expect(result.breakdown[4].amount < .zero)
+    #expect(result.breakdown[5].amount < .zero)
 }
 
 @Test func breakdownSubtotalMatchesProjectionInBaseline() {
@@ -268,6 +269,7 @@ private func plannedBalance(from projection: MonthlyProjection) -> Decimal {
     projection.startingBalance
         + projection.plannedIncomeTotal
         - projection.plannedBillsTotal
+        - projection.debtPaymentsDue
         - projection.plannedSpendingTotal
         - projection.savingsTarget
 }

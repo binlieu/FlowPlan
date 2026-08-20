@@ -68,9 +68,9 @@ and avoids assuming two decimal places.
 ---
 
 ## D-006 — Reconciliation is by explicit link, settled in date order
-**Decision.** A transaction may carry `settlesBillID` / `settlesIncomeID`. An expected
-occurrence is retired only when a transaction links to it. Occurrences are settled in date
-order, and one transaction settles at most one occurrence.
+**Decision.** A transaction may carry `settlesBillID`, `settlesDebtID`, or `settlesIncomeID`.
+An expected occurrence is retired only when a transaction links to it. Occurrences are settled
+in date order, and one transaction settles at most one occurrence.
 
 **Why.** Fuzzy matching on amount and date is the classic source of double counting: a
 coincidental $120 expense should not silently retire the phone bill. An explicit link makes
@@ -88,13 +88,15 @@ still expected.
 ```
 currentAvailableBalance    = startingBalance + incomeReceived − expensesPaid − savingsCompleted
 projectedEndOfMonthBalance = currentAvailableBalance + remainingExpectedIncome
-                           − remainingBills − remainingVariableSpending − remainingSavingsGoal
+                           − remainingBills − remainingDebtPayments
+                           − remainingVariableSpending − remainingSavingsGoal
 ```
 
 **Why.** This is the structural guarantee against double counting. Every actual event appears
 in exactly one term; every outstanding obligation appears in exactly one other. Marking a bill
-paid moves it across the boundary and leaves the projected balance unchanged — the single most
-important invariant in the product, and a dedicated regression test.
+or separately counted debt payment paid moves it across the boundary and leaves the projected
+balance unchanged — the single most important invariant in the product, and a dedicated
+regression test.
 
 ---
 
@@ -121,8 +123,8 @@ an unbudgeted category moves it by the full amount — which is what a user intu
 
 ## D-010 — Safe-to-Spend ignores the planned budget and rounds down
 **Decision.** `spendableRemaining = currentAvailableBalance + remainingExpectedIncome
-− remainingBills − remainingSavingsGoal`, divided by days remaining, rounded **down** to 2 dp.
-`daysRemaining == 0` yields 0.
+− remainingBills − remainingDebtPayments − remainingSavingsGoal`, divided by days remaining,
+rounded **down** to 2 dp. `daysRemaining == 0` yields 0.
 
 **Why.** Safe-to-spend answers "what can I actually spend today without breaking the month",
 which depends on real uncommitted money, not on a plan. Rounding down means the app never
@@ -163,23 +165,25 @@ retroactively.
 
 ---
 
-## D-014 — Accounts shipped; Debt remains deferred
-**Decision.** The design handoff treats **Debt** and **Accounts** as first-class concepts.
-Accounts shipped as a managed list of transaction labels. Debt remains deliberate post-MVP work.
+## D-014 — Accounts and Debt shipped as first-class concepts
+**Decision.** The original Accounts slice remains a managed list of transaction labels. The Debt
+deferral is closed: debts now have a bounded amortisation schedule, persistence, editing and a
+separate reconciliation path in the projection engine.
 
 **Why.** Debt is not a UI addition — it changes the projection engine. The handoff's own rule
 ("the mortgage payment sits in Monthly Bills, so only the payments outside bills enter the
 projection") is a second reconciliation rule layered on top of the bill-settlement rule in D-006.
-Two interacting no-double-counting rules in the highest-risk code in the product is not something
-to add before the MVP's acceptance criteria are met and covered by tests.
+Two interacting no-double-counting rules were deferred until the MVP acceptance criteria were met.
+Debt now ships with dedicated tests for payment settlement, bill overlap, final payments, payoff
+months, zero APR and non-amortising loans.
 
 Accounts were pulled forward as the lower-risk slice: an entity, a picker, a per-row subtitle,
 filtering and a settings screen. Account deletion clears matching labels without deleting
 transactions. It does not change balances or the projection engine.
 
 **Consequence.** `TransactionEntity.account` remains the source-of-truth string so existing labels
-stay valid and no relationship migration is required. `AccountEntity` manages available names and
-is seeded from distinct existing transaction labels. Only Debt remains deferred.
+stay valid and no relationship migration is required. `AccountEntity` manages available names.
+Debt is no longer deferred; its double-counting boundary is recorded separately in D-018.
 
 ---
 
@@ -231,3 +235,26 @@ would misstate cash and compound the error across months.
 **Consequence.** Explicit values always win. Derived values are never persisted, so changing an
 earlier explicit balance or actual transaction automatically updates every later derived month.
 The UI labels derived values and lets the user delete an explicit override to resume rollover.
+
+---
+
+## D-018 — Debt payments enter the projection through exactly one path
+**Decision.** An active debt contributes a monthly projection obligation only when
+`isPaidThroughBills == false`. A debt marked `isPaidThroughBills` remains visible for payoff
+tracking but contributes zero because its payment is already in Monthly Bills. Separately counted
+payments reconcile through `settlesDebtID`; the linked expense moves the amount from
+`remainingDebtPayments` to actual cash without moving the projected month-end balance.
+
+Debt schedules round interest, payment, principal and remaining balance to two decimal places at
+each monthly step. A payment at or below rounded monthly interest returns `neverAmortises`, and
+all iterative schedule work stops at 600 months. `DebtEntity.originalBalance` is presentation
+metadata retained for payoff progress; `Debt.currentBalance` remains the engine input.
+
+**Why.** A mortgage commonly appears in both debt tracking and Monthly Bills. Counting both would
+subtract the same cash twice. Debt also differs from an open-ended recurrence: the final payment
+may be smaller, and every later month must contribute zero. Explicit classification plus a bounded
+schedule makes both rules visible and testable.
+
+**Consequence.** `projectedEndOfMonthBalance`, `plannedEndOfMonthBalance`, Safe-to-Spend and the
+authoritative breakdown all include only debt payments outside Monthly Bills. Debt-linked expenses
+are excluded from discretionary spending, so they cannot also consume a category budget.

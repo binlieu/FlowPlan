@@ -98,6 +98,7 @@ public struct TransactionSnapshot: Identifiable, Hashable, Codable, Sendable {
     public let category: String
     public let detail: String
     public let settlesBillID: UUID?
+    public let settlesDebtID: UUID?
     public let settlesIncomeID: UUID?
 
     public init(
@@ -108,6 +109,7 @@ public struct TransactionSnapshot: Identifiable, Hashable, Codable, Sendable {
         category: String,
         detail: String,
         settlesBillID: UUID? = nil,
+        settlesDebtID: UUID? = nil,
         settlesIncomeID: UUID? = nil
     ) {
         self.id = id
@@ -117,6 +119,7 @@ public struct TransactionSnapshot: Identifiable, Hashable, Codable, Sendable {
         self.category = category
         self.detail = detail
         self.settlesBillID = settlesBillID
+        self.settlesDebtID = settlesDebtID
         self.settlesIncomeID = settlesIncomeID
     }
 }

@@ -52,6 +52,8 @@ struct ProjectionBreakdownRow: View {
             return "Remaining Income"
         case "remainingBills":
             return "Upcoming Bills"
+        case "remainingDebt":
+            return "Debt Payments"
         case "remainingSpending":
             return "Expected Spending"
         case "remainingSavings":
@@ -71,6 +73,8 @@ struct ProjectionBreakdownRow: View {
             return "Expected income you haven't received yet."
         case "remainingBills":
             return "Bills due this month that aren't paid yet."
+        case "remainingDebt":
+            return "Debt payments due this month that aren't paid yet."
         case "remainingSpending":
             return "What's left of your category budgets."
         case "remainingSavings":

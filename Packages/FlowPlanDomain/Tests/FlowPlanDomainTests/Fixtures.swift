@@ -102,6 +102,26 @@ enum Fixtures {
         BudgetAllocation(id: id, category: category, monthlyLimit: limit)
     }
 
+    static func debt(
+        id: UUID = id(7),
+        balance: Decimal,
+        annualInterestRate: Decimal = .zero,
+        monthlyPayment: Decimal,
+        isPaidThroughBills: Bool = false,
+        isActive: Bool = true
+    ) -> Debt {
+        Debt(
+            id: id,
+            name: "Car loan",
+            currentBalance: balance,
+            annualInterestRate: annualInterestRate,
+            monthlyPayment: monthlyPayment,
+            category: "Transportation",
+            isPaidThroughBills: isPaidThroughBills,
+            isActive: isActive
+        )
+    }
+
     static func savingsPlan(
         id: UUID = id(4),
         target: Decimal
@@ -117,6 +137,7 @@ enum Fixtures {
         category: String = "",
         detail: String = "Test transaction",
         settlesBillID: UUID? = nil,
+        settlesDebtID: UUID? = nil,
         settlesIncomeID: UUID? = nil
     ) -> TransactionSnapshot {
         TransactionSnapshot(
@@ -127,6 +148,7 @@ enum Fixtures {
             category: category,
             detail: detail,
             settlesBillID: settlesBillID,
+            settlesDebtID: settlesDebtID,
             settlesIncomeID: settlesIncomeID
         )
     }
@@ -137,6 +159,7 @@ enum Fixtures {
         startingBalance: Decimal = .zero,
         incomeSources: [PlannedIncome] = [],
         bills: [PlannedBill] = [],
+        debts: [Debt] = [],
         budgets: [BudgetAllocation] = [],
         savingsPlans: [SavingsPlan] = [],
         transactions: [TransactionSnapshot] = [],
@@ -148,6 +171,7 @@ enum Fixtures {
             startingBalance: startingBalance,
             incomeSources: incomeSources,
             bills: bills,
+            debts: debts,
             budgets: budgets,
             savingsPlans: savingsPlans,
             transactions: transactions,

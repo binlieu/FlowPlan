@@ -247,6 +247,7 @@ final class TransactionsViewModel {
                 note: note,
                 account: account,
                 settlesBillID: transaction.settlesBillID,
+                settlesDebtID: transaction.settlesDebtID,
                 settlesIncomeID: transaction.settlesIncomeID
             )
         )
