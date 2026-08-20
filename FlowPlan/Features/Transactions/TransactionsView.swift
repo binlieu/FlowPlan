@@ -36,10 +36,10 @@ private struct TransactionsContent: View {
 
     var body: some View {
         List {
-            DesignSystemScreenHeader("Activity")
-                .designSystemScreenHeaderRow()
-
-            activityToolbar
+            ScreenHeader(
+                title: "Activity",
+                trailing: AnyView(activityHeaderActions)
+            )
 
             activitySearchField
 
@@ -70,6 +70,7 @@ private struct TransactionsContent: View {
         }
         .listStyle(.insetGrouped)
         .designSystemList()
+        .contentMargins(.top, 0, for: .scrollContent)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
@@ -274,10 +275,8 @@ private struct TransactionsContent: View {
         .accessibilityLabel("Filter transactions")
     }
 
-    private var activityToolbar: some View {
+    private var activityHeaderActions: some View {
         HStack(spacing: 8) {
-            Spacer(minLength: 0)
-
             filterMenu
                 .frame(minWidth: 44, minHeight: 44)
 
@@ -291,9 +290,6 @@ private struct TransactionsContent: View {
         }
         .font(.headline)
         .foregroundStyle(Palette.accent)
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 8, trailing: 12))
-        .listRowBackground(Palette.background)
-        .listRowSeparator(.hidden)
     }
 
     private var activitySearchField: some View {

@@ -20,61 +20,62 @@ struct PlanView: View {
 
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 30) {
-                header
+                ScreenHeader(title: "Plan", subtitle: selectedMonthTitle)
 
-                StartingBalanceSection()
+                Group {
+                    StartingBalanceSection()
 
-                PlanExpectedIncomeSection(
-                    sources: repository.incomeSources(),
-                    plannedTotal: projection.plannedIncomeTotal,
-                    onAdd: { presentedEditor = .newIncome },
-                    onEdit: { presentedEditor = .income($0) }
-                )
+                    PlanExpectedIncomeSection(
+                        sources: repository.incomeSources(),
+                        plannedTotal: projection.plannedIncomeTotal,
+                        onAdd: { presentedEditor = .newIncome },
+                        onEdit: { presentedEditor = .income($0) }
+                    )
 
-                MonthlyBillsSection(
-                    bills: bills,
-                    plannedTotal: Self.monthlyBillsTotal(for: projection),
-                    onAdd: { presentedEditor = .newBill },
-                    onEdit: { presentedEditor = .bill($0) }
-                )
+                    MonthlyBillsSection(
+                        bills: bills,
+                        plannedTotal: Self.monthlyBillsTotal(for: projection),
+                        onAdd: { presentedEditor = .newBill },
+                        onEdit: { presentedEditor = .bill($0) }
+                    )
 
-                DebtSection(
-                    debts: debts,
-                    bills: bills,
-                    originalBalances: repository.debtOriginalBalances(),
-                    outsideBillsTotal: projection.debtPaymentsDue,
-                    onAdd: { presentedEditor = .newDebt },
-                    onEdit: { presentedEditor = .debt($0) },
-                    onCountSeparately: countSeparately
-                )
+                    DebtSection(
+                        debts: debts,
+                        bills: bills,
+                        originalBalances: repository.debtOriginalBalances(),
+                        outsideBillsTotal: projection.debtPaymentsDue,
+                        onAdd: { presentedEditor = .newDebt },
+                        onEdit: { presentedEditor = .debt($0) },
+                        onCountSeparately: countSeparately
+                    )
 
-                SpendingBudgetSection(
-                    budgets: repository.budgets(for: appState.selectedMonth),
-                    transactions: repository.transactions(in: appState.selectedMonth),
-                    plannedTotal: Self.spendingBudgetTotal(for: projection),
-                    onAdd: { presentedEditor = .newBudget },
-                    onEdit: { presentedEditor = .budget($0) }
-                )
+                    SpendingBudgetSection(
+                        budgets: repository.budgets(for: appState.selectedMonth),
+                        transactions: repository.transactions(in: appState.selectedMonth),
+                        plannedTotal: Self.spendingBudgetTotal(for: projection),
+                        onAdd: { presentedEditor = .newBudget },
+                        onEdit: { presentedEditor = .budget($0) }
+                    )
 
-                SavingsGoalSection(
-                    plans: repository.savingsPlans(),
-                    projection: projection,
-                    plannedTotal: Self.savingsGoalTotal(for: projection),
-                    onAdd: { presentedEditor = .newSavingsGoal },
-                    onEdit: { presentedEditor = .savingsGoal($0) },
-                    onPreviewTarget: previewSavingsTarget
-                )
+                    SavingsGoalSection(
+                        plans: repository.savingsPlans(),
+                        projection: projection,
+                        plannedTotal: Self.savingsGoalTotal(for: projection),
+                        onAdd: { presentedEditor = .newSavingsGoal },
+                        onEdit: { presentedEditor = .savingsGoal($0) },
+                        onPreviewTarget: previewSavingsTarget
+                    )
 
-                NavigationLink {
-                    ProjectionDetailView(projection: projection)
-                } label: {
-                    MonthlyProjectionCard(projection: projection)
+                    NavigationLink {
+                        ProjectionDetailView(projection: projection)
+                    } label: {
+                        MonthlyProjectionCard(projection: projection)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Opens projection details")
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("Opens projection details")
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 24)
             .padding(.bottom, 100)
         }
         .background(Palette.background)
@@ -100,19 +101,6 @@ struct PlanView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Plan")
-                .greetingTypography()
-                .foregroundStyle(Palette.ink)
-
-            Text(selectedMonthTitle)
-                .smallCapsTypography()
-                .foregroundStyle(Palette.inkSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var selectedMonthTitle: String {
