@@ -19,22 +19,16 @@ struct MonthlyProjectionCard: View {
                     }
                 }
 
-                Rectangle()
-                    .fill(Palette.hairline)
-                    .frame(height: 1)
-
-                HStack(alignment: .firstTextBaseline, spacing: Spacing.md) {
-                    Text("PROJECTED REMAINING")
-                        .smallCapsTypography()
-                        .foregroundStyle(Palette.accent)
-
-                    Spacer(minLength: Spacing.sm)
-
-                    Text(signedMoney(Self.total(for: projection)))
-                        .valueTypography()
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.ink)
-                }
+                PlanTotalRow(
+                    label: "PROJECTED REMAINING",
+                    amount: Self.total(for: projection),
+                    contentInsets: EdgeInsets(
+                        top: Spacing.md,
+                        leading: Spacing.none,
+                        bottom: Spacing.none,
+                        trailing: Spacing.none
+                    )
+                )
             }
         }
         .contentShape(Rectangle())
@@ -126,14 +120,6 @@ struct MonthlyProjectionCard: View {
         )
     }
 
-    private func signedMoney(_ amount: Decimal) -> String {
-        MoneyFormatter.string(
-            amount,
-            currencyCode: appState.currencyCode,
-            signed: true,
-            style: .compact
-        )
-    }
 }
 
 struct ProjectionCardRow: Identifiable, Equatable {

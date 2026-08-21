@@ -101,7 +101,8 @@ struct SavingsGoalSection: View {
         return PlanTotalRow(
             label: content.label,
             amount: content.amount,
-            signed: false
+            signed: false,
+            showsTopRule: false
         )
     }
 
