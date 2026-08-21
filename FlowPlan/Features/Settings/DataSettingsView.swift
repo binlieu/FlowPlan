@@ -26,66 +26,24 @@ struct DataSettingsView: View {
     @State private var presentedError: String?
 
     var body: some View {
-        Form {
-            Section {
-                if let exportURL {
-                    ShareLink(
-                        item: exportURL,
-                        preview: SharePreview(
-                            "FlowPlan Data",
-                            image: Image(systemName: "doc.text")
-                        )
-                    ) {
-                        Label("Export all data as JSON", systemImage: "square.and.arrow.up")
-                    }
-                } else {
-                    HStack {
-                        ProgressView()
-                        Text("Preparing export…")
-                    }
-                }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Spacing.xl) {
+                ScreenHeader(title: "Data")
 
-                Button {
-                    isPickingImport = true
-                } label: {
-                    Label("Import JSON file", systemImage: "square.and.arrow.down")
+                Group {
+                    transferSection
+                    developmentDataSection
+                    dangerZoneSection
                 }
-            } header: {
-                Text("Transfer")
-                    .designSystemSectionHeader()
-            } footer: {
-                Text("Money values are exported as decimal strings so no precision is lost.")
-                    .designSystemSectionFooter()
+                .padding(.horizontal, Spacing.lg)
             }
-            .designSystemRows()
-
-            Section {
-                Toggle("Load sample data", isOn: sampleDataBinding)
-            } header: {
-                Text("Development Data")
-                    .designSystemSectionHeader()
-            } footer: {
-                Text("Turning this on adds the built-in sample records once. Turning it off does not delete records.")
-                    .designSystemSectionFooter()
-            }
-            .designSystemRows()
-
-            Section {
-                Button("Erase all data", role: .destructive) {
-                    eraseConfirmation = ""
-                    isShowingEraseConfirmation = true
-                }
-            } header: {
-                Text("Danger Zone")
-                    .designSystemSectionHeader()
-            } footer: {
-                Text("This permanently removes every financial record from this device.")
-                    .designSystemSectionFooter()
-            }
-            .designSystemRows()
+            .padding(.bottom, Spacing.xl)
         }
-        .designSystemForm()
-        .navigationTitle("Data")
+        .scrollDismissesKeyboard(.interactively)
+        .background(Palette.background)
+        .foregroundStyle(Palette.ink)
+        .tint(Palette.accent)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .task {
@@ -128,6 +86,82 @@ struct DataSettingsView: View {
             }
         } message: {
             Text(presentedError ?? "The data operation could not be completed.")
+        }
+    }
+
+    private var transferSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionHeading(title: "Transfer")
+            GroupedList(0..<2, rowContent: transferRow)
+            SettingsSectionFooter(
+                text: "Money values are exported as decimal strings so no precision is lost."
+            )
+        }
+    }
+
+    private var developmentDataSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionHeading(title: "Development Data")
+            GroupedList(0..<1) { _ in
+                Toggle("Load sample data", isOn: sampleDataBinding)
+                    .settingsRow()
+            }
+            SettingsSectionFooter(
+                text: "Turning this on adds the built-in sample records once. Turning it off does not delete records."
+            )
+        }
+    }
+
+    private var dangerZoneSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionHeading(title: "Danger Zone")
+            GroupedList(0..<1) { _ in
+                Button("Erase all data", role: .destructive) {
+                    eraseConfirmation = ""
+                    isShowingEraseConfirmation = true
+                }
+                .foregroundStyle(Palette.negative)
+                .settingsRow()
+            }
+            SettingsSectionFooter(
+                text: "This permanently removes every financial record from this device."
+            )
+        }
+    }
+
+    @ViewBuilder
+    private func transferRow(_ row: Int) -> some View {
+        switch row {
+        case 0:
+            if let exportURL {
+                ShareLink(
+                    item: exportURL,
+                    preview: SharePreview(
+                        "FlowPlan Data",
+                        image: Image(systemName: "doc.text")
+                    )
+                ) {
+                    Label("Export all data as JSON", systemImage: "square.and.arrow.up")
+                }
+                .foregroundStyle(Palette.accent)
+                .settingsRow()
+            } else {
+                HStack(spacing: Spacing.sm) {
+                    ProgressView()
+                    Text("Preparing export…")
+                }
+                .settingsRow()
+            }
+        case 1:
+            Button {
+                isPickingImport = true
+            } label: {
+                Label("Import JSON file", systemImage: "square.and.arrow.down")
+            }
+            .foregroundStyle(Palette.accent)
+            .settingsRow()
+        default:
+            EmptyView()
         }
     }
 
