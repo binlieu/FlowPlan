@@ -15,20 +15,24 @@ private struct DesignSystemNativeContainer: ViewModifier {
 private struct DesignSystemRows: ViewModifier {
     func body(content: Content) -> some View {
         ForEach(sections: content) { section in
-            Section {
-                ForEach(positionedRows(in: section.content)) { row in
-                    row.subview
-                        .groupedRowSurface(position: row.position)
+            // A Section wrapped by ViewModifier.Content arrives here as one proxy. Resolve that
+            // proxy's rows before assigning first and last positions.
+            Group(subviews: section.content) { rows in
+                Section {
+                    ForEach(positionedRows(in: rows)) { row in
+                        row.subview
+                            .groupedRowSurface(position: row.position)
+                            .listRowInsets(designSystemHorizontalInsets)
+                            .listRowBackground(Palette.background)
+                            .listRowSeparator(.hidden)
+                    }
+                } header: {
+                    section.header
                         .listRowInsets(designSystemHorizontalInsets)
-                        .listRowBackground(Palette.background)
-                        .listRowSeparator(.hidden)
+                } footer: {
+                    section.footer
+                        .listRowInsets(designSystemHorizontalInsets)
                 }
-            } header: {
-                section.header
-                    .listRowInsets(designSystemHorizontalInsets)
-            } footer: {
-                section.footer
-                    .listRowInsets(designSystemHorizontalInsets)
             }
         }
     }
@@ -51,6 +55,45 @@ private struct DesignSystemRows: ViewModifier {
         )
     }
 }
+
+#if DEBUG
+private struct DesignSystemRowsPreview: View {
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("First row", value: "Top corners")
+                LabeledContent("Second row", value: "Square corners")
+                LabeledContent("Third row", value: "Bottom corners")
+            } header: {
+                Text("Three-row section")
+                    .designSystemSectionHeader()
+            }
+            .designSystemRows()
+
+            Section {
+                LabeledContent("Only row", value: "All corners")
+            } header: {
+                Text("Single-row section")
+                    .designSystemSectionHeader()
+            }
+            .designSystemRows()
+        }
+        .designSystemForm()
+    }
+}
+
+#Preview("Grouped Form Sections — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        DesignSystemRowsPreview()
+    }
+}
+
+#Preview("Grouped Form Sections — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
+        DesignSystemRowsPreview()
+    }
+}
+#endif
 
 private struct PositionedRow: Identifiable {
     let subview: Subview
