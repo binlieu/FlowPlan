@@ -116,7 +116,8 @@ struct DebtSection: View {
         PlanTotalRow(
             label: "OUTSIDE MONTHLY BILLS",
             amount: outsideBillsTotal,
-            signed: false
+            signed: false,
+            showsTopRule: false
         )
     }
 

@@ -48,7 +48,8 @@ struct PlanExpectedIncomeSection: View {
     private var totalRow: some View {
         PlanTotalRow(
             label: "TOTAL EXPECTED INCOME",
-            amount: plannedTotal
+            amount: plannedTotal,
+            showsTopRule: false
         )
     }
 
