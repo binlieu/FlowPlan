@@ -44,12 +44,11 @@ private struct TransactionsContent: View {
             activitySearchField
 
             MonthNavigationBar()
-                .designSystemRows()
+                .activityControlRow(bottom: Spacing.md)
 
             if viewModel.filter.isActive {
                 activeFilterChips
-                    .listRowInsets(EdgeInsets())
-                    .designSystemRows()
+                    .activityControlRow(bottom: Spacing.md)
             }
 
             if viewModel.sections.isEmpty {
@@ -57,18 +56,20 @@ private struct TransactionsContent: View {
                     .designSystemRows()
             } else {
                 ForEach(viewModel.sections) { section in
-                    Section {
-                        ForEach(section.transactions) { transaction in
-                            transactionButton(transaction)
-                        }
-                    } header: {
-                        sectionHeader(section)
-                    }
-                    .designSystemRows()
+                    GroupedList(
+                        section.transactions,
+                        header: AnyView(sectionHeader(section)),
+                        leadingSwipeAllowsFullSwipe: true,
+                        trailingSwipeAllowsFullSwipe: false,
+                        rowContent: transactionButton,
+                        leadingSwipeActions: leadingSwipeActions,
+                        trailingSwipeActions: trailingSwipeActions
+                    )
                 }
             }
         }
         .listStyle(.insetGrouped)
+        .listRowSpacing(Spacing.none)
         .designSystemList()
         .contentMargins(.top, Spacing.none, for: .scrollContent)
         .navigationTitle("")
@@ -127,33 +128,36 @@ private struct TransactionsContent: View {
             )
         }
         .buttonStyle(.plain)
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            Button(role: .destructive) {
-                pendingDelete = transaction
-                isConfirmingDelete = true
-            } label: {
-                Label("Delete", systemImage: "trash")
-                    .foregroundStyle(Palette.onAccentFill)
-            }
-            .tint(Palette.destructiveFill)
+    }
 
-            Button {
-                editor = TransactionEditorPresentation(transaction: transaction)
-            } label: {
-                Label("Edit", systemImage: "pencil")
-                    .foregroundStyle(Palette.onAccentFill)
-            }
-            .tint(Palette.neutralFill)
+    private func leadingSwipeActions(_ transaction: TransactionSnapshot) -> some View {
+        Button {
+            editor = TransactionEditorPresentation(duplicatedTransaction: transaction)
+        } label: {
+            Label("Duplicate", systemImage: "plus.square.on.square")
+                .foregroundStyle(Palette.onAccentFill)
         }
-        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                editor = TransactionEditorPresentation(duplicatedTransaction: transaction)
-            } label: {
-                Label("Duplicate", systemImage: "plus.square.on.square")
-                    .foregroundStyle(Palette.onAccentFill)
-            }
-            .tint(Palette.neutralFill)
+        .tint(Palette.neutralFill)
+    }
+
+    @ViewBuilder
+    private func trailingSwipeActions(_ transaction: TransactionSnapshot) -> some View {
+        Button(role: .destructive) {
+            pendingDelete = transaction
+            isConfirmingDelete = true
+        } label: {
+            Label("Delete", systemImage: "trash")
+                .foregroundStyle(Palette.onAccentFill)
         }
+        .tint(Palette.destructiveFill)
+
+        Button {
+            editor = TransactionEditorPresentation(transaction: transaction)
+        } label: {
+            Label("Edit", systemImage: "pencil")
+                .foregroundStyle(Palette.onAccentFill)
+        }
+        .tint(Palette.neutralFill)
     }
 
     private func sectionHeader(_ section: TransactionDaySection) -> some View {
@@ -327,9 +331,7 @@ private struct TransactionsContent: View {
             }
             .frame(minHeight: 44)
         }
-        .listRowInsets(EdgeInsets(top: Spacing.none, leading: Spacing.lg, bottom: Spacing.md, trailing: Spacing.lg))
-        .listRowBackground(Palette.background)
-        .listRowSeparator(.hidden)
+        .activityControlRow(top: Spacing.sm, bottom: Spacing.md)
     }
 
     private var activeFilterChips: some View {
@@ -362,7 +364,6 @@ private struct TransactionsContent: View {
                 .foregroundStyle(Palette.accent)
                 .padding(.horizontal, Spacing.xxs)
             }
-            .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.xxs)
         }
     }
@@ -416,6 +417,24 @@ private struct TransactionsContent: View {
 
 }
 
+private extension View {
+    func activityControlRow(
+        top: CGFloat = Spacing.none,
+        bottom: CGFloat
+    ) -> some View {
+        listRowInsets(
+            EdgeInsets(
+                top: top,
+                leading: Spacing.lg,
+                bottom: bottom,
+                trailing: Spacing.lg
+            )
+        )
+        .listRowBackground(Palette.background)
+        .listRowSeparator(.hidden)
+    }
+}
+
 #if DEBUG
 #Preview("Activity — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
@@ -440,5 +459,20 @@ private struct TransactionsContent: View {
         }
     }
     .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Activity beside Plan") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        HStack(spacing: Spacing.none) {
+            NavigationStack {
+                TransactionsView()
+            }
+
+            NavigationStack {
+                PlanView()
+            }
+        }
+        .frame(width: 780, height: 844)
+    }
 }
 #endif
