@@ -4,7 +4,6 @@ struct SettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(ProjectionStore.self) private var projectionStore
 
-    @AppStorage("notificationsEnabled") private var notificationsEnabled = false
     @AppStorage(AutoLockInterval.storageKey)
     private var autoLockInterval: AutoLockInterval = .oneMinute
 
@@ -55,10 +54,10 @@ struct SettingsView: View {
     private var preferencesSection: some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             SectionHeading(title: "Preferences")
-            GroupedList(0..<5, rowContent: preferenceRow)
-            SettingsSectionFooter(
-                text: "Notification scheduling is not enabled in this version."
-            )
+            // Four rows, not five: the Notifications toggle is hidden until the feature exists.
+            // See docs/specs/41-notifications-PLAN.md. The stored preference is left in place so
+            // a user who had switched it on keeps that choice when the row returns.
+            GroupedList(0..<4, rowContent: preferenceRow)
         }
     }
 
@@ -162,9 +161,6 @@ struct SettingsView: View {
                 }
             }
             .settingsRow()
-        case 4:
-            Toggle("Notifications", isOn: $notificationsEnabled)
-                .settingsRow()
         default:
             EmptyView()
         }
@@ -200,12 +196,13 @@ struct SettingsView: View {
                 .disabled(!isFaceIDAvailable)
                 .settingsRow()
         case 1:
-            Picker("Auto-lock", selection: $autoLockInterval) {
-                ForEach(AutoLockInterval.allCases) { interval in
-                    Text(interval.title).tag(interval)
+            settingsPickerRow("Auto-lock") {
+                Picker("Auto-lock", selection: $autoLockInterval) {
+                    ForEach(AutoLockInterval.allCases) { interval in
+                        Text(interval.title).tag(interval)
+                    }
                 }
             }
-            .pickerStyle(.menu)
             .disabled(!appState.isFaceIDEnabled)
             .settingsRow()
         case 2:
