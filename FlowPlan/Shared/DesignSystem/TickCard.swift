@@ -1,5 +1,8 @@
 import SwiftUI
 
+/// The app's card container. Named for the corner crosshair ticks it originally drew; those were
+/// removed at the owner's request, so it is now a plain `CardSurface` wrapper. Kept as the single
+/// card type every screen uses, so the container stays centralized and cannot drift again.
 struct TickCard<Content: View>: View {
     private let contentPadding: CGFloat
     private let content: Content
@@ -16,37 +19,6 @@ struct TickCard<Content: View>: View {
         CardSurface(contentPadding: contentPadding) {
             content
         }
-            .overlay(alignment: .topLeading) {
-                CrosshairTick()
-                    .offset(x: -Spacing.sm, y: -Spacing.sm)
-            }
-            .overlay(alignment: .topTrailing) {
-                CrosshairTick()
-                    .offset(x: Spacing.sm, y: -Spacing.sm)
-            }
-            .overlay(alignment: .bottomLeading) {
-                CrosshairTick()
-                    .offset(x: -Spacing.sm, y: Spacing.sm)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                CrosshairTick()
-                    .offset(x: Spacing.sm, y: Spacing.sm)
-            }
-    }
-}
-
-private struct CrosshairTick: View {
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .frame(width: 20, height: 1)
-            Rectangle()
-                .frame(width: 1, height: 20)
-        }
-        .foregroundStyle(Palette.inkSecondary)
-        .frame(width: 20, height: 20)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 }
 
