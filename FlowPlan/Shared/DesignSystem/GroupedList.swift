@@ -65,7 +65,7 @@ struct GroupedList: View {
         self.rows = elements.enumerated().map { index, element in
             AnyView(
                 SwipeEnabledGroupedListRow(
-                    position: RowPosition(index: index, count: elements.count),
+                    position: GroupedRowPosition(index: index, count: elements.count),
                     leadingSwipeAllowsFullSwipe: leadingSwipeAllowsFullSwipe,
                     trailingSwipeAllowsFullSwipe: trailingSwipeAllowsFullSwipe,
                     content: rowContent(element),
@@ -142,7 +142,7 @@ private struct SwipeEnabledGroupedListRow<
     LeadingActions: View,
     TrailingActions: View
 >: View {
-    let position: RowPosition
+    let position: GroupedRowPosition
     let leadingSwipeAllowsFullSwipe: Bool
     let trailingSwipeAllowsFullSwipe: Bool
     let content: Content
@@ -152,15 +152,7 @@ private struct SwipeEnabledGroupedListRow<
     var body: some View {
         content
             .environment(\.groupedListOwnsHorizontalRowPadding, true)
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.sm)
-            .background(Palette.surface)
-            .clipShape(rowShape)
-            .overlay {
-                rowShape
-                    .stroke(Palette.hairline, lineWidth: 1)
-                    .accessibilityHidden(true)
-            }
+            .groupedRowSurface(position: position)
             .listRowInsets(
                 EdgeInsets(
                     top: Spacing.none,
@@ -178,6 +170,33 @@ private struct SwipeEnabledGroupedListRow<
                 trailingActions
             }
     }
+}
+
+struct GroupedRowPosition {
+    let isFirst: Bool
+    let isLast: Bool
+
+    init(index: Int, count: Int) {
+        isFirst = index == 0
+        isLast = index == count - 1
+    }
+}
+
+private struct GroupedRowSurface: ViewModifier {
+    let position: GroupedRowPosition
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
+            .background(Palette.surface)
+            .clipShape(rowShape)
+            .overlay {
+                rowShape
+                    .stroke(Palette.hairline, lineWidth: 1)
+                    .accessibilityHidden(true)
+            }
+    }
 
     private var rowShape: UnevenRoundedRectangle {
         UnevenRoundedRectangle(
@@ -189,13 +208,9 @@ private struct SwipeEnabledGroupedListRow<
     }
 }
 
-private struct RowPosition {
-    let isFirst: Bool
-    let isLast: Bool
-
-    init(index: Int, count: Int) {
-        isFirst = index == 0
-        isLast = index == count - 1
+extension View {
+    func groupedRowSurface(position: GroupedRowPosition) -> some View {
+        modifier(GroupedRowSurface(position: position))
     }
 }
 
