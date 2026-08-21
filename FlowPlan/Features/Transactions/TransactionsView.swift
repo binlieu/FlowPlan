@@ -70,7 +70,7 @@ private struct TransactionsContent: View {
         }
         .listStyle(.insetGrouped)
         .designSystemList()
-        .contentMargins(.top, 0, for: .scrollContent)
+        .contentMargins(.top, Spacing.none, for: .scrollContent)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
@@ -159,7 +159,7 @@ private struct TransactionsContent: View {
     private func sectionHeader(_ section: TransactionDaySection) -> some View {
         Group {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
                     sectionTitle(section)
                     sectionAmount(section)
                 }
@@ -276,7 +276,7 @@ private struct TransactionsContent: View {
     }
 
     private var activityHeaderActions: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.xs) {
             filterMenu
                 .frame(minWidth: 44, minHeight: 44)
 
@@ -288,49 +288,53 @@ private struct TransactionsContent: View {
             }
             .accessibilityLabel("Add transaction")
         }
-        .font(.headline)
+        .prominentLabelTypography()
         .foregroundStyle(Palette.accent)
     }
 
     private var activitySearchField: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(Palette.inkSecondary)
-                .accessibilityHidden(true)
+        CardSurface(
+            radius: Radius.control,
+            contentInsets: EdgeInsets(
+                top: Spacing.none,
+                leading: Spacing.sm,
+                bottom: Spacing.none,
+                trailing: Spacing.sm
+            )
+        ) {
+            HStack(spacing: Spacing.sm) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(Palette.inkSecondary)
+                    .accessibilityHidden(true)
 
-            TextField("Description or category", text: $viewModel.searchText)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .submitLabel(.search)
-                .foregroundStyle(Palette.ink)
-                .accessibilityLabel("Search by description or category")
+                TextField("Description or category", text: $viewModel.searchText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .foregroundStyle(Palette.ink)
+                    .accessibilityLabel("Search by description or category")
 
-            if !viewModel.searchText.isEmpty {
-                Button {
-                    viewModel.searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Palette.inkSecondary)
+                if !viewModel.searchText.isEmpty {
+                    Button {
+                        viewModel.searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(Palette.inkSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Clear search")
             }
+            .frame(minHeight: 44)
         }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 44)
-        .background(Palette.surface)
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Palette.hairline, lineWidth: 1)
-        }
-        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 16, trailing: 20))
+        .listRowInsets(EdgeInsets(top: Spacing.none, leading: Spacing.lg, bottom: Spacing.md, trailing: Spacing.lg))
         .listRowBackground(Palette.background)
         .listRowSeparator(.hidden)
     }
 
     private var activeFilterChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.xs) {
                 if viewModel.filter.type != .all {
                     filterChip(viewModel.filter.type.title) {
                         var filter = viewModel.filter
@@ -354,30 +358,18 @@ private struct TransactionsContent: View {
                 Button("Clear") {
                     viewModel.clearFilters()
                 }
-                .font(.subheadline.weight(.semibold))
+                .rowDetailEmphasisTypography()
                 .foregroundStyle(Palette.accent)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, Spacing.xxs)
             }
-            .padding(.horizontal)
-            .padding(.vertical, 4)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.xxs)
         }
     }
 
     private func filterChip(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 5) {
-                Text(title)
-                Image(systemName: "xmark")
-                    .font(.caption2.weight(.bold))
-            }
-            .font(.subheadline)
-            .foregroundStyle(Palette.accent)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Palette.accentLight, in: Capsule())
-            .overlay {
-                Capsule().stroke(Palette.accentMuted, lineWidth: 1)
-            }
+            Chip(text: title, style: .filledAccent, systemImage: "xmark")
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Remove \(title) filter")

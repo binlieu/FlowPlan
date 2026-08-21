@@ -8,12 +8,12 @@ struct MonthlyProjectionCard: View {
 
     var body: some View {
         TickCard {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
                 Text("MONTHLY PROJECTION")
                     .smallCapsTypography()
                     .foregroundStyle(Palette.inkSecondary)
 
-                VStack(spacing: 12) {
+                VStack(spacing: Spacing.sm) {
                     ForEach(Self.rows(for: projection)) { row in
                         projectionRow(row)
                     }
@@ -23,12 +23,12 @@ struct MonthlyProjectionCard: View {
                     .fill(Palette.hairline)
                     .frame(height: 1)
 
-                HStack(alignment: .firstTextBaseline, spacing: 16) {
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.md) {
                     Text("PROJECTED REMAINING")
                         .smallCapsTypography()
                         .foregroundStyle(Palette.accent)
 
-                    Spacer(minLength: 12)
+                    Spacer(minLength: Spacing.sm)
 
                     Text(signedMoney(Self.total(for: projection)))
                         .valueTypography()
@@ -88,16 +88,15 @@ struct MonthlyProjectionCard: View {
     }
 
     private func projectionRow(_ row: ProjectionCardRow) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.md) {
             Text(row.label)
-                .font(Typography.body)
+                .bodyTypography()
                 .foregroundStyle(Palette.inkSecondary)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: Spacing.sm)
 
             Text(formattedAmount(for: row))
-                .font(.body.weight(.bold))
-                .fontWidth(.condensed)
+                .rowTitleTypography()
                 .monospacedDigit()
                 .foregroundStyle(Palette.ink)
         }
@@ -162,7 +161,7 @@ struct ProjectionCardRow: Identifiable, Equatable {
 #Preview("Monthly Projection") {
     FlowPlanPreviewHost {
         MonthlyProjectionCard(projection: FlowPlanPreviewData.projection())
-            .padding(30)
+            .padding(Spacing.xl)
             .background(Palette.background)
     }
 }

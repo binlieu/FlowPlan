@@ -90,7 +90,7 @@ struct AddTransactionView: View {
                     }
                 }
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            .safeAreaInset(edge: .bottom, spacing: Spacing.none) {
                 saveBar
             }
             .onAppear {
@@ -142,7 +142,7 @@ struct AddTransactionView: View {
 
     private var transactionTypeSection: some View {
         Section {
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.sm) {
                 Picker("Transaction type", selection: commonTypeBinding) {
                     Text("Income").tag(TransactionType.income as TransactionType?)
                     Text("Expense").tag(TransactionType.expense as TransactionType?)
@@ -177,7 +177,7 @@ struct AddTransactionView: View {
     private var amountSection: some View {
         Section {
             TextField("0.00", value: $amount, format: amountFormat)
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                .formAmountTypography()
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.center)
                 .monospacedDigit()
@@ -369,7 +369,7 @@ struct AddTransactionView: View {
     }
 
     private var saveBar: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: Spacing.none) {
             Divider()
                 .overlay(Palette.hairline)
 
@@ -386,12 +386,12 @@ struct AddTransactionView: View {
             .buttonStyle(.borderedProminent)
             .tint(Palette.accentFill)
             .controlSize(.large)
-            .font(.headline)
+            .prominentLabelTypography()
             .disabled(!canSave || isSaving)
-            .padding(.horizontal)
-            .padding(.vertical, 10)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
         }
-        .background(Palette.surface)
+        .designSystemBottomBar()
     }
 
     private var commonTypeBinding: Binding<TransactionType?> {

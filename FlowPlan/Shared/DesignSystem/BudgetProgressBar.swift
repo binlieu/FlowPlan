@@ -67,7 +67,7 @@ private struct BudgetHatch: View {
 
 private struct BudgetDiagonalHatchShape: Shape {
     func path(in rect: CGRect) -> Path {
-        let spacing: CGFloat = 8
+        let spacing: CGFloat = Spacing.xs
         var path = Path()
         var x = rect.minX - rect.height
 
@@ -83,11 +83,11 @@ private struct BudgetDiagonalHatchShape: Shape {
 
 #if DEBUG
 #Preview("Budget Progress") {
-    VStack(spacing: 20) {
+    VStack(spacing: Spacing.lg) {
         BudgetProgressBar(spent: 350, limit: 800)
         BudgetProgressBar(spent: 900, limit: 800)
     }
-    .padding()
+    .padding(Spacing.md)
     .background(Palette.background)
 }
 #endif

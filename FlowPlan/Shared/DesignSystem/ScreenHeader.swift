@@ -11,8 +11,8 @@ struct ScreenHeader: View {
         // Aligned on the title's first baseline, not centred. Trailing controls are taller than
         // the title text, so centring pushed the title down on screens that have them — making
         // Activity's header sit lower than Home's and Settings'.
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            VStack(alignment: .leading, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
                 Text(title)
                     .greetingTypography()
                     .foregroundStyle(Palette.ink)
@@ -28,16 +28,16 @@ struct ScreenHeader: View {
             .layoutPriority(1)
 
             if let trailing {
-                Spacer(minLength: 0)
+                Spacer(minLength: Spacing.none)
 
                 trailing
                     .fixedSize(horizontal: true, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.top, 24)
-        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0))
+        .padding(.horizontal, Spacing.lg)
+        .padding(.top, Spacing.lg)
+        .listRowInsets(EdgeInsets(top: Spacing.none, leading: Spacing.none, bottom: Spacing.sm, trailing: Spacing.none))
         .listRowBackground(Palette.background)
         .listRowSeparator(.hidden)
     }
@@ -46,7 +46,7 @@ struct ScreenHeader: View {
 #if DEBUG
 private struct ScreenHeaderPreviewControls: View {
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.xs) {
             Button(action: {}) {
                 Image(systemName: "line.3.horizontal.decrease.circle")
                     .frame(minWidth: 44, minHeight: 44)
@@ -59,7 +59,7 @@ private struct ScreenHeaderPreviewControls: View {
             }
             .accessibilityLabel("Add transaction")
         }
-        .font(.headline)
+        .prominentLabelTypography()
         .foregroundStyle(Palette.accent)
     }
 }
@@ -67,7 +67,7 @@ private struct ScreenHeaderPreviewControls: View {
 private struct ScreenHeaderVariantsPreview: View {
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: Spacing.lg) {
                 ScreenHeader(title: "Insights")
                 ScreenHeader(
                     title: "Plan",
@@ -83,7 +83,7 @@ private struct ScreenHeaderVariantsPreview: View {
                     trailing: AnyView(ScreenHeaderPreviewControls())
                 )
             }
-            .padding(.bottom, 24)
+            .padding(.bottom, Spacing.lg)
         }
         .background(Palette.background)
     }
@@ -92,7 +92,7 @@ private struct ScreenHeaderVariantsPreview: View {
 private struct AllTabScreenHeadersPreview: View {
     var body: some View {
         ScrollView {
-            VStack(spacing: 0) {
+            VStack(spacing: Spacing.none) {
                 ScreenHeader(
                     title: "Good morning, Taylor",
                     subtitle: "Know where your money goes"
@@ -112,7 +112,7 @@ private struct AllTabScreenHeadersPreview: View {
                     subtitle: "Profile, preferences & data"
                 )
             }
-            .padding(.bottom, 24)
+            .padding(.bottom, Spacing.lg)
         }
         .background(Palette.background)
     }
@@ -122,8 +122,14 @@ private struct AllTabScreenHeadersPreview: View {
     ScreenHeaderVariantsPreview()
 }
 
-#Preview("Screen Header — All Tabs") {
+#Preview("Screen Header — All Tabs — Light") {
     AllTabScreenHeadersPreview()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Screen Header — All Tabs — Dark") {
+    AllTabScreenHeadersPreview()
+        .preferredColorScheme(.dark)
 }
 
 #Preview("Screen Header — Largest Dynamic Type") {

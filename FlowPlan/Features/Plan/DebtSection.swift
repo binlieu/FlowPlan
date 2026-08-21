@@ -13,157 +13,103 @@ struct DebtSection: View {
     let onCountSeparately: (Debt) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             sectionHeader
 
-            VStack(spacing: 0) {
-                if debts.isEmpty {
-                    Text("No debts yet.")
-                        .font(Typography.supporting)
-                        .foregroundStyle(Palette.inkSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                } else {
-                    ForEach(Array(debts.enumerated()), id: \.element.id) { index, debt in
-                        debtRow(debt)
-
-                        if index < debts.count - 1 {
-                            Divider()
-                        }
-                    }
-                }
-
-                Divider()
-                totalRow
-            }
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
-            }
+            GroupedList(
+                debts,
+                emptyState: EmptyStateView(
+                    symbol: "creditcard",
+                    title: "No debts yet.",
+                    layout: .compact
+                ),
+                footer: AnyView(totalRow),
+                rowContent: debtRow
+            )
         }
     }
 
     private var sectionHeader: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Debt")
-                .sectionHeadingTypography()
-                .foregroundStyle(Palette.ink)
-
-            Spacer(minLength: 8)
-
-            Button("Add", action: onAdd)
-                .font(.subheadline.weight(.bold))
-                .fontWidth(.condensed)
-                .foregroundStyle(Palette.accent)
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
-        }
+        SectionHeading(title: "Debt", actionTitle: "Add", action: onAdd)
     }
 
     private func debtRow(_ debt: Debt) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: Spacing.none) {
             Button {
                 onEdit(debt)
             } label: {
-                VStack(alignment: .leading, spacing: 11) {
-                    HStack(alignment: .firstTextBaseline, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(debt.name)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(Palette.ink)
-
-                            Text(aprText(for: debt))
-                                .font(Typography.supporting)
-                                .foregroundStyle(Palette.inkSecondary)
-                        }
-
-                        Spacer(minLength: 10)
-
-                        Text(money(debt.currentBalance))
-                            .font(.headline.weight(.bold))
-                            .fontWidth(.condensed)
-                            .monospacedDigit()
-                            .foregroundStyle(Palette.ink)
-                    }
-
+                ListRow(
+                    title: debt.name,
+                    subtitle: aprText(for: debt),
+                    trailingAmount: money(debt.currentBalance),
+                    statuses: statuses(for: debt),
+                    statusPlacement: .detail,
+                    isDimmed: !debt.isActive
+                ) {
                     ProgressView(value: progress(for: debt))
                         .tint(Palette.accent)
                         .accessibilityLabel("Debt payoff progress")
                         .accessibilityValue("\(paidPercentage(for: debt)) percent paid off")
 
-                    HStack(alignment: .center, spacing: 10) {
+                    HStack(alignment: .center, spacing: Spacing.sm) {
                         Text("\(paidPercentage(for: debt))% paid off")
-                            .font(Typography.supporting)
+                            .rowDetailTypography()
                             .foregroundStyle(Palette.inkSecondary)
-
-                        Spacer(minLength: 8)
-
-                        if debt.isAutoPay {
-                            Chip(text: "AUTO PAY", style: .filledNeutral)
-                        }
-
-                        debtStatus(debt)
                     }
 
                     payoffText(for: debt)
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(payoffColor(for: debt))
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .contentShape(Rectangle())
-                .opacity(debt.isActive ? 1 : 0.55)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Opens debt editor")
 
             if OrphanedDebtDetector.isOrphaned(debt, bills: bills) {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: Spacing.sm) {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(Palette.warning)
                         .accessibilityHidden(true)
 
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(OrphanedDebtDetector.warningMessage)
-                            .font(Typography.supporting)
+                            .rowDetailTypography()
                             .foregroundStyle(Palette.ink)
                             .fixedSize(horizontal: false, vertical: true)
 
                         Button("Count it separately") {
                             onCountSeparately(debt)
                         }
-                        .font(Typography.supporting.weight(.semibold))
+                        .rowDetailEmphasisTypography()
                         .foregroundStyle(Palette.accent)
                         .buttonStyle(.plain)
                         .frame(minHeight: 44, alignment: .leading)
                         .accessibilityHint("Includes this debt payment in the projection")
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.md)
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Debt payment warning")
             }
         }
     }
 
-    private func debtStatus(_ debt: Debt) -> some View {
-        Text(debt.isPaidThroughBills ? "In monthly bills" : "Counted separately")
-            .font(.caption.weight(.bold))
-            .fontWidth(.condensed)
-            .foregroundStyle(debt.isPaidThroughBills ? Palette.inkSecondary : Palette.accent)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(
-                debt.isPaidThroughBills ? Palette.background : PlanTotalRow.accentFill,
-                in: Capsule()
+    private func statuses(for debt: Debt) -> [ListRowStatus] {
+        var statuses: [ListRowStatus] = []
+
+        if debt.isAutoPay {
+            statuses.append(ListRowStatus(text: "AUTO PAY", style: .filledNeutral))
+        }
+
+        statuses.append(
+            ListRowStatus(
+                text: debt.isPaidThroughBills ? "In monthly bills" : "Counted separately",
+                style: debt.isPaidThroughBills ? .filledNeutral : .outlinedAccent
             )
-            .overlay {
-                Capsule().stroke(
-                    debt.isPaidThroughBills ? Palette.hairline : Palette.accentMuted,
-                    lineWidth: 1
-                )
-            }
+        )
+
+        return statuses
     }
 
     private var totalRow: some View {

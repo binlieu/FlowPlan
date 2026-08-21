@@ -7,29 +7,35 @@ struct SmartInsightsSection: View {
     let insights: [Insight]
 
     var body: some View {
-        SectionCard(title: "Smart insights") {
-            if insights.isEmpty {
-                Text("There is not enough month-over-month data for an insight yet.")
-                    .font(.subheadline)
-                    .foregroundStyle(Palette.inkSecondary)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(insights.enumerated()), id: \.element.id) { index, insight in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: symbolName(for: insight))
-                                .font(.headline)
-                                .foregroundStyle(Palette.accent)
-                                .frame(width: 28)
-                                .accessibilityHidden(true)
+        TickCard {
+            VStack(alignment: .leading, spacing: Spacing.md) {
+                SectionHeading(title: "Smart insights")
 
-                            Text(message(for: insight))
-                                .font(.subheadline)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .padding(.vertical, 12)
+                if insights.isEmpty {
+                    EmptyStateView(
+                        symbol: "lightbulb",
+                        title: "There is not enough month-over-month data for an insight yet.",
+                        layout: .compact
+                    )
+                } else {
+                    VStack(spacing: Spacing.none) {
+                        ForEach(Array(insights.enumerated()), id: \.element.id) { index, insight in
+                            HStack(alignment: .top, spacing: Spacing.sm) {
+                                Image(systemName: symbolName(for: insight))
+                                    .prominentLabelTypography()
+                                    .foregroundStyle(Palette.accent)
+                                    .frame(width: 28)
+                                    .accessibilityHidden(true)
 
-                        if index < insights.count - 1 {
-                            Divider()
+                                Text(message(for: insight))
+                                    .rowDetailTypography()
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(.vertical, Spacing.sm)
+
+                            if index < insights.count - 1 {
+                                Divider()
+                            }
                         }
                     }
                 }

@@ -14,7 +14,7 @@ struct EstimatedSavingsCard: View {
             isShowingProjection = true
         } label: {
             TickCard {
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: Spacing.lg) {
                     summary
 
                     if !isShortfall {
@@ -40,22 +40,22 @@ struct EstimatedSavingsCard: View {
         if isShortfall {
             summaryText
         } else if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: Spacing.lg) {
                 summaryText
                 savingsRing
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         } else {
-            HStack(alignment: .center, spacing: 18) {
+            HStack(alignment: .center, spacing: Spacing.lg) {
                 summaryText
-                Spacer(minLength: 8)
+                Spacer(minLength: Spacing.xs)
                 savingsRing
             }
         }
     }
 
     private var summaryText: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             Text(summaryLabel)
                 .smallCapsTypography()
                 .foregroundStyle(Palette.accent)
@@ -68,7 +68,7 @@ struct EstimatedSavingsCard: View {
                 .accessibilityLabel(accessibleProjectedAmount)
 
             Text(summaryCopy)
-                .font(Typography.supporting)
+                .rowDetailTypography()
                 .foregroundStyle(Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -85,14 +85,14 @@ struct EstimatedSavingsCard: View {
     @ViewBuilder
     private var goalFooter: some View {
         if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 goalLabel
                 goalValue
             }
         } else {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
                 goalLabel
-                Spacer(minLength: 8)
+                Spacer(minLength: Spacing.xs)
                 goalValue
             }
         }
@@ -106,8 +106,7 @@ struct EstimatedSavingsCard: View {
 
     private var goalValue: some View {
         Text(goalFigure)
-            .font(.headline.weight(.bold))
-            .fontWidth(.condensed)
+            .rowAmountTypography()
             .monospacedDigit()
             .foregroundStyle(Palette.ink)
             .fixedSize(horizontal: false, vertical: true)
@@ -243,7 +242,7 @@ private struct SavingsGoalRing: View {
     FlowPlanPreviewHost(colorScheme: .light) {
         NavigationStack {
             EstimatedSavingsCard(projection: FlowPlanPreviewData.projection())
-                .padding(30)
+                .padding(Spacing.xl)
                 .background(Palette.background)
         }
     }
@@ -253,7 +252,7 @@ private struct SavingsGoalRing: View {
     FlowPlanPreviewHost(colorScheme: .dark) {
         NavigationStack {
             EstimatedSavingsCard(projection: FlowPlanPreviewData.projection())
-                .padding(30)
+                .padding(Spacing.xl)
                 .background(Palette.background)
         }
     }

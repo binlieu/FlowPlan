@@ -5,17 +5,17 @@ struct ProjectionBreakdownRow: View {
     let lineItem: ProjectionLineItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             if lineItem.kind == .total {
                 Divider()
-                    .padding(.bottom, 4)
+                    .padding(.bottom, Spacing.xxs)
             }
 
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
                 Text(title)
-                    .font(titleFont)
+                    .breakdownTitleTypography(isTotal: lineItem.kind == .total)
 
-                Spacer(minLength: 12)
+                Spacer(minLength: Spacing.sm)
 
                 AmountText(
                     amount: lineItem.amount,
@@ -27,21 +27,17 @@ struct ProjectionBreakdownRow: View {
 
             if let explainer {
                 Text(explainer)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .footnoteTypography()
+                    .foregroundStyle(Palette.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, Spacing.xs)
         .accessibilityElement(children: .combine)
     }
 
     private var showsSign: Bool {
         lineItem.kind == .addition || lineItem.kind == .deduction
-    }
-
-    private var titleFont: Font {
-        lineItem.kind == .total ? .headline : .body.weight(.medium)
     }
 
     private var title: String {

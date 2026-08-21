@@ -1,62 +1,73 @@
 import SwiftUI
 
-struct SectionCard<Content: View>: View {
-    let title: String
-    let actionTitle: String?
-    let action: (() -> Void)?
-    @ViewBuilder let content: Content
+/// The only view that draws a card or grouped-container background. Higher-level components such
+/// as `TickCard` and `GroupedList` compose this surface instead of recreating fill and border
+/// styling at their call sites.
+struct CardSurface<Content: View>: View {
+    private let fill: AnyShapeStyle
+    private let radius: CGFloat
+    private let contentInsets: EdgeInsets
+    private let content: Content
 
     init(
-        title: String,
-        actionTitle: String? = nil,
-        action: (() -> Void)? = nil,
+        fill: AnyShapeStyle = AnyShapeStyle(Palette.surface),
+        radius: CGFloat = Radius.card,
+        contentPadding: CGFloat = Spacing.lg,
         @ViewBuilder content: () -> Content
     ) {
-        self.title = title
-        self.actionTitle = actionTitle
-        self.action = action
+        self.fill = fill
+        self.radius = radius
+        self.contentInsets = EdgeInsets(
+            top: contentPadding,
+            leading: contentPadding,
+            bottom: contentPadding,
+            trailing: contentPadding
+        )
+        self.content = content()
+    }
+
+    init(
+        fill: AnyShapeStyle = AnyShapeStyle(Palette.surface),
+        radius: CGFloat = Radius.card,
+        contentInsets: EdgeInsets,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.fill = fill
+        self.radius = radius
+        self.contentInsets = contentInsets
         self.content = content()
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(title)
-                    .font(.headline)
-
-                Spacer(minLength: 8)
-
-                if let actionTitle, let action {
-                    Button(actionTitle, action: action)
-                        .font(.subheadline.weight(.semibold))
-                }
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(contentInsets)
+            .background(fill, in: RoundedRectangle(cornerRadius: radius))
+            .overlay {
+                RoundedRectangle(cornerRadius: radius)
+                    .stroke(Palette.hairline, lineWidth: 1)
             }
-
-            content
-        }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
     }
 }
 
 #if DEBUG
-#Preview("Light") {
+#Preview("Card Surface — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
-        SectionCard(title: "Overview", actionTitle: "See all") {
-            Text("A reusable grouped section.")
-                .foregroundStyle(.secondary)
+        CardSurface {
+            Text("A reusable grouped surface.")
+                .foregroundStyle(Palette.ink)
         }
-        .padding()
+        .padding(Spacing.lg)
     }
 }
 
-#Preview("Dark") {
+#Preview("Card Surface — Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
-        SectionCard(title: "Overview", actionTitle: "See all") {
-            Text("A reusable grouped section.")
-                .foregroundStyle(.secondary)
+        CardSurface {
+            Text("A reusable grouped surface.")
+                .foregroundStyle(Palette.ink)
         }
-        .padding()
+        .padding(Spacing.lg)
     }
 }
 #endif

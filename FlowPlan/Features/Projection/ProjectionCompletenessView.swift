@@ -5,36 +5,35 @@ struct ProjectionCompletenessView: View {
     let completeness: ProjectionCompleteness
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Projection based on:")
-                .font(.headline)
+        CardSurface(contentPadding: Spacing.md) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
+                Text("Projection based on:")
+                    .prominentLabelTypography()
 
-            ForEach(checklistItems) { item in
-                Label {
-                    Text(item.title)
-                        .foregroundStyle(Palette.ink)
-                } icon: {
-                    Image(systemName: item.isPresent
-                          ? "checkmark.circle.fill"
-                          : "exclamationmark.triangle")
-                        .foregroundStyle(item.isPresent ? Palette.positive : Palette.warning)
+                ForEach(checklistItems) { item in
+                    Label {
+                        Text(item.title)
+                            .foregroundStyle(Palette.ink)
+                    } icon: {
+                        Image(systemName: item.isPresent
+                              ? "checkmark.circle.fill"
+                              : "exclamationmark.triangle")
+                            .foregroundStyle(item.isPresent ? Palette.positive : Palette.warning)
+                    }
+                    .accessibilityLabel(
+                        "\(item.title), \(item.isPresent ? "present" : "missing")"
+                    )
                 }
-                .accessibilityLabel(
-                    "\(item.title), \(item.isPresent ? "present" : "missing")"
-                )
-            }
 
-            if !missingReasons.isEmpty {
-                Text(incompleteMessage)
-                    .font(.footnote)
-                    .foregroundStyle(Palette.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 2)
+                if !missingReasons.isEmpty {
+                    Text(incompleteMessage)
+                        .footnoteTypography()
+                        .foregroundStyle(Palette.inkSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, Spacing.xxs)
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Palette.surface, in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var checklistItems: [ChecklistItem] {

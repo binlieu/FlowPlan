@@ -15,99 +15,38 @@ struct MonthlyBillsSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             sectionHeader
 
-            VStack(spacing: 0) {
-                if bills.isEmpty {
-                    Text("No recurring bills yet.")
-                        .font(Typography.supporting)
-                        .foregroundStyle(Palette.inkSecondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                } else {
-                    ForEach(Array(bills.enumerated()), id: \.element.id) { index, bill in
-                        billRow(bill)
-
-                        if index < bills.count - 1 {
-                            Divider()
-                        }
-                    }
-
-                    Divider()
-                }
-
-                totalRow
-            }
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
-            }
+            GroupedList(
+                bills,
+                emptyState: EmptyStateView(
+                    symbol: "calendar",
+                    title: "No recurring bills yet.",
+                    layout: .compact
+                ),
+                footer: AnyView(totalRow),
+                rowContent: billRow
+            )
         }
     }
 
     private var sectionHeader: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Monthly Bills")
-                .sectionHeadingTypography()
-                .foregroundStyle(Palette.ink)
-
-            Spacer(minLength: 8)
-
-            Button("Add", action: onAdd)
-                .font(.subheadline.weight(.bold))
-                .fontWidth(.condensed)
-                .foregroundStyle(Palette.accent)
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
-        }
+        SectionHeading(title: "Monthly Bills", actionTitle: "Add", action: onAdd)
     }
 
     private func billRow(_ bill: PlannedBill) -> some View {
         Button {
             onEdit(bill)
         } label: {
-            HStack(alignment: .center, spacing: 16) {
-                VStack(alignment: .leading, spacing: 9) {
-                    Text(bill.name)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Palette.ink)
-
-                    HStack(spacing: 6) {
-                        Chip(
-                            text: bill.amountType.rawValue.uppercased(),
-                            style: .outlinedAccent
-                        )
-                        Chip(
-                            text: bill.isAutoPay ? "AUTO PAY" : "MANUAL",
-                            style: .filledNeutral
-                        )
-
-                        if !bill.isActive {
-                            Chip(text: "INACTIVE", style: .filledNeutral)
-                        }
-                    }
-                }
-
-                Spacer(minLength: 10)
-
-                VStack(alignment: .trailing, spacing: 5) {
-                    Text(money(bill.amount))
-                        .font(.headline.weight(.bold))
-                        .fontWidth(.condensed)
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.ink)
-
-                    Text(RecurrenceText.dueDescription(bill.recurrence))
-                        .font(Typography.supporting)
-                        .foregroundStyle(Palette.inkSecondary)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .contentShape(Rectangle())
-            .opacity(bill.isActive ? 1 : 0.55)
+            ListRow(
+                title: bill.name,
+                trailingAmount: money(bill.amount),
+                trailingSubtitle: RecurrenceText.dueDescription(bill.recurrence),
+                statuses: statuses(for: bill),
+                statusPlacement: .detail,
+                isDimmed: !bill.isActive
+            )
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens bill editor")
@@ -121,6 +60,25 @@ struct MonthlyBillsSection: View {
             amount: content.amount,
             signed: false
         )
+    }
+
+    private func statuses(for bill: PlannedBill) -> [ListRowStatus] {
+        var statuses = [
+            ListRowStatus(
+                text: bill.amountType.rawValue.uppercased(),
+                style: .outlinedAccent
+            ),
+            ListRowStatus(
+                text: bill.isAutoPay ? "AUTO PAY" : "MANUAL",
+                style: .filledNeutral
+            )
+        ]
+
+        if !bill.isActive {
+            statuses.append(ListRowStatus(text: "INACTIVE", style: .filledNeutral))
+        }
+
+        return statuses
     }
 
     static func totalRowContent(plannedTotal: Decimal) -> TotalRowContent {

@@ -19,7 +19,7 @@ struct PlanView: View {
         let projection = projectionForDisplay
 
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 30) {
+            LazyVStack(alignment: .leading, spacing: Spacing.xl) {
                 ScreenHeader(title: "Plan", subtitle: selectedMonthTitle)
 
                 Group {
@@ -74,9 +74,9 @@ struct PlanView: View {
                     .buttonStyle(.plain)
                     .accessibilityHint("Opens projection details")
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Spacing.lg)
             }
-            .padding(.bottom, 100)
+            .padding(.bottom, Spacing.xl)
         }
         .background(Palette.background)
         .foregroundStyle(Palette.ink)

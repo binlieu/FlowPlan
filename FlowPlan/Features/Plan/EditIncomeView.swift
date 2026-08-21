@@ -33,16 +33,15 @@ struct EditIncomeView: View {
         NavigationStack {
             Form {
                 Section("Income") {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Name", text: $name)
                             .textInputAutocapitalization(.words)
                         PlanValidationMessage(message: visible(nameValidationMessage, for: name))
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Expected amount", text: $amountText)
-                            .font(.largeTitle.weight(.bold))
-                            .fontWidth(.condensed)
+                            .formAmountTypography()
                             .monospacedDigit()
                             .keyboardType(.decimalPad)
                         PlanValidationMessage(

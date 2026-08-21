@@ -7,17 +7,17 @@ struct QuickAddRow: View {
     @State private var selectedAction: QuickAddAction?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("QUICK ADD")
                 .smallCapsTypography()
                 .foregroundStyle(Palette.inkSecondary)
 
             if dynamicTypeSize.isAccessibilitySize {
-                LazyVGrid(columns: accessibilityColumns, spacing: 10) {
+                LazyVGrid(columns: accessibilityColumns, spacing: Spacing.sm) {
                     quickAddButtons
                 }
             } else {
-                HStack(spacing: 8) {
+                HStack(spacing: Spacing.xs) {
                     quickAddButtons
                 }
             }
@@ -33,9 +33,9 @@ struct QuickAddRow: View {
             Button {
                 selectedAction = action
             } label: {
-                VStack(spacing: 8) {
+                VStack(spacing: Spacing.xs) {
                     Image(systemName: action.symbol)
-                        .font(.title3.weight(.medium))
+                        .iconTypography()
 
                     Text(action.title)
                         .smallCapsTypography()
@@ -43,7 +43,7 @@ struct QuickAddRow: View {
                 }
                 .foregroundStyle(Palette.ink)
                 .frame(maxWidth: .infinity, minHeight: 72)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, Spacing.xxs)
                 .overlay {
                     Rectangle().stroke(Palette.hairline, lineWidth: 1)
                 }
@@ -56,8 +56,8 @@ struct QuickAddRow: View {
 
     private var accessibilityColumns: [GridItem] {
         [
-            GridItem(.flexible(), spacing: 10),
-            GridItem(.flexible(), spacing: 10)
+            GridItem(.flexible(), spacing: Spacing.sm),
+            GridItem(.flexible(), spacing: Spacing.sm)
         ]
     }
 
@@ -112,7 +112,7 @@ struct QuickAddRow: View {
 #Preview("Quick Add — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
         QuickAddRow()
-            .padding()
+            .padding(Spacing.md)
             .background(Palette.background)
     }
 }
@@ -120,7 +120,7 @@ struct QuickAddRow: View {
 #Preview("Quick Add — Accessibility") {
     FlowPlanPreviewHost(colorScheme: .dark) {
         QuickAddRow()
-            .padding()
+            .padding(Spacing.md)
             .background(Palette.background)
     }
     .dynamicTypeSize(.accessibility5)

@@ -5,7 +5,7 @@ struct TickCard<Content: View>: View {
     private let content: Content
 
     init(
-        contentPadding: CGFloat = 20,
+        contentPadding: CGFloat = Spacing.lg,
         @ViewBuilder content: () -> Content
     ) {
         self.contentPadding = contentPadding
@@ -13,29 +13,24 @@ struct TickCard<Content: View>: View {
     }
 
     var body: some View {
-        content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(contentPadding)
-            .background(Palette.surface)
-            .overlay {
-                Rectangle()
-                    .stroke(Palette.hairline, lineWidth: 1)
-            }
+        CardSurface(contentPadding: contentPadding) {
+            content
+        }
             .overlay(alignment: .topLeading) {
                 CrosshairTick()
-                    .offset(x: -10, y: -10)
+                    .offset(x: -Spacing.sm, y: -Spacing.sm)
             }
             .overlay(alignment: .topTrailing) {
                 CrosshairTick()
-                    .offset(x: 10, y: -10)
+                    .offset(x: Spacing.sm, y: -Spacing.sm)
             }
             .overlay(alignment: .bottomLeading) {
                 CrosshairTick()
-                    .offset(x: -10, y: 10)
+                    .offset(x: -Spacing.sm, y: Spacing.sm)
             }
             .overlay(alignment: .bottomTrailing) {
                 CrosshairTick()
-                    .offset(x: 10, y: 10)
+                    .offset(x: Spacing.sm, y: Spacing.sm)
             }
     }
 }
@@ -61,7 +56,7 @@ private struct CrosshairTick: View {
         Text("Signature card")
             .foregroundStyle(Palette.ink)
     }
-    .padding(30)
+    .padding(Spacing.xl)
     .background(Palette.background)
     .preferredColorScheme(.light)
 }
@@ -71,7 +66,7 @@ private struct CrosshairTick: View {
         Text("Signature card")
             .foregroundStyle(Palette.ink)
     }
-    .padding(30)
+    .padding(Spacing.xl)
     .background(Palette.background)
     .preferredColorScheme(.dark)
 }

@@ -25,7 +25,7 @@ struct SettingsView: View {
             aboutSection
         }
         .designSystemForm()
-        .contentMargins(.top, 0, for: .scrollContent)
+        .contentMargins(.top, Spacing.none, for: .scrollContent)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
@@ -67,19 +67,19 @@ struct SettingsView: View {
             Toggle("Haptic feedback", isOn: binding(\.isHapticsEnabled))
 
             Toggle(isOn: binding(\.recordAutopayAutomatically)) {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
                     Text("Record auto-pay automatically")
                     Text("Auto-pay bills and debts are recorded as spent once their due date passes.")
-                        .font(.footnote)
+                        .footnoteTypography()
                         .foregroundStyle(Palette.inkSecondary)
                 }
             }
 
             Toggle(isOn: binding(\.carryBalanceForward)) {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: Spacing.xxs) {
                     Text("Carry balance forward")
                     Text("Each month starts with what was left at the end of the previous one.")
-                        .font(.footnote)
+                        .footnoteTypography()
                         .foregroundStyle(Palette.inkSecondary)
                 }
             }
@@ -136,7 +136,7 @@ struct SettingsView: View {
             .disabled(!appState.isFaceIDEnabled)
 
             Text("Your financial data is stored only on this device.")
-                .font(.footnote)
+                .footnoteTypography()
                 .foregroundStyle(Palette.inkSecondary)
         } header: {
             Text("Security")

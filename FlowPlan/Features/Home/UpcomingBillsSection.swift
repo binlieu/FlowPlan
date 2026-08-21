@@ -5,7 +5,6 @@ struct UpcomingBillsSection: View {
     @Environment(AppState.self) private var appState
     @Environment(FinanceRepository.self) private var repository
     @Environment(ProjectionStore.self) private var projectionStore
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let onSeeAll: () -> Void
 
@@ -39,23 +38,23 @@ struct UpcomingBillsSection: View {
         Section {
             if !promptOccurrences.isEmpty {
                 autopayPrompt(for: promptOccurrences)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.bottom, Spacing.sm)
                     .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+                    .listRowBackground(Palette.clear)
                     .listRowSeparator(.hidden)
             }
 
             if occurrences.isEmpty {
                 emptyState
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Spacing.lg)
                     .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
+                    .listRowBackground(Palette.clear)
                     .listRowSeparator(.hidden)
             } else {
                 ForEach(occurrences.prefix(5)) { occurrence in
                     paymentRow(occurrence)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, Spacing.lg)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Palette.background)
                         .listRowSeparator(.hidden)
@@ -72,8 +71,8 @@ struct UpcomingBillsSection: View {
             }
         } header: {
             sectionHeader
-                .padding(.horizontal, 20)
-                .padding(.bottom, 10)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.bottom, Spacing.sm)
                 .textCase(nil)
         }
         .alert(item: $presentedError) { error in
@@ -86,191 +85,94 @@ struct UpcomingBillsSection: View {
     }
 
     private var sectionHeader: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Bills")
-                .sectionHeadingTypography()
-                .foregroundStyle(Palette.ink)
-
-            Spacer(minLength: 8)
-
-            Button("View All", action: onSeeAll)
-                .font(.subheadline.weight(.bold))
-                .fontWidth(.condensed)
-                .foregroundStyle(Palette.accent)
-                .textCase(nil)
-        }
+        SectionHeading(title: "Bills", actionTitle: "View All", action: onSeeAll)
     }
 
     private func autopayPrompt(for occurrences: [HomePaymentOccurrence]) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "exclamationmark.circle")
-                    .foregroundStyle(Palette.warning)
-                    .accessibilityHidden(true)
+        CardSurface(contentPadding: Spacing.md) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
+                HStack(alignment: .top, spacing: Spacing.sm) {
+                    Image(systemName: "exclamationmark.circle")
+                        .foregroundStyle(Palette.warning)
+                        .accessibilityHidden(true)
 
-                Text(promptMessage(for: occurrences))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Palette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(promptMessage(for: occurrences))
+                        .rowDetailEmphasisTypography()
+                        .foregroundStyle(Palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Spacer(minLength: 8)
+                    Spacer(minLength: Spacing.xs)
 
-                Button {
-                    dismissPrompt(for: occurrences)
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.caption.weight(.bold))
+                    Button {
+                        dismissPrompt(for: occurrences)
+                    } label: {
+                        Image(systemName: "xmark")
+                            .captionEmphasisTypography()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Palette.inkSecondary)
+                    .accessibilityLabel("Dismiss autopay reminder")
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(Palette.inkSecondary)
-                .accessibilityLabel("Dismiss autopay reminder")
-            }
 
-            Button("Mark all as paid") {
-                markAllPromptPaymentsAsPaid(occurrences)
+                Button("Mark all as paid") {
+                    markAllPromptPaymentsAsPaid(occurrences)
+                }
+                .rowDetailEmphasisTypography()
+                .foregroundStyle(Palette.onAccentFill)
+                .buttonStyle(.borderedProminent)
+                .tint(Palette.accentFill)
+                .disabled(isSettlingPromptPayments)
             }
-            .font(.subheadline.weight(.bold))
-            .foregroundStyle(Palette.onAccentFill)
-            .buttonStyle(.borderedProminent)
-            .tint(Palette.accentFill)
-            .disabled(isSettlingPromptPayments)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Palette.surface)
-        .overlay {
-            Rectangle().stroke(Palette.hairline, lineWidth: 1)
         }
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("No bills remaining")
-                .font(.headline)
-                .foregroundStyle(Palette.ink)
-
-            Text("There are no unpaid bills or debt payments left this month.")
-                .font(Typography.supporting)
-                .foregroundStyle(Palette.inkSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .background(Palette.surface)
-        .overlay {
-            Rectangle().stroke(Palette.hairline, lineWidth: 1)
-        }
+        GroupedList(
+            emptyState: EmptyStateView(
+                symbol: "calendar.badge.checkmark",
+                title: "No bills remaining",
+                message: "There are no unpaid bills or debt payments left this month.",
+                layout: .compact
+            )
+        )
     }
 
-    @ViewBuilder
     private func paymentRow(_ occurrence: HomePaymentOccurrence) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            accessibilityPaymentRow(occurrence)
-        } else {
-            standardPaymentRow(occurrence)
+        GroupedList([occurrence]) { occurrence in
+            ListRow(
+                leading: .monogram(occurrence.monogram),
+                title: occurrence.name,
+                subtitle: occurrence.date.formatted(
+                    .dateTime.month(.abbreviated).day()
+                ),
+                trailingAmount: money(occurrence.amount),
+                amountAccessibilityLabel: accessibleMoney(occurrence.amount),
+                statuses: statuses(for: occurrence)
+            )
         }
     }
 
-    private func standardPaymentRow(_ occurrence: HomePaymentOccurrence) -> some View {
-        HStack(alignment: .center, spacing: 14) {
-            monogram(for: occurrence)
+    private func statuses(for occurrence: HomePaymentOccurrence) -> [ListRowStatus] {
+        let occurrenceStatus = status(for: occurrence)
+        var statuses: [ListRowStatus] = []
 
-            paymentDescription(for: occurrence)
-
-            Spacer(minLength: 8)
-
-            amountAndStatus(for: occurrence, alignment: .trailing)
+        if occurrence.isDebt {
+            statuses.append(ListRowStatus(text: "DEBT", style: .outlinedAccent))
         }
-        .padding(14)
-        .background(Palette.surface)
-        .overlay {
-            Rectangle().stroke(Palette.hairline, lineWidth: 1)
+
+        if !occurrence.isDebt || occurrenceStatus == .overdue {
+            statuses.append(
+                ListRowStatus(
+                    text: occurrenceStatus.rawValue,
+                    style: occurrenceStatus == .overdue ? .warning : .plainAccent,
+                    systemImage: occurrenceStatus == .overdue
+                        ? "exclamationmark.circle"
+                        : nil
+                )
+            )
         }
-        .accessibilityElement(children: .combine)
-    }
 
-    private func accessibilityPaymentRow(_ occurrence: HomePaymentOccurrence) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            monogram(for: occurrence)
-
-            VStack(alignment: .leading, spacing: 12) {
-                paymentDescription(for: occurrence)
-                amountAndStatus(for: occurrence, alignment: .leading)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Palette.surface)
-        .overlay {
-            Rectangle().stroke(Palette.hairline, lineWidth: 1)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private func monogram(for occurrence: HomePaymentOccurrence) -> some View {
-        Text(occurrence.monogram)
-            .smallCapsTypography()
-            .foregroundStyle(Palette.accent)
-            .frame(width: 54, height: 54)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
-            }
-            .accessibilityHidden(true)
-    }
-
-    private func paymentDescription(for occurrence: HomePaymentOccurrence) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(occurrence.name)
-                .font(.body.weight(.medium))
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(occurrence.date, format: .dateTime.month(.abbreviated).day())
-                .font(Typography.supporting)
-                .foregroundStyle(Palette.inkSecondary)
-        }
-    }
-
-    private func amountAndStatus(
-        for occurrence: HomePaymentOccurrence,
-        alignment: HorizontalAlignment
-    ) -> some View {
-        VStack(alignment: alignment, spacing: 5) {
-            Text(money(occurrence.amount))
-                .font(.headline.weight(.bold))
-                .fontWidth(.condensed)
-                .monospacedDigit()
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: true, vertical: true)
-                .accessibilityLabel(accessibleMoney(occurrence.amount))
-
-            let status = status(for: occurrence)
-            HStack(spacing: 6) {
-                if occurrence.isDebt {
-                    debtChip
-                }
-
-                if !occurrence.isDebt || status == .overdue {
-                    OccurrenceStatusLabel(
-                        text: status.rawValue,
-                        isOverdue: status == .overdue
-                    )
-                }
-            }
-            .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private var debtChip: some View {
-        Text("DEBT")
-            .smallCapsTypography()
-            .foregroundStyle(Palette.accent)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Palette.accentLight, in: Capsule())
-            .overlay {
-                Capsule().stroke(Palette.accentMuted, lineWidth: 1)
-            }
+        return statuses
     }
 
     private var unsettledPaymentOccurrences: [HomePaymentOccurrence] {

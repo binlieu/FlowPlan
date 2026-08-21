@@ -18,6 +18,12 @@ private struct DesignSystemRows: ViewModifier {
     }
 }
 
+private struct DesignSystemBottomBar: ViewModifier {
+    func body(content: Content) -> some View {
+        content.background(Palette.surface)
+    }
+}
+
 extension View {
     func designSystemForm() -> some View {
         modifier(DesignSystemNativeContainer())
@@ -29,6 +35,10 @@ extension View {
 
     func designSystemRows() -> some View {
         modifier(DesignSystemRows())
+    }
+
+    func designSystemBottomBar() -> some View {
+        modifier(DesignSystemBottomBar())
     }
 
     func designSystemSectionHeader() -> some View {

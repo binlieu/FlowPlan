@@ -18,7 +18,7 @@ struct AccountsSettingsView: View {
                     accountRow(account)
                 }
 
-                HStack(spacing: 12) {
+                HStack(spacing: Spacing.sm) {
                     TextField("Add an account", text: $newAccountName)
                         .textContentType(.organizationName)
                         .submitLabel(.done)
@@ -36,7 +36,7 @@ struct AccountsSettingsView: View {
                         .designSystemSectionHeader()
                     Spacer()
                     Text(accountCountLabel)
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(Palette.inkSecondary)
                         .textCase(nil)
                 }
@@ -76,39 +76,28 @@ struct AccountsSettingsView: View {
     }
 
     private func accountRow(_ account: Account) -> some View {
-        HStack(spacing: 14) {
-            Text(monogram(for: account.name))
-                .smallCapsTypography()
-                .foregroundStyle(Palette.accent)
-                .frame(width: 54, height: 54)
-                .overlay {
-                    Rectangle().stroke(Palette.hairline, lineWidth: 1)
+        ListRow(
+            leading: .monogram(monogram(for: account.name)),
+            title: account.name,
+            subtitle: activityLabel(for: account),
+            trailingAccessory: AnyView(
+                Button(role: .destructive) {
+                    requestDeletion(of: account)
+                } label: {
+                    Image(systemName: "trash")
+                        .frame(width: 32, height: 32)
                 }
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(account.name)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(Palette.ink)
-
-                Text(activityLabel(for: account))
-                    .font(Typography.supporting)
-                    .foregroundStyle(Palette.inkSecondary)
-            }
-
-            Spacer(minLength: 8)
-
-            Button(role: .destructive) {
-                requestDeletion(of: account)
-            } label: {
-                Image(systemName: "trash")
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.borderless)
-            .accessibilityLabel("Delete \(account.name)")
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .contain)
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Delete \(account.name)")
+            ),
+            contentInsets: EdgeInsets(
+                top: Spacing.xxs,
+                leading: Spacing.none,
+                bottom: Spacing.xxs,
+                trailing: Spacing.none
+            ),
+            combinesAccessibilityChildren: false
+        )
     }
 
     private var accounts: [Account] {

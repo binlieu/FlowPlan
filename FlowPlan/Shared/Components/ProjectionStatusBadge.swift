@@ -5,16 +5,11 @@ struct ProjectionStatusBadge: View {
     let status: ProjectionStatus
 
     var body: some View {
-        Label(presentation.title, systemImage: presentation.symbol)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(presentation.color)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(
-                presentation.color.opacity(0.12),
-                in: Capsule()
-            )
-            .accessibilityLabel(presentation.title)
+        Chip(
+            text: presentation.title,
+            style: .tinted(presentation.color),
+            systemImage: presentation.symbol
+        )
     }
 
     private var presentation: Presentation {
@@ -40,25 +35,25 @@ struct ProjectionStatusBadge: View {
 #if DEBUG
 #Preview("Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             ProjectionStatusBadge(status: .healthy)
             ProjectionStatusBadge(status: .tight)
             ProjectionStatusBadge(status: .negative)
             ProjectionStatusBadge(status: .aheadOfPlan)
         }
-        .padding()
+        .padding(Spacing.md)
     }
 }
 
 #Preview("Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             ProjectionStatusBadge(status: .healthy)
             ProjectionStatusBadge(status: .tight)
             ProjectionStatusBadge(status: .negative)
             ProjectionStatusBadge(status: .aheadOfPlan)
         }
-        .padding()
+        .padding(Spacing.md)
     }
 }
 #endif

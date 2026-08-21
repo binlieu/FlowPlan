@@ -9,7 +9,7 @@ struct InsightsView: View {
         let _ = projectionStore.dataVersion
 
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: Spacing.lg) {
                 ScreenHeader(title: "Insights")
 
                 Group {
@@ -23,20 +23,28 @@ struct InsightsView: View {
                         )
                         .frame(minHeight: 360)
                     } else {
-                        SectionCard(title: "Income vs expenses") {
-                            IncomeVsExpensesChart(
-                                currentMonth: appState.selectedMonth,
-                                currentTransactions: projectionStore.currentTransactions,
-                                previousTransactions: projectionStore.previousTransactions,
-                                currencyCode: appState.currencyCode
-                            )
+                        TickCard {
+                            VStack(alignment: .leading, spacing: Spacing.md) {
+                                SectionHeading(title: "Income vs expenses")
+
+                                IncomeVsExpensesChart(
+                                    currentMonth: appState.selectedMonth,
+                                    currentTransactions: projectionStore.currentTransactions,
+                                    previousTransactions: projectionStore.previousTransactions,
+                                    currencyCode: appState.currencyCode
+                                )
+                            }
                         }
 
-                        SectionCard(title: "Spending by category") {
-                            SpendingByCategoryChart(
-                                transactions: projectionStore.currentTransactions,
-                                currencyCode: appState.currencyCode
-                            )
+                        TickCard {
+                            VStack(alignment: .leading, spacing: Spacing.md) {
+                                SectionHeading(title: "Spending by category")
+
+                                SpendingByCategoryChart(
+                                    transactions: projectionStore.currentTransactions,
+                                    currencyCode: appState.currencyCode
+                                )
+                            }
                         }
 
                         savingsRateRow
@@ -44,9 +52,9 @@ struct InsightsView: View {
                         SmartInsightsSection(insights: projectionStore.insights)
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Spacing.lg)
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, Spacing.lg)
         }
         .background(Palette.background)
         .foregroundStyle(Palette.ink)
@@ -62,23 +70,23 @@ struct InsightsView: View {
     }
 
     private var savingsRateRow: some View {
-        HStack {
-            Label("Savings rate", systemImage: "percent")
-                .font(.headline)
+        CardSurface(contentPadding: Spacing.md) {
+            HStack {
+                Label("Savings rate", systemImage: "percent")
+                    .prominentLabelTypography()
 
-            Spacer()
+                Spacer()
 
-            Text(
-                projectionStore.projection.savingsRate.formatted(
-                    .percent.precision(.fractionLength(0))
+                Text(
+                    projectionStore.projection.savingsRate.formatted(
+                        .percent.precision(.fractionLength(0))
+                    )
                 )
-            )
-            .font(.title3.bold())
-            .monospacedDigit()
+                .iconTypography()
+                .monospacedDigit()
+            }
+            .accessibilityElement(children: .combine)
         }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
-        .accessibilityElement(children: .combine)
     }
 
 }
