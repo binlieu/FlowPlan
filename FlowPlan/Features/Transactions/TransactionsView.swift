@@ -143,6 +143,8 @@ private struct TransactionsContent: View {
     }
 
     @ViewBuilder
+    /// Delete only. Editing is reached by tapping the row, which runs exactly the same
+    /// action, so a swipe-to-edit was a second control for one behaviour.
     private func trailingSwipeActions(_ transaction: TransactionSnapshot) -> some View {
         Button(role: .destructive) {
             pendingDelete = transaction
@@ -152,14 +154,6 @@ private struct TransactionsContent: View {
                 .foregroundStyle(Palette.onAccentFill)
         }
         .tint(Palette.destructiveFill)
-
-        Button {
-            editor = TransactionEditorPresentation(transaction: transaction)
-        } label: {
-            Label("Edit", systemImage: "pencil")
-                .foregroundStyle(Palette.onAccentFill)
-        }
-        .tint(Palette.neutralFill)
     }
 
     private func sectionHeader(_ section: TransactionDaySection) -> some View {
