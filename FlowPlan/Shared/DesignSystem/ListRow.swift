@@ -24,6 +24,8 @@ struct ListRow<Supplementary: View>: View {
     }
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.groupedListOwnsHorizontalRowPadding)
+    private var groupedListOwnsHorizontalRowPadding
     @ScaledMetric(relativeTo: .title3) private var iconSize: CGFloat = 32
 
     let leading: ListRowLeading
@@ -102,10 +104,23 @@ struct ListRow<Supplementary: View>: View {
 
             supplementary
         }
-        .padding(contentInsets)
+        .padding(effectiveContentInsets)
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .opacity(isDimmed ? 0.55 : 1)
+    }
+
+    private var effectiveContentInsets: EdgeInsets {
+        guard groupedListOwnsHorizontalRowPadding else {
+            return contentInsets
+        }
+
+        return EdgeInsets(
+            top: contentInsets.top,
+            leading: Spacing.none,
+            bottom: contentInsets.bottom,
+            trailing: Spacing.none
+        )
     }
 
     private var standardLayout: some View {

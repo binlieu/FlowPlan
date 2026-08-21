@@ -1,5 +1,16 @@
 import SwiftUI
 
+private struct GroupedListOwnsHorizontalRowPaddingKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var groupedListOwnsHorizontalRowPadding: Bool {
+        get { self[GroupedListOwnsHorizontalRowPaddingKey.self] }
+        set { self[GroupedListOwnsHorizontalRowPaddingKey.self] = newValue }
+    }
+}
+
 struct GroupedList: View {
     private enum Presentation {
         case card
@@ -140,6 +151,7 @@ private struct SwipeEnabledGroupedListRow<
 
     var body: some View {
         content
+            .environment(\.groupedListOwnsHorizontalRowPadding, true)
             .padding(.horizontal, Spacing.md)
             .padding(.vertical, Spacing.sm)
             .background(Palette.surface)
@@ -186,3 +198,82 @@ private struct RowPosition {
         isLast = index == count - 1
     }
 }
+
+#if DEBUG
+private struct GroupedListPaddingPreview: View {
+    private let rows = [
+        PreviewRow(title: "Miscellaneous expense", subtitle: "Other", amount: "-$210.00"),
+        PreviewRow(
+            title: "Annual vehicle registration",
+            subtitle: "Transport · Everyday",
+            amount: "-$186.00"
+        )
+    ]
+
+    var body: some View {
+        List {
+            GroupedList(
+                rows,
+                header: AnyView(
+                    Text("GROUPED LIST")
+                        .designSystemSectionHeader()
+                ),
+                rowContent: previewRow,
+                leadingSwipeActions: { _ in EmptyView() },
+                trailingSwipeActions: { _ in EmptyView() }
+            )
+
+            Section {
+                ForEach(rows) { row in
+                    previewRow(row)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Palette.surface)
+                }
+            } header: {
+                Text("STANDALONE LIST ROWS")
+                    .designSystemSectionHeader()
+            }
+        }
+        .listStyle(.insetGrouped)
+        .listRowSpacing(Spacing.none)
+        .designSystemList()
+    }
+
+    private func previewRow(_ row: PreviewRow) -> some View {
+        ListRow(
+            leading: .icon(systemName: "cart", color: Palette.info),
+            title: row.title,
+            subtitle: row.subtitle,
+            trailingAmount: row.amount,
+            amountStyle: .secondary
+        )
+    }
+
+    private struct PreviewRow: Identifiable {
+        let title: String
+        let subtitle: String
+        let amount: String
+
+        var id: String { title }
+    }
+}
+
+#Preview("Grouped and Standalone Rows — Light") {
+    FlowPlanPreviewHost(colorScheme: .light) {
+        GroupedListPaddingPreview()
+    }
+}
+
+#Preview("Grouped and Standalone Rows — Dark") {
+    FlowPlanPreviewHost(colorScheme: .dark) {
+        GroupedListPaddingPreview()
+    }
+}
+
+#Preview("Grouped and Standalone Rows — Largest Type") {
+    FlowPlanPreviewHost {
+        GroupedListPaddingPreview()
+            .dynamicTypeSize(.accessibility5)
+    }
+}
+#endif
