@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum Palette {
+    static let clear = Color.clear
     static let background = Color("background")
     static let surface = Color("surface")
     static let ink = Color("ink")

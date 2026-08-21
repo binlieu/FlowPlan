@@ -90,7 +90,7 @@ struct CategoriesSettingsView: View {
                     let count = useCount(EditableCategory(kind: kind, originalName: category))
                     if count > 0 {
                         Text("\(count) in use")
-                            .font(.caption)
+                            .captionTypography()
                             .foregroundStyle(Palette.inkSecondary)
                     }
                 }

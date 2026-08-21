@@ -28,31 +28,19 @@ struct SavingsGoalSection: View {
     @State private var pendingDeletion: PendingGoalDeletion?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             sectionHeader
 
-            VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let plan = plans.first {
-                        goalSummary(plan)
-                        slider
-                    } else {
-                        Text("Add a savings goal to reserve money in your monthly plan.")
-                            .font(Typography.supporting)
-                            .foregroundStyle(Palette.inkSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-
-                Divider()
-                totalRow
-            }
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
-            }
+            GroupedList(
+                plans.prefix(1),
+                emptyState: EmptyStateView(
+                    symbol: "target",
+                    title: "Add a savings goal to reserve money in your monthly plan.",
+                    layout: .compact
+                ),
+                footer: AnyView(totalRow),
+                rowContent: goalSummary
+            )
 
             if !inactiveGoals.isEmpty {
                 inactiveGoalsGroup
@@ -100,31 +88,11 @@ struct SavingsGoalSection: View {
     }
 
     private var sectionHeader: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Savings Goal")
-                .sectionHeadingTypography()
-                .foregroundStyle(Palette.ink)
-
-            Spacer(minLength: 8)
-
-            if let plan = plans.first {
-                Button("Edit") {
-                    onEdit(plan)
-                }
-                .font(.subheadline.weight(.bold))
-                .fontWidth(.condensed)
-                .foregroundStyle(Palette.accent)
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
-            } else {
-                Button("Add", action: onAdd)
-                    .font(.subheadline.weight(.bold))
-                    .fontWidth(.condensed)
-                    .foregroundStyle(Palette.accent)
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-        }
+        SectionHeading(
+            title: "Savings Goal",
+            actionTitle: plans.first == nil ? "Add" : "Edit",
+            action: plans.first.map { plan in { onEdit(plan) } } ?? onAdd
+        )
     }
 
     private var totalRow: some View {
@@ -145,85 +113,71 @@ struct SavingsGoalSection: View {
     }
 
     private func goalSummary(_ plan: SavingsPlan) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(plan.name)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Palette.ink)
-
-                    Text("Saved this month")
-                        .font(Typography.supporting)
-                        .foregroundStyle(Palette.inkSecondary)
-                }
-
-                Spacer(minLength: 12)
-
-                Text("\(money(projection.savingsCompleted)) of \(money(projection.savingsTarget))")
-                    .font(.subheadline.weight(.semibold))
-                    .fontWidth(.condensed)
-                    .monospacedDigit()
-                    .foregroundStyle(Palette.ink)
-                    .multilineTextAlignment(.trailing)
+        VStack(spacing: Spacing.none) {
+            ListRow(
+                title: plan.name,
+                subtitle: "Saved this month",
+                trailingAmount: "\(money(projection.savingsCompleted)) of \(money(projection.savingsTarget))",
+                amountStyle: .secondary
+            ) {
+                ProgressView(value: savingsProgress)
+                    .tint(Palette.accent)
+                    .accessibilityLabel("Savings progress")
+                    .accessibilityValue("\(Int(savingsProgress * 100)) percent")
             }
 
-            ProgressView(value: savingsProgress)
-                .tint(Palette.accent)
-                .accessibilityLabel("Savings progress")
-                .accessibilityValue("\(Int(savingsProgress * 100)) percent")
+            slider
+                .padding(.horizontal, Spacing.md)
+                .padding(.bottom, Spacing.md)
         }
     }
 
     private var inactiveGoalsGroup: some View {
-        DisclosureGroup(isExpanded: $isInactiveExpanded) {
-            VStack(spacing: 0) {
-                ForEach(Array(inactiveGoals.enumerated()), id: \.element.id) { index, goal in
-                    inactiveGoalRow(goal)
+        CardSurface(contentPadding: Spacing.md) {
+            DisclosureGroup(isExpanded: $isInactiveExpanded) {
+                VStack(spacing: Spacing.none) {
+                    ForEach(Array(inactiveGoals.enumerated()), id: \.element.id) { index, goal in
+                        inactiveGoalRow(goal)
 
-                    if index < inactiveGoals.count - 1 {
-                        Divider()
+                        if index < inactiveGoals.count - 1 {
+                            Divider()
+                        }
                     }
                 }
-            }
-            .padding(.top, 8)
-        } label: {
-            HStack {
-                Text("Inactive")
-                    .font(.headline)
-                    .foregroundStyle(Palette.ink)
+                .padding(.top, Spacing.xs)
+            } label: {
+                HStack {
+                    Text("Inactive")
+                        .prominentLabelTypography()
+                        .foregroundStyle(Palette.ink)
 
-                Spacer()
+                    Spacer()
 
-                Text("\(inactiveGoals.count)")
-                    .font(Typography.supporting.weight(.semibold))
-                    .foregroundStyle(Palette.inkSecondary)
+                    Text("\(inactiveGoals.count)")
+                        .rowDetailEmphasisTypography()
+                        .foregroundStyle(Palette.inkSecondary)
+                }
             }
-        }
-        .tint(Palette.accent)
-        .padding(16)
-        .background(Palette.surface)
-        .overlay {
-            Rectangle().stroke(Palette.hairline, lineWidth: 1)
+            .tint(Palette.accent)
         }
     }
 
     private func inactiveGoalRow(_ goal: SavingsGoalEntity) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
                 Text(goal.name)
-                    .font(.body.weight(.semibold))
+                    .rowTitleTypography()
                     .foregroundStyle(Palette.ink)
 
-                Spacer(minLength: 12)
+                Spacer(minLength: Spacing.sm)
 
                 Text(money(goal.monthlyTarget))
-                    .font(.subheadline.weight(.semibold))
-                    .fontWidth(.condensed)
+                    .rowDetailEmphasisTypography()
                     .monospacedDigit()
                     .foregroundStyle(Palette.inkSecondary)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.sm) {
                 Button("Reactivate") {
                     reactivate(goal)
                 }
@@ -238,21 +192,20 @@ struct SavingsGoalSection: View {
                 .frame(minHeight: 44)
             }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, Spacing.sm)
     }
 
     private var slider: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Drag to re-plan the month")
-                    .font(Typography.supporting.weight(.semibold))
+                    .rowDetailEmphasisTypography()
                     .foregroundStyle(Palette.ink)
 
-                Spacer(minLength: 12)
+                Spacer(minLength: Spacing.sm)
 
                 Text(money(sliderTarget))
-                    .font(.headline.weight(.bold))
-                    .fontWidth(.condensed)
+                    .rowAmountTypography()
                     .monospacedDigit()
                     .foregroundStyle(Palette.accent)
             }
@@ -281,8 +234,7 @@ struct SavingsGoalSection: View {
                 Spacer()
                 Text(money(Self.decimalTarget(from: sliderUpperBound)))
             }
-            .font(.caption)
-            .fontWidth(.condensed)
+            .captionTypography()
             .monospacedDigit()
             .foregroundStyle(Palette.inkSecondary)
         }

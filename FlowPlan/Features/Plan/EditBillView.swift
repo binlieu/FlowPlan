@@ -37,16 +37,15 @@ struct EditBillView: View {
         NavigationStack {
             Form {
                 Section("Bill") {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Name", text: $name)
                             .textInputAutocapitalization(.words)
                         PlanValidationMessage(message: visible(nameValidationMessage, for: name))
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Amount", text: $amountText)
-                            .font(.largeTitle.weight(.bold))
-                            .fontWidth(.condensed)
+                            .formAmountTypography()
                             .monospacedDigit()
                             .keyboardType(.decimalPad)
                         PlanValidationMessage(
@@ -60,7 +59,7 @@ struct EditBillView: View {
                         }
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Category", text: $category)
                             .textInputAutocapitalization(.words)
                         PlanValidationMessage(

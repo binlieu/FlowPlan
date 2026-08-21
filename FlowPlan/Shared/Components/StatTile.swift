@@ -23,7 +23,7 @@ struct StatTile: View {
 
     var body: some View {
         TickCard(contentPadding: 16) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
                 Label(title.uppercased(), systemImage: symbol)
                     .smallCapsTypography()
                     .foregroundStyle(Palette.inkSecondary)
@@ -36,7 +36,7 @@ struct StatTile: View {
                     .foregroundStyle(Palette.ink)
                     .accessibilityLabel(accessibleAmount)
 
-                Spacer(minLength: 0)
+                Spacer(minLength: Spacing.none)
 
                 if let secondaryAmount {
                     Text("OF \(formattedSecondaryAmount(secondaryAmount))")
@@ -70,7 +70,7 @@ struct StatTile: View {
 #if DEBUG
 #Preview("Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
-        Grid(horizontalSpacing: 12) {
+        Grid(horizontalSpacing: Spacing.sm) {
             GridRow {
                 StatTile(
                     title: "Bills Remaining",
@@ -85,14 +85,14 @@ struct StatTile: View {
                 )
             }
         }
-        .padding()
+        .padding(Spacing.md)
         .background(Palette.background)
     }
 }
 
 #Preview("Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
-        Grid(horizontalSpacing: 12) {
+        Grid(horizontalSpacing: Spacing.sm) {
             GridRow {
                 StatTile(
                     title: "Bills Remaining",
@@ -107,7 +107,7 @@ struct StatTile: View {
                 )
             }
         }
-        .padding()
+        .padding(Spacing.md)
         .background(Palette.background)
     }
 }

@@ -32,14 +32,14 @@ private struct RevealedSwipeRow<Content: View>: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Spacing.none) {
             if edge == .leading {
                 actionStrip
             }
 
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Spacing.md)
                 .background(Palette.surface)
 
             if edge == .trailing {
@@ -54,14 +54,14 @@ private struct RevealedSwipeRow<Content: View>: View {
     }
 
     private var actionStrip: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: Spacing.none) {
             ForEach(actions) { action in
-                VStack(spacing: 6) {
+                VStack(spacing: Spacing.xs) {
                     Image(systemName: action.systemImage)
-                        .font(.body.weight(.semibold))
+                        .rowTitleTypography()
 
                     Text(action.title)
-                        .font(.caption2.weight(.semibold))
+                        .chipTypography()
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                 }
@@ -77,7 +77,7 @@ private struct RevealedSwipeRow<Content: View>: View {
 private struct SwipeActionGalleryPreview: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
                 previewRow(
                     title: "Expected income",
                     subtitle: "Mark as received",
@@ -103,7 +103,7 @@ private struct SwipeActionGalleryPreview: View {
                     actions: [.edit, .delete]
                 )
             }
-            .padding(20)
+            .padding(Spacing.lg)
         }
         .background(Palette.background)
     }
@@ -115,13 +115,13 @@ private struct SwipeActionGalleryPreview: View {
         actions: [SwipeActionPreviewModel]
     ) -> some View {
         RevealedSwipeRow(edge: edge, actions: actions) {
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: Spacing.xxs) {
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .rowTitleTypography()
                     .foregroundStyle(Palette.ink)
 
                 Text(subtitle)
-                    .font(Typography.supporting)
+                    .rowDetailTypography()
                     .foregroundStyle(Palette.inkSecondary)
             }
         }
@@ -139,7 +139,7 @@ private struct TransactionSwipeSetPreview: View {
     )
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text("LEADING ACTION")
                 .smallCapsTypography()
                 .foregroundStyle(Palette.inkSecondary)
@@ -158,7 +158,7 @@ private struct TransactionSwipeSetPreview: View {
 
             Spacer()
         }
-        .padding(20)
+        .padding(Spacing.lg)
         .background(Palette.background)
     }
 }

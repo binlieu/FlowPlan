@@ -9,36 +9,16 @@ struct MonthSpendingCard: View {
 
     var body: some View {
         TickCard {
-            VStack(alignment: .leading, spacing: 20) {
-                cardHeader
+            VStack(alignment: .leading, spacing: Spacing.lg) {
+                SectionHeading(
+                    title: "\(monthName) Spending",
+                    trailing: AnyView(daysRemainingLabel)
+                )
                 spendingMetrics
                 spendingProgressBar
                 safeToSpendRow
             }
         }
-    }
-
-    @ViewBuilder
-    private var cardHeader: some View {
-        if dynamicTypeSize >= .xxLarge {
-            VStack(alignment: .leading, spacing: 8) {
-                heading
-                daysRemainingLabel
-            }
-        } else {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                heading
-                Spacer(minLength: 8)
-                daysRemainingLabel
-            }
-        }
-    }
-
-    private var heading: some View {
-        Text("\(monthName) Spending")
-            .sectionHeadingTypography()
-            .foregroundStyle(Palette.ink)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var daysRemainingLabel: some View {
@@ -51,7 +31,7 @@ struct MonthSpendingCard: View {
     @ViewBuilder
     private var spendingMetrics: some View {
         if dynamicTypeSize >= .xxLarge {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
                 spendingMetric(label: "SPENT", amount: projection.actualVariableSpending)
                 Divider().overlay(Palette.hairline)
                 spendingMetric(label: "BUDGET", amount: projection.projectedVariableSpending)
@@ -63,7 +43,7 @@ struct MonthSpendingCard: View {
                 )
             }
         } else {
-            HStack(alignment: .top, spacing: 16) {
+            HStack(alignment: .top, spacing: Spacing.md) {
                 spendingMetric(label: "SPENT", amount: projection.actualVariableSpending)
                 spendingMetric(label: "BUDGET", amount: projection.projectedVariableSpending)
                 spendingMetric(
@@ -80,7 +60,7 @@ struct MonthSpendingCard: View {
         amount: Decimal,
         color: Color = Palette.ink
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(label)
                 .smallCapsTypography()
                 .foregroundStyle(Palette.inkSecondary)
@@ -117,22 +97,21 @@ struct MonthSpendingCard: View {
     private var safeToSpendRow: some View {
         if projection.daysRemaining == 0 {
             Label("The month is complete", systemImage: "dollarsign")
-                .font(Typography.body)
+                .bodyTypography()
                 .foregroundStyle(Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         } else {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
                 Image(systemName: "dollarsign")
-                    .font(.body.weight(.semibold))
+                    .rowTitleTypography()
                     .foregroundStyle(Palette.accent)
 
                 Text("Safe to spend:")
-                    .font(Typography.body)
+                    .bodyTypography()
                     .foregroundStyle(Palette.inkSecondary)
 
                 Text("\(dailySafeToSpendAmount)/day")
-                    .font(.body.weight(.bold))
-                    .fontWidth(.condensed)
+                    .rowTitleTypography()
                     .monospacedDigit()
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
@@ -188,7 +167,7 @@ struct MonthSpendingCard: View {
 #Preview("Month Spending — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
         MonthSpendingCard(projection: FlowPlanPreviewData.projection())
-            .padding(30)
+            .padding(Spacing.xl)
             .background(Palette.background)
     }
 }
@@ -196,7 +175,7 @@ struct MonthSpendingCard: View {
 #Preview("Month Spending — Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
         MonthSpendingCard(projection: FlowPlanPreviewData.projection())
-            .padding(30)
+            .padding(Spacing.xl)
             .background(Palette.background)
     }
 }

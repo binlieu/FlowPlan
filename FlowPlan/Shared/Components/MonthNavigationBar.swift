@@ -4,10 +4,10 @@ struct MonthNavigationBar: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: Spacing.md) {
             Button(action: appState.goToPreviousMonth) {
                 Image(systemName: "chevron.left")
-                    .font(.subheadline.weight(.bold))
+                    .rowDetailEmphasisTypography()
                     .foregroundStyle(Palette.ink)
                     .frame(width: 44, height: 44)
                     .overlay {
@@ -17,7 +17,7 @@ struct MonthNavigationBar: View {
             }
             .accessibilityLabel("Previous month")
 
-            Spacer(minLength: 8)
+            Spacer(minLength: Spacing.xs)
 
             Menu {
                 Button("Go to current month", action: appState.goToCurrentMonth)
@@ -31,11 +31,11 @@ struct MonthNavigationBar: View {
             .accessibilityLabel(monthTitle)
             .accessibilityHint("Offers an option to go to the current month")
 
-            Spacer(minLength: 8)
+            Spacer(minLength: Spacing.xs)
 
             Button(action: appState.goToNextMonth) {
                 Image(systemName: "chevron.right")
-                    .font(.subheadline.weight(.bold))
+                    .rowDetailEmphasisTypography()
                     .foregroundStyle(Palette.ink)
                     .frame(width: 44, height: 44)
                     .overlay {
@@ -61,14 +61,14 @@ struct MonthNavigationBar: View {
 #Preview("Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
         MonthNavigationBar()
-            .padding()
+            .padding(Spacing.md)
     }
 }
 
 #Preview("Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
         MonthNavigationBar()
-            .padding()
+            .padding(Spacing.md)
     }
 }
 #endif

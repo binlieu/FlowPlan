@@ -46,7 +46,7 @@ struct AvailableThisMonthCard: View {
     }
 
     private var availableContent: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             Text("AVAILABLE THIS MONTH")
                 .smallCapsTypography()
                 .foregroundStyle(Palette.accent)
@@ -74,7 +74,7 @@ struct AvailableThisMonthCard: View {
     @ViewBuilder
     private var metricStrip: some View {
         if usesVerticalMetrics {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Spacing.md) {
                 metric(incomeMetric)
                 Divider().overlay(Palette.hairline)
                 metric(expensesMetric)
@@ -82,7 +82,7 @@ struct AvailableThisMonthCard: View {
                 metric(savingsMetric)
             }
         } else {
-            HStack(alignment: .top, spacing: 0) {
+            HStack(alignment: .top, spacing: Spacing.none) {
                 metric(incomeMetric)
                 Divider().overlay(Palette.hairline)
                 metric(expensesMetric)
@@ -93,13 +93,13 @@ struct AvailableThisMonthCard: View {
     }
 
     private var firstRunContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             Text("No plan for \(monthName) yet")
                 .sectionHeadingTypography()
                 .foregroundStyle(Palette.ink)
 
             Text("Enter your starting balance, then add your expected income to see where the month will land.")
-                .font(Typography.body)
+                .bodyTypography()
                 .foregroundStyle(Palette.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -107,42 +107,38 @@ struct AvailableThisMonthCard: View {
                 orphanedDebtWarning
             }
 
-            HStack(spacing: 12) {
-                TextField("Starting balance", text: $startingBalanceText)
-                    .font(.title2.weight(.bold))
-                    .fontWidth(.condensed)
-                    .monospacedDigit()
-                    .keyboardType(.decimalPad)
-                    .focused($isStartingBalanceFocused)
-                    .onSubmit(saveStartingBalance)
-                    .accessibilityLabel("Starting balance amount")
+            CardSurface(radius: Radius.control, contentPadding: Spacing.md) {
+                HStack(spacing: Spacing.sm) {
+                    TextField("Starting balance", text: $startingBalanceText)
+                        .valueTypography()
+                        .monospacedDigit()
+                        .keyboardType(.decimalPad)
+                        .focused($isStartingBalanceFocused)
+                        .onSubmit(saveStartingBalance)
+                        .accessibilityLabel("Starting balance amount")
 
-                Text(appState.currencyCode)
-                    .smallCapsTypography()
-                    .foregroundStyle(Palette.inkSecondary)
-            }
-            .padding(14)
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
+                    Text(appState.currencyCode)
+                        .smallCapsTypography()
+                        .foregroundStyle(Palette.inkSecondary)
+                }
             }
 
             if let startingBalanceError {
                 Text(startingBalanceError)
-                    .font(Typography.supporting)
+                    .rowDetailTypography()
                     .foregroundStyle(Palette.negative)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             Button("Save starting balance", action: saveStartingBalance)
-                .font(.headline)
+                .prominentLabelTypography()
                 .foregroundStyle(Palette.onAccentFill)
                 .buttonStyle(.borderedProminent)
                 .tint(Palette.accentFill)
                 .disabled(isSavingStartingBalance)
 
             Button("Go to Plan", action: onOpenPlan)
-                .font(.headline)
+                .prominentLabelTypography()
                 .foregroundStyle(Palette.accent)
                 .buttonStyle(.plain)
                 .frame(minWidth: 44, minHeight: 44, alignment: .leading)
@@ -150,19 +146,19 @@ struct AvailableThisMonthCard: View {
     }
 
     private var orphanedDebtWarning: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: Spacing.sm) {
             Image(systemName: "exclamationmark.triangle")
                 .foregroundStyle(Palette.warning)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(OrphanedDebtDetector.warningMessage)
-                    .font(Typography.supporting)
+                    .rowDetailTypography()
                     .foregroundStyle(Palette.ink)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Button("Review in Plan", action: onOpenPlan)
-                    .font(Typography.supporting.weight(.semibold))
+                    .rowDetailEmphasisTypography()
                     .foregroundStyle(Palette.accent)
                     .buttonStyle(.plain)
                     .frame(minHeight: 44, alignment: .leading)
@@ -182,21 +178,21 @@ struct AvailableThisMonthCard: View {
         )
 
         if explanation.isVisible {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 if explanation.showsExpectedIncome {
                     Text(
                         "No income recorded as received yet — "
                             + "\(money(projection.remainingExpectedIncome)) "
                             + "still expected this month."
                     )
-                    .font(Typography.supporting)
+                    .rowDetailTypography()
                     .foregroundStyle(Palette.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if explanation.showsStartingBalancePrompt {
                     Button("Set your starting balance in Plan.", action: onOpenPlan)
-                        .font(Typography.supporting.weight(.semibold))
+                        .rowDetailEmphasisTypography()
                         .foregroundStyle(Palette.accent)
                         .buttonStyle(.plain)
                         .frame(minHeight: 44, alignment: .leading)
@@ -207,7 +203,7 @@ struct AvailableThisMonthCard: View {
     }
 
     private func metric(_ metric: AvailableMetric) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
             Text(metric.label)
                 .smallCapsTypography()
                 .foregroundStyle(Palette.inkSecondary)
@@ -221,7 +217,7 @@ struct AvailableThisMonthCard: View {
                 .accessibilityLabel(metric.accessibleValue)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, usesVerticalMetrics ? 0 : 12)
+        .padding(.horizontal, usesVerticalMetrics ? Spacing.none : Spacing.sm)
         .accessibilityElement(children: .combine)
     }
 
@@ -366,7 +362,7 @@ extension ProjectionCompleteness {
 #Preview("Available — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
         AvailableThisMonthCard(projection: FlowPlanPreviewData.projection())
-            .padding(30)
+            .padding(Spacing.xl)
             .background(Palette.background)
     }
 }
@@ -374,7 +370,7 @@ extension ProjectionCompleteness {
 #Preview("Available — Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
         AvailableThisMonthCard(projection: FlowPlanPreviewData.projection())
-            .padding(30)
+            .padding(Spacing.xl)
             .background(Palette.background)
     }
 }

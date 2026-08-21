@@ -22,41 +22,35 @@ struct StartingBalanceSection: View {
     @FocusState private var isAmountFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Starting Balance")
-                .sectionHeadingTypography()
-                .foregroundStyle(Palette.ink)
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionHeading(title: "Starting Balance")
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 12) {
-                    TextField("0.00", text: amountBinding)
-                        .font(.title2.weight(.bold))
-                        .fontWidth(.condensed)
-                        .monospacedDigit()
-                        .keyboardType(.decimalPad)
-                        .focused($isAmountFocused)
-                        .onSubmit(commit)
-                        .accessibilityLabel("Starting balance amount")
+            CardSurface(contentPadding: Spacing.md) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    HStack(spacing: Spacing.sm) {
+                        TextField("0.00", text: amountBinding)
+                            .valueTypography()
+                            .monospacedDigit()
+                            .keyboardType(.decimalPad)
+                            .focused($isAmountFocused)
+                            .onSubmit(commit)
+                            .accessibilityLabel("Starting balance amount")
 
-                    Text(appState.currencyCode)
-                        .smallCapsTypography()
-                        .foregroundStyle(Palette.inkSecondary)
+                        Text(appState.currencyCode)
+                            .smallCapsTypography()
+                            .foregroundStyle(Palette.inkSecondary)
+                    }
+
+                    balanceExplanation
+
+                    balanceAction
+
+                    if let presentedError {
+                        Text(presentedError)
+                            .rowDetailTypography()
+                            .foregroundStyle(Palette.negative)
+                    }
                 }
-
-                balanceExplanation
-
-                balanceAction
-
-                if let presentedError {
-                    Text(presentedError)
-                        .font(Typography.supporting)
-                        .foregroundStyle(Palette.negative)
-                }
-            }
-            .padding(16)
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
             }
         }
         .onAppear(perform: loadBalance)
@@ -126,7 +120,7 @@ struct StartingBalanceSection: View {
 
     private func explanationText(_ text: String) -> some View {
         Text(text)
-            .font(Typography.supporting)
+            .rowDetailTypography()
             .foregroundStyle(Palette.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -137,7 +131,7 @@ struct StartingBalanceSection: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(title, action: action)
-            .font(Typography.supporting.weight(.semibold))
+            .rowDetailEmphasisTypography()
             .buttonStyle(.plain)
             .foregroundStyle(Palette.accent)
             .accessibilityHint(accessibilityHint)
@@ -257,7 +251,7 @@ struct StartingBalanceSection: View {
 #Preview("Starting Balance") {
     FlowPlanPreviewHost {
         StartingBalanceSection()
-            .padding(20)
+            .padding(Spacing.lg)
             .background(Palette.background)
     }
 }

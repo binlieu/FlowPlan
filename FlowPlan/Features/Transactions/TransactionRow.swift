@@ -2,8 +2,7 @@ import SwiftUI
 import FlowPlanDomain
 
 struct TransactionRow: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @ScaledMetric(relativeTo: .title3) private var iconSize: CGFloat = 32
+    @Environment(AppState.self) private var appState
 
     let transaction: TransactionSnapshot
     let account: String
@@ -14,87 +13,49 @@ struct TransactionRow: View {
     }
 
     var body: some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 10) {
-                    identityContent
-
-                    amount
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-            } else {
-                HStack(spacing: 12) {
-                    identityContent
-
-                    Spacer(minLength: 8)
-
-                    amount
-                }
-            }
-        }
-        .padding(.vertical, 4)
-        .contentShape(Rectangle())
+        ListRow(
+            leading: .icon(systemName: transaction.type.systemImage, color: iconColor),
+            title: primaryText,
+            subtitle: subtitle,
+            trailingAmount: formattedAmount,
+            amountStyle: .secondary,
+            amountColor: amountColor,
+            amountAccessibilityLabel: accessibleAmount,
+            statuses: transaction.isAutoRecorded
+                ? [ListRowStatus(text: "AUTO", style: .filledNeutral)]
+                : [],
+            statusPlacement: .detail,
+            contentInsets: EdgeInsets(
+                top: Spacing.xxs,
+                leading: Spacing.none,
+                bottom: Spacing.xxs,
+                trailing: Spacing.none
+            )
+        )
         .accessibilityElement(children: .combine)
         .accessibilityValue(transaction.isAutoRecorded ? "Automatically recorded" : "")
         .accessibilityHint("Opens this transaction for editing")
     }
 
-    private var identityContent: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: transaction.type.systemImage)
-                .font(.title3)
-                .foregroundStyle(iconColor)
-                .frame(width: iconSize, height: iconSize)
-                .background(iconColor.opacity(0.12), in: Circle())
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(primaryText)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(Palette.ink)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Group {
-                    if dynamicTypeSize.isAccessibilitySize {
-                        VStack(alignment: .leading, spacing: 6) {
-                            subtitleText
-                            autoRecordedChip
-                        }
-                    } else {
-                        HStack(spacing: 6) {
-                            subtitleText
-                            autoRecordedChip
-                        }
-                    }
-                }
-            }
-            .layoutPriority(1)
-        }
-    }
-
-    private var subtitleText: some View {
-        Text(subtitle)
-            .font(.subheadline)
-            .foregroundStyle(Palette.inkSecondary)
-            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    @ViewBuilder
-    private var autoRecordedChip: some View {
-        if transaction.isAutoRecorded {
-            Chip(text: "AUTO", style: .filledNeutral)
-        }
-    }
-
-    private var amount: some View {
-        AmountText(
-            amount: displayedAmount,
-            style: .secondary,
-            signed: transaction.type != .transfer,
-            color: amountColor
+    private var formattedAmount: String {
+        MoneyFormatter.string(
+            displayedAmount,
+            currencyCode: appState.currencyCode,
+            signed: transaction.type != .transfer
         )
+    }
+
+    private var accessibleAmount: String {
+        let value = MoneyFormatter.accessibleString(
+            displayedAmount,
+            currencyCode: appState.currencyCode
+        )
+
+        if transaction.type != .transfer, displayedAmount > .zero {
+            return "Plus \(value)"
+        }
+
+        return value
     }
 
     private var primaryText: String {

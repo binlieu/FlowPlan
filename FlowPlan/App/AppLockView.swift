@@ -5,17 +5,17 @@ struct AppLockView: View {
     @AccessibilityFocusState private var isUnlockFocused: Bool
 
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: Spacing.lg) {
             Spacer()
 
             Image(systemName: "chart.line.uptrend.xyaxis.circle.fill")
-                .font(.system(size: 72))
+                .appIconTypography()
                 .foregroundStyle(Palette.accent)
                 .accessibilityHidden(true)
 
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.xs) {
                 Text("FlowPlan is locked")
-                    .font(.title.bold())
+                    .lockTitleTypography()
 
                 Text("Authenticate to view the financial data stored on this device.")
                     .foregroundStyle(Palette.inkSecondary)
@@ -24,7 +24,7 @@ struct AppLockView: View {
 
             if let error = gate.lastError {
                 Text(error.message)
-                    .font(.footnote)
+                    .footnoteTypography()
                     .foregroundStyle(Palette.negative)
                     .multilineTextAlignment(.center)
                     .accessibilityLabel("Authentication error: \(error.message)")
@@ -52,7 +52,7 @@ struct AppLockView: View {
 
             Spacer()
         }
-        .padding(32)
+        .padding(Spacing.xl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Palette.background)
         .foregroundStyle(Palette.ink)

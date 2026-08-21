@@ -10,85 +10,39 @@ struct PlanExpectedIncomeSection: View {
     let onEdit: (PlannedIncome) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             sectionHeader
 
-            VStack(spacing: 0) {
-                if sources.isEmpty {
-                    emptyRow
-                } else {
-                    ForEach(sources) { source in
-                        incomeRow(source)
-                        Divider()
-                    }
-                }
-
-                totalRow
-            }
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
-            }
+            GroupedList(
+                sources,
+                emptyState: EmptyStateView(
+                    symbol: "banknote",
+                    title: "No expected income yet.",
+                    layout: .compact
+                ),
+                footer: AnyView(totalRow),
+                rowContent: incomeRow
+            )
         }
     }
 
     private var sectionHeader: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Expected Income")
-                .sectionHeadingTypography()
-                .foregroundStyle(Palette.ink)
-
-            Spacer(minLength: 8)
-
-            Button("Add", action: onAdd)
-                .font(.subheadline.weight(.bold))
-                .fontWidth(.condensed)
-                .foregroundStyle(Palette.accent)
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
-        }
+        SectionHeading(title: "Expected Income", actionTitle: "Add", action: onAdd)
     }
 
     private func incomeRow(_ source: PlannedIncome) -> some View {
         Button {
             onEdit(source)
         } label: {
-            HStack(alignment: .center, spacing: 16) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(source.name)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(Palette.ink)
-
-                    Text(subtitle(for: source))
-                        .font(Typography.supporting)
-                        .foregroundStyle(Palette.inkSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 12)
-
-                Text(signedMoney(source.expectedAmount))
-                    .font(.headline.weight(.bold))
-                    .fontWidth(.condensed)
-                    .monospacedDigit()
-                    .foregroundStyle(Palette.ink)
-                    .fixedSize(horizontal: true, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .contentShape(Rectangle())
-            .opacity(source.isActive ? 1 : 0.55)
+            ListRow(
+                title: source.name,
+                subtitle: subtitle(for: source),
+                trailingAmount: signedMoney(source.expectedAmount),
+                isDimmed: !source.isActive
+            )
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens income editor")
-    }
-
-    private var emptyRow: some View {
-        Text("No expected income yet.")
-            .font(Typography.supporting)
-            .foregroundStyle(Palette.inkSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
     }
 
     private var totalRow: some View {

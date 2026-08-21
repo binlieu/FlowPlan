@@ -20,7 +20,7 @@ struct WhatIfView: View {
             Form {
                 Section("Amount") {
                     TextField("0.00", text: $amountText)
-                        .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                        .formAmountTypography()
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.center)
                         .monospacedDigit()
@@ -51,7 +51,7 @@ struct WhatIfView: View {
                         saveTransaction()
                     }
                     .frame(maxWidth: .infinity)
-                    .font(.headline)
+                    .prominentLabelTypography()
                     .disabled(validAmount == nil)
                 } footer: {
                     Text("This is only added to your transactions when you use the button above.")
@@ -83,7 +83,7 @@ struct WhatIfView: View {
     }
 
     private func simulationSummary(_ result: WhatIfResult) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.sm) {
             figureRow(
                 title: "Current Projection",
                 amount: result.base.projectedEndOfMonthBalance
@@ -99,15 +99,15 @@ struct WhatIfView: View {
     }
 
     private var neutralSummary: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             figureRow(
                 title: "Current Projection",
                 amount: projection.projectedEndOfMonthBalance
             )
 
             Text("Enter an amount to see how it changes your projection.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .footnoteTypography()
+                .foregroundStyle(Palette.inkSecondary)
         }
     }
 
@@ -116,11 +116,11 @@ struct WhatIfView: View {
         amount: Decimal,
         signed: Bool = false
     ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.md) {
             Text(title)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.inkSecondary)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: Spacing.sm)
 
             AmountText(
                 amount: amount,

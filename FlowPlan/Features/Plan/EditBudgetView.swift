@@ -32,7 +32,7 @@ struct EditBudgetView: View {
         NavigationStack {
             Form {
                 Section("Budget") {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Category", text: $category)
                             .textInputAutocapitalization(.words)
                         PlanValidationMessage(
@@ -40,10 +40,9 @@ struct EditBudgetView: View {
                         )
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Monthly limit", text: $limitText)
-                            .font(.largeTitle.weight(.bold))
-                            .fontWidth(.condensed)
+                            .formAmountTypography()
                             .monospacedDigit()
                             .keyboardType(.decimalPad)
                         PlanValidationMessage(
@@ -58,7 +57,7 @@ struct EditBudgetView: View {
                     }
 
                     Text(scopeDescription)
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(Palette.inkSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

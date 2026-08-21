@@ -10,9 +10,9 @@ struct HomeView: View {
 
     private let now: () -> Date
     private let calendar: Calendar
-    private let contentHorizontalPadding: CGFloat = 20
-    private let quickAddTopPadding: CGFloat = 24
-    private let bottomContentClearance: CGFloat = 80
+    private let contentHorizontalPadding: CGFloat = Spacing.lg
+    private let quickAddTopPadding: CGFloat = Spacing.lg
+    private let bottomContentClearance: CGFloat = Spacing.xl
 
     init(
         onSeeAllBills: @escaping () -> Void = {},
@@ -35,7 +35,7 @@ struct HomeView: View {
         ).isEmpty
 
         List {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: Spacing.none) {
                 ScreenHeader(
                     title: greeting,
                     subtitle: "KNOW WHERE YOUR MONEY GOES"
@@ -43,15 +43,15 @@ struct HomeView: View {
 
                 MonthNavigationBar()
                     .padding(.horizontal, contentHorizontalPadding)
-                    .padding(.top, 20)
+                    .padding(.top, Spacing.lg)
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, Spacing.lg)
             .homeListRow()
 
             if let loadErrorMessage = projectionStore.loadErrorMessage {
                 staleDataBanner(loadErrorMessage)
                     .padding(.horizontal, contentHorizontalPadding)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, Spacing.lg)
                     .homeListRow()
             }
 
@@ -62,23 +62,23 @@ struct HomeView: View {
                 onOpenPlan: onSeeAllBills
             )
             .padding(.horizontal, contentHorizontalPadding)
-            .padding(.bottom, 28)
+            .padding(.bottom, Spacing.xl)
             .homeListRow()
 
             if !isFirstRun {
                 CashFlowBar(projection: projectionStore.projection)
                     .padding(.horizontal, contentHorizontalPadding)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, Spacing.xl)
                     .homeListRow()
 
                 EstimatedSavingsCard(projection: projectionStore.projection)
                     .padding(.horizontal, contentHorizontalPadding)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, Spacing.xl)
                     .homeListRow()
 
                 MonthSpendingCard(projection: projectionStore.projection)
                     .padding(.horizontal, contentHorizontalPadding)
-                    .padding(.bottom, 28)
+                    .padding(.bottom, Spacing.xl)
                     .homeListRow()
             }
 
@@ -97,16 +97,16 @@ struct HomeView: View {
             QuickAddRow()
                 .padding(.horizontal, contentHorizontalPadding)
                 .padding(.top, quickAddTopPadding)
-                .padding(.bottom, 36)
+                .padding(.bottom, Spacing.xl)
                 .homeListRow()
         }
         .listStyle(.plain)
-        .listSectionSpacing(28)
+        .listSectionSpacing(Spacing.xl)
         .scrollContentBackground(.hidden)
-        .contentMargins(.top, 0, for: .scrollContent)
+        .contentMargins(.top, Spacing.none, for: .scrollContent)
         .background(Palette.background)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            Color.clear
+        .safeAreaInset(edge: .bottom, spacing: Spacing.none) {
+            Palette.clear
                 .frame(height: bottomContentClearance)
                 .accessibilityHidden(true)
         }
@@ -135,16 +135,12 @@ struct HomeView: View {
     }
 
     private func staleDataBanner(_ message: String) -> some View {
-        Label(message, systemImage: "exclamationmark.triangle.fill")
-            .font(Typography.supporting.weight(.semibold))
-            .foregroundStyle(Palette.ink)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.accent, lineWidth: 1)
-            }
+        CardSurface(contentPadding: Spacing.md) {
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .rowDetailEmphasisTypography()
+                .foregroundStyle(Palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
             .accessibilityLabel("Data load warning. \(message)")
     }
 
@@ -167,7 +163,7 @@ struct HomeView: View {
 private extension View {
     func homeListRow() -> some View {
         listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
+            .listRowBackground(Palette.clear)
             .listRowSeparator(.hidden)
     }
 }

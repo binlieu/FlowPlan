@@ -53,13 +53,13 @@ struct EditDebtView: View {
         NavigationStack {
             Form {
                 Section("Debt") {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Name", text: $name)
                             .textInputAutocapitalization(.words)
                         PlanValidationMessage(message: visible(nameValidationMessage, for: name))
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Balance remaining", text: $balanceText)
                             .keyboardType(.decimalPad)
                         PlanValidationMessage(
@@ -67,7 +67,7 @@ struct EditDebtView: View {
                         )
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("APR percent (optional)", text: $aprText)
                             .keyboardType(.decimalPad)
                         PlanValidationMessage(
@@ -75,7 +75,7 @@ struct EditDebtView: View {
                         )
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Monthly payment", text: $paymentText)
                             .keyboardType(.decimalPad)
                         PlanValidationMessage(
@@ -95,7 +95,7 @@ struct EditDebtView: View {
                     }
 
                     Text("First payment \(monthTitle(firstPaymentMonth))")
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(Palette.inkSecondary)
 
                     Picker("Due day", selection: $dueDay) {
@@ -105,7 +105,7 @@ struct EditDebtView: View {
                     }
 
                     Text("Due on the \(DebtDueDayText.ordinal(dueDay)) of each month")
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(Palette.inkSecondary)
                 }
 
@@ -113,7 +113,7 @@ struct EditDebtView: View {
                     Toggle("Auto-pay", isOn: $isAutoPay)
 
                     Text("The payment leaves your account automatically.")
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(Palette.inkSecondary)
 
                     Toggle("Payment is in Monthly Bills", isOn: $isPaidThroughBills)
@@ -124,7 +124,7 @@ struct EditDebtView: View {
                         } icon: {
                             Image(systemName: "exclamationmark.triangle")
                         }
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(Palette.warning)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityLabel(
@@ -132,7 +132,7 @@ struct EditDebtView: View {
                         )
                     } else {
                         Text("The payment is already listed as a bill, so it is not counted again.")
-                            .font(Typography.supporting)
+                            .rowDetailTypography()
                             .foregroundStyle(Palette.inkSecondary)
                     }
                 }

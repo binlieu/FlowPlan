@@ -20,7 +20,7 @@ struct RecurrencePicker: View {
         )
 
         Text(RecurrenceText.preview(frequency: frequency, anchorDate: anchorDate))
-            .font(Typography.supporting)
+            .rowDetailTypography()
             .foregroundStyle(Palette.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }

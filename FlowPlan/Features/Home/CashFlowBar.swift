@@ -8,7 +8,7 @@ struct CashFlowBar: View {
     let projection: MonthlyProjection
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text("CASH FLOW")
                 .smallCapsTypography()
                 .foregroundStyle(Palette.inkSecondary)
@@ -49,13 +49,13 @@ struct CashFlowBar: View {
     @ViewBuilder
     private var legend: some View {
         if dynamicTypeSize.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
                 legendItem(expensesLegend)
                 legendItem(savingsLegend)
                 legendItem(projectedBalanceLegend)
             }
         } else {
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: Spacing.sm) {
                 legendItem(expensesLegend)
                 legendItem(savingsLegend)
                 legendItem(projectedBalanceLegend)
@@ -64,23 +64,22 @@ struct CashFlowBar: View {
     }
 
     private func legendItem(_ item: LegendItemModel) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 7) {
+        VStack(alignment: .leading, spacing: Spacing.xxs) {
+            HStack(spacing: Spacing.xs) {
                 legendSwatch(item)
 
                 Text(item.label)
-                    .font(.subheadline)
+                    .rowDetailTypography()
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
 
             Text(item.value)
-                .font(.subheadline.weight(.semibold))
-                .fontWidth(.condensed)
+                .rowDetailEmphasisTypography()
                 .monospacedDigit()
                 .foregroundStyle(Palette.ink)
-                .padding(.leading, dynamicTypeSize.isAccessibilitySize ? 0 : 23)
+                .padding(.leading, dynamicTypeSize.isAccessibilitySize ? Spacing.none : Spacing.lg)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
@@ -262,7 +261,7 @@ private struct HatchedSegment: View {
 
 private struct DiagonalHatchShape: Shape {
     func path(in rect: CGRect) -> Path {
-        let spacing: CGFloat = 8
+        let spacing: CGFloat = Spacing.xs
         var path = Path()
         var x = rect.minX - rect.height
 
@@ -280,7 +279,7 @@ private struct DiagonalHatchShape: Shape {
 #Preview("Cash Flow — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
         CashFlowBar(projection: FlowPlanPreviewData.projection())
-            .padding()
+            .padding(Spacing.md)
             .background(Palette.background)
     }
 }
@@ -288,7 +287,7 @@ private struct DiagonalHatchShape: Shape {
 #Preview("Cash Flow — Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
         CashFlowBar(projection: FlowPlanPreviewData.projection())
-            .padding()
+            .padding(Spacing.md)
             .background(Palette.background)
     }
 }

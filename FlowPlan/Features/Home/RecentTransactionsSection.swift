@@ -34,45 +34,32 @@ struct RecentTransactionsSection: View {
     }
 
     private var sectionHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Recent Transactions")
-                .font(.headline)
-                .foregroundStyle(.primary)
-
-            Spacer()
-
-            Button("See all", action: onSeeAll)
-                .font(.subheadline.weight(.semibold))
-                .textCase(nil)
-        }
+        SectionHeading(title: "Recent Transactions", actionTitle: "See all", action: onSeeAll)
     }
 
     private func transactionRow(_ transaction: TransactionSnapshot) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Image(systemName: symbol(for: transaction.type))
-                .foregroundStyle(.secondary)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.detail)
-                    .font(.body.weight(.medium))
-
-                Text(transaction.date, format: .dateTime.month(.abbreviated).day())
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer(minLength: 8)
-
-            AmountText(
-                amount: displayAmount(for: transaction),
-                style: .secondary,
-                signed: true,
-                color: amountColor(for: transaction.type)
+        ListRow(
+            leading: .icon(
+                systemName: symbol(for: transaction.type),
+                color: Palette.inkSecondary
+            ),
+            title: transaction.detail,
+            subtitle: transaction.date.formatted(.dateTime.month(.abbreviated).day()),
+            trailingAmount: MoneyFormatter.string(
+                displayAmount(for: transaction),
+                currencyCode: appState.currencyCode,
+                signed: true
+            ),
+            amountStyle: .secondary,
+            amountColor: amountColor(for: transaction.type),
+            amountAccessibilityLabel: accessibleAmount(for: transaction),
+            contentInsets: EdgeInsets(
+                top: Spacing.xxs,
+                leading: Spacing.none,
+                bottom: Spacing.xxs,
+                trailing: Spacing.none
             )
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
+        )
     }
 
     private var recentTransactions: [TransactionSnapshot] {
@@ -86,6 +73,12 @@ struct RecentTransactionsSection: View {
         case .income, .transfer:
             return transaction.amount
         }
+    }
+
+    private func accessibleAmount(for transaction: TransactionSnapshot) -> String {
+        let amount = displayAmount(for: transaction)
+        let value = MoneyFormatter.accessibleString(amount, currencyCode: appState.currencyCode)
+        return amount > .zero ? "Plus \(value)" : value
     }
 
     private func symbol(for type: TransactionType) -> String {

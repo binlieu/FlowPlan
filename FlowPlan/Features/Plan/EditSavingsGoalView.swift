@@ -35,16 +35,15 @@ struct EditSavingsGoalView: View {
         NavigationStack {
             Form {
                 Section("Savings goal") {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Name", text: $name)
                             .textInputAutocapitalization(.words)
                         PlanValidationMessage(message: visible(nameValidationMessage, for: name))
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Monthly target", text: $monthlyTargetText)
-                            .font(.largeTitle.weight(.bold))
-                            .fontWidth(.condensed)
+                            .formAmountTypography()
                             .monospacedDigit()
                             .keyboardType(.decimalPad)
                         PlanValidationMessage(
@@ -55,7 +54,7 @@ struct EditSavingsGoalView: View {
                         )
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
                         TextField("Overall target", text: $overallTargetText)
                             .keyboardType(.decimalPad)
                         PlanValidationMessage(

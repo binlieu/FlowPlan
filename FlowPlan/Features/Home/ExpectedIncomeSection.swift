@@ -78,7 +78,6 @@ struct ExpectedIncomeSection: View {
     @Environment(AppState.self) private var appState
     @Environment(FinanceRepository.self) private var repository
     @Environment(ProjectionStore.self) private var projectionStore
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     let onSeeAll: () -> Void
 
@@ -105,7 +104,7 @@ struct ExpectedIncomeSection: View {
             Section {
                 ForEach(visibleOccurrences) { occurrence in
                     incomeRow(occurrence)
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, Spacing.lg)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Palette.background)
                         .listRowSeparator(.hidden)
@@ -122,8 +121,8 @@ struct ExpectedIncomeSection: View {
                 }
             } header: {
                 sectionHeader
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 10)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.bottom, Spacing.sm)
                     .textCase(nil)
             }
             .sheet(item: $presentedOccurrence) { occurrence in
@@ -151,48 +150,24 @@ struct ExpectedIncomeSection: View {
     }
 
     private var sectionHeader: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("Expected income")
-                .sectionHeadingTypography()
-                .foregroundStyle(Palette.ink)
-
-            Spacer(minLength: 8)
-
-            Button("View All", action: onSeeAll)
-                .font(.subheadline.weight(.bold))
-                .fontWidth(.condensed)
-                .foregroundStyle(Palette.accent)
-                .textCase(nil)
-        }
+        SectionHeading(title: "Expected income", actionTitle: "View All", action: onSeeAll)
     }
 
-    @ViewBuilder
     private func incomeRow(_ occurrence: TransactionSettlementOccurrence) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            accessibilityIncomeRow(occurrence)
-        } else {
-            standardIncomeRow(occurrence)
-        }
-    }
-
-    private func standardIncomeRow(
-        _ occurrence: TransactionSettlementOccurrence
-    ) -> some View {
         Button {
             presentedOccurrence = occurrence
         } label: {
-            HStack(alignment: .center, spacing: 14) {
-                monogram(for: occurrence)
-                incomeDescription(for: occurrence)
-                Spacer(minLength: 8)
-                amountAndStatus(for: occurrence, alignment: .trailing)
+            GroupedList([occurrence]) { occurrence in
+                ListRow(
+                    leading: .monogram(monogramText(for: occurrence.name)),
+                    title: occurrence.name,
+                    subtitle: occurrence.occurrenceDate.formatted(
+                        .dateTime.month(.abbreviated).day()
+                    ),
+                    trailingAmount: money(occurrence.amount),
+                    statuses: [statusPresentation(for: occurrence)]
+                )
             }
-            .padding(14)
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
-            }
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
@@ -200,79 +175,15 @@ struct ExpectedIncomeSection: View {
         .accessibilityHint("Opens confirmation to mark this income as received")
     }
 
-    private func accessibilityIncomeRow(
-        _ occurrence: TransactionSettlementOccurrence
-    ) -> some View {
-        Button {
-            presentedOccurrence = occurrence
-        } label: {
-            HStack(alignment: .top, spacing: 14) {
-                monogram(for: occurrence)
-
-                VStack(alignment: .leading, spacing: 12) {
-                    incomeDescription(for: occurrence)
-                    amountAndStatus(for: occurrence, alignment: .leading)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(Palette.surface)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel(for: occurrence))
-        .accessibilityHint("Opens confirmation to mark this income as received")
-    }
-
-    private func monogram(for occurrence: TransactionSettlementOccurrence) -> some View {
-        Text(monogramText(for: occurrence.name))
-            .smallCapsTypography()
-            .foregroundStyle(Palette.accent)
-            .frame(width: 54, height: 54)
-            .overlay {
-                Rectangle().stroke(Palette.hairline, lineWidth: 1)
-            }
-            .accessibilityHidden(true)
-    }
-
-    private func incomeDescription(
+    private func statusPresentation(
         for occurrence: TransactionSettlementOccurrence
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(occurrence.name)
-                .font(.body.weight(.medium))
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(occurrence.occurrenceDate, format: .dateTime.month(.abbreviated).day())
-                .font(Typography.supporting)
-                .foregroundStyle(Palette.inkSecondary)
-        }
-    }
-
-    private func amountAndStatus(
-        for occurrence: TransactionSettlementOccurrence,
-        alignment: HorizontalAlignment
-    ) -> some View {
-        VStack(alignment: alignment, spacing: 5) {
-            Text(money(occurrence.amount))
-                .font(.headline.weight(.bold))
-                .fontWidth(.condensed)
-                .monospacedDigit()
-                .foregroundStyle(Palette.ink)
-                .fixedSize(horizontal: true, vertical: true)
-
-            let status = status(for: occurrence)
-            OccurrenceStatusLabel(
-                text: status.rawValue,
-                isOverdue: status == .overdue
-            )
-                .fixedSize(horizontal: false, vertical: true)
-        }
+    ) -> ListRowStatus {
+        let status = status(for: occurrence)
+        return ListRowStatus(
+            text: status.rawValue,
+            style: status == .overdue ? .warning : .plainAccent,
+            systemImage: status == .overdue ? "exclamationmark.circle" : nil
+        )
     }
 
     private var unsettledOccurrences: [TransactionSettlementOccurrence] {
@@ -370,44 +281,40 @@ private struct IncomeReceiptConfirmationSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Spacing.lg) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(occurrence.name)
-                        .font(.headline)
+                        .prominentLabelTypography()
                         .foregroundStyle(Palette.ink)
 
                     Text(occurrence.occurrenceDate, format: .dateTime.month(.wide).day().year())
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(Palette.inkSecondary)
                 }
 
-                HStack(spacing: 12) {
-                    TextField("Amount received", text: $amountText)
-                        .font(.title2.weight(.bold))
-                        .fontWidth(.condensed)
-                        .monospacedDigit()
-                        .keyboardType(.decimalPad)
-                        .accessibilityLabel("Amount received")
+                CardSurface(radius: Radius.control, contentPadding: Spacing.md) {
+                    HStack(spacing: Spacing.sm) {
+                        TextField("Amount received", text: $amountText)
+                            .valueTypography()
+                            .monospacedDigit()
+                            .keyboardType(.decimalPad)
+                            .accessibilityLabel("Amount received")
 
-                    Text(currencyCode)
-                        .smallCapsTypography()
-                        .foregroundStyle(Palette.inkSecondary)
-                }
-                .padding(14)
-                .background(Palette.surface)
-                .overlay {
-                    Rectangle().stroke(Palette.hairline, lineWidth: 1)
+                        Text(currencyCode)
+                            .smallCapsTypography()
+                            .foregroundStyle(Palette.inkSecondary)
+                    }
                 }
 
                 if let presentedError {
                     Text(presentedError.message)
-                        .font(Typography.supporting)
+                        .rowDetailTypography()
                         .foregroundStyle(Palette.negative)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Button("Mark as received", action: confirm)
-                    .font(.headline)
+                    .prominentLabelTypography()
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(Palette.onAccentFill)
                     .buttonStyle(.borderedProminent)
@@ -415,7 +322,7 @@ private struct IncomeReceiptConfirmationSheet: View {
                     .controlSize(.large)
                     .disabled(parsedAmount.map { $0 <= .zero } ?? true || isSaving)
             }
-            .padding(20)
+            .padding(Spacing.lg)
             .frame(maxHeight: .infinity, alignment: .top)
             .background(Palette.background)
             .navigationTitle("Confirm income")

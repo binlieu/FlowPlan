@@ -34,14 +34,14 @@ struct AmountText: View {
             switch style {
             case .hero:
                 Text(formattedAmount)
-                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    .formAmountTypography()
                     .contentTransition(.numericText())
             case .primary:
                 Text(formattedAmount)
-                    .font(.headline)
+                    .prominentLabelTypography()
             case .secondary:
                 Text(formattedAmount)
-                    .font(.subheadline)
+                    .rowDetailTypography()
             }
         }
         .monospacedDigit()
@@ -82,23 +82,23 @@ struct AmountText: View {
 #if DEBUG
 #Preview("Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             AmountText(amount: 1_420, style: .hero)
             AmountText(amount: 220, signed: true)
             AmountText(amount: -420, style: .secondary, emphasiseNegative: true)
         }
-        .padding()
+        .padding(Spacing.md)
     }
 }
 
 #Preview("Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             AmountText(amount: 1_420, style: .hero)
             AmountText(amount: 220, signed: true)
             AmountText(amount: -420, style: .secondary, emphasiseNegative: true)
         }
-        .padding()
+        .padding(Spacing.md)
     }
 }
 #endif

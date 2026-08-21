@@ -14,19 +14,19 @@ struct PlanTotalRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.md) {
             Text(label)
                 .smallCapsTypography()
                 .foregroundStyle(Palette.inkSecondary)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: Spacing.sm)
 
             Text(formattedAmount)
                 .valueTypography()
                 .monospacedDigit()
                 .foregroundStyle(Palette.ink)
         }
-        .padding(16)
+        .padding(Spacing.md)
         .background(Self.accentFill)
         .accessibilityElement(children: .combine)
     }
@@ -55,33 +55,33 @@ struct PlanTotalRow: View {
 #if DEBUG
 #Preview("Plan Total Row — Light") {
     FlowPlanPreviewHost(colorScheme: .light) {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.sm) {
             PlanTotalRow(label: "TOTAL EXPECTED INCOME", amount: 8_500)
             PlanTotalRow(label: "TOTAL MONTHLY BILLS", amount: -2_392.98)
         }
-        .padding()
+        .padding(Spacing.md)
         .background(Palette.background)
     }
 }
 
 #Preview("Plan Total Row — Dark") {
     FlowPlanPreviewHost(colorScheme: .dark) {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.sm) {
             PlanTotalRow(label: "TOTAL EXPECTED INCOME", amount: 8_500)
             PlanTotalRow(label: "TOTAL MONTHLY BILLS", amount: -2_392.98)
         }
-        .padding()
+        .padding(Spacing.md)
         .background(Palette.background)
     }
 }
 
 #Preview("Plan Total Row — Largest Type") {
     FlowPlanPreviewHost {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.sm) {
             PlanTotalRow(label: "TOTAL EXPECTED INCOME", amount: 8_500)
             PlanTotalRow(label: "TOTAL MONTHLY BILLS", amount: -2_392.98)
         }
-        .padding()
+        .padding(Spacing.md)
         .background(Palette.background)
         .dynamicTypeSize(.accessibility5)
     }
@@ -89,12 +89,12 @@ struct PlanTotalRow: View {
 
 #Preview("All Plan Totals") {
     FlowPlanPreviewHost {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.sm) {
             PlanTotalRow(label: "TOTAL EXPECTED INCOME", amount: 8_500)
             PlanTotalRow(label: "TOTAL MONTHLY BILLS", amount: 2_392.98, signed: false)
             PlanTotalRow(label: "OUTSIDE MONTHLY BILLS", amount: 505, signed: false)
         }
-        .padding()
+        .padding(Spacing.md)
         .background(Palette.background)
     }
 }

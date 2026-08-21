@@ -11,7 +11,7 @@ struct ProjectionDetailView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: Spacing.lg) {
                 hero
                 breakdownSection
                 supportingFiguresSection
@@ -25,10 +25,10 @@ struct ProjectionDetailView: View {
                     )
                 )
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.md)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Palette.background)
         .navigationTitle("Projected End of \(monthName)")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -44,115 +44,110 @@ struct ProjectionDetailView: View {
     }
 
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("PROJECTED MONTH END")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .tracking(0.8)
+        CardSurface(fill: AnyShapeStyle(heroBackground)) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                Text("PROJECTED MONTH END")
+                    .smallCapsTypography()
+                    .foregroundStyle(Palette.inkSecondary)
 
-            AmountText(
-                amount: projection.projectedEndOfMonthBalance,
-                style: .hero,
-                emphasiseNegative: true
-            )
+                AmountText(
+                    amount: projection.projectedEndOfMonthBalance,
+                    style: .hero,
+                    emphasiseNegative: true
+                )
 
-            Text(interpretation)
-                .font(.body)
-                .fixedSize(horizontal: false, vertical: true)
+                Text(interpretation)
+                    .bodyTypography()
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .background(heroBackground, in: RoundedRectangle(cornerRadius: 24))
     }
 
     private var breakdownSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Breakdown")
-                .font(.title2.weight(.bold))
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            SectionHeading(title: "Breakdown")
 
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(projection.breakdown) { lineItem in
-                    ProjectionBreakdownRow(lineItem: lineItem)
-                }
+            GroupedList(projection.breakdown) { lineItem in
+                ProjectionBreakdownRow(lineItem: lineItem)
+                    .padding(.horizontal, Spacing.md)
             }
-            .padding(16)
-            .background(
-                Color(.secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 18)
-            )
         }
     }
 
     private var supportingFiguresSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Supporting figures")
-                .font(.title2.weight(.bold))
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            SectionHeading(title: "Supporting figures")
 
-            VStack(spacing: 0) {
-                supportingRow(
-                    title: "Income received",
-                    value: "\(money(projection.incomeReceived)) of \(money(projection.totalExpectedIncome)) expected"
-                )
-                Divider()
-                supportingRow(
-                    title: "Bills paid",
-                    value: "\(money(projection.billsPaid)) of \(money(totalBills))"
-                )
-                Divider()
-                supportingRow(
-                    title: "Variable spending",
-                    value: "\(money(projection.actualVariableSpending)) of \(money(projection.projectedVariableSpending)) projected"
-                )
-                Divider()
-                supportingRow(
-                    title: "Savings completed",
-                    value: "\(money(projection.savingsCompleted)) of \(money(projection.savingsTarget)) target"
-                )
-                Divider()
-                supportingRow(
-                    title: "Days remaining",
-                    value: "\(projection.daysRemaining) of \(projection.daysInMonth)"
-                )
-                Divider()
-                supportingRow(
-                    title: "Savings rate",
-                    value: savingsRate
-                )
-                Divider()
-                supportingRow(
-                    title: "Variance vs plan",
-                    value: "\(signedMoney(projection.varianceVsPlan)) vs \(money(projection.plannedEndOfMonthBalance)) planned"
-                )
+            GroupedList(supportingFigures) { figure in
+                supportingRow(title: figure.title, value: figure.value)
+                    .padding(.horizontal, Spacing.md)
             }
-            .padding(.horizontal, 16)
-            .background(
-                Color(.secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: 18)
-            )
         }
     }
 
     private func supportingRow(title: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 16) {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.md) {
             Text(title)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.inkSecondary)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: Spacing.sm)
 
             Text(value)
-                .font(.subheadline.weight(.semibold))
+                .rowDetailEmphasisTypography()
                 .multilineTextAlignment(.trailing)
                 .monospacedDigit()
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, Spacing.sm)
         .accessibilityElement(children: .combine)
+    }
+
+    private var supportingFigures: [SupportingFigure] {
+        [
+            SupportingFigure(
+                id: "incomeReceived",
+                title: "Income received",
+                value: "\(money(projection.incomeReceived)) of \(money(projection.totalExpectedIncome)) expected"
+            ),
+            SupportingFigure(
+                id: "billsPaid",
+                title: "Bills paid",
+                value: "\(money(projection.billsPaid)) of \(money(totalBills))"
+            ),
+            SupportingFigure(
+                id: "variableSpending",
+                title: "Variable spending",
+                value: "\(money(projection.actualVariableSpending)) of \(money(projection.projectedVariableSpending)) projected"
+            ),
+            SupportingFigure(
+                id: "savingsCompleted",
+                title: "Savings completed",
+                value: "\(money(projection.savingsCompleted)) of \(money(projection.savingsTarget)) target"
+            ),
+            SupportingFigure(
+                id: "daysRemaining",
+                title: "Days remaining",
+                value: "\(projection.daysRemaining) of \(projection.daysInMonth)"
+            ),
+            SupportingFigure(id: "savingsRate", title: "Savings rate", value: savingsRate),
+            SupportingFigure(
+                id: "variance",
+                title: "Variance vs plan",
+                value: "\(signedMoney(projection.varianceVsPlan)) vs \(money(projection.plannedEndOfMonthBalance)) planned"
+            )
+        ]
+    }
+
+    private struct SupportingFigure: Identifiable {
+        let id: String
+        let title: String
+        let value: String
     }
 
     private var heroBackground: LinearGradient {
         LinearGradient(
             colors: [
-                Color.accentColor.opacity(0.16),
-                Color.accentColor.opacity(0.04)
+                Palette.accent.opacity(0.16),
+                Palette.accent.opacity(0.04)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
