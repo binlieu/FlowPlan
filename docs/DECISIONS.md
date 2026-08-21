@@ -262,3 +262,19 @@ schedule makes both rules visible and testable.
 **Consequence.** `projectedEndOfMonthBalance`, `plannedEndOfMonthBalance`, Safe-to-Spend and the
 authoritative breakdown all include only debt payments outside Monthly Bills. Debt-linked expenses
 are excluded from discretionary spending, so they cannot also consume a category budget.
+
+## D-019 — Long transaction titles truncate rather than wrap
+**Decision.** A transaction title that exceeds the row's width truncates with an ellipsis. It does
+not wrap to a second line, and the row's icon and typography are not shrunk to accommodate it.
+
+**Why.** The measured shortfall is about 3pt — "Miscellaneous expense" needs ~184pt against ~181pt
+available. Wrapping would make row heights variable across the whole list to serve a small number
+of long descriptions, and shrinking the icon or type would compromise the design system for the
+same reason. Truncation is standard iOS behaviour and the full description is visible on tapping
+into the transaction.
+
+**Consequence.** Do not "fix" this by adding `lineLimit(2)` to `ListRow`, reducing `iconSize`, or
+tightening the `Spacing` tokens. If long titles later prove to matter, the change is a deliberate
+product decision about row layout, not a padding tweak.
+
+---
