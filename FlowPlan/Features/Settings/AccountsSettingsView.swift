@@ -2,6 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct AccountsSettingsView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(FinanceRepository.self) private var repository
 
     @Query(sort: \AccountEntity.name) private var accountEntities: [AccountEntity]
@@ -12,39 +13,34 @@ struct AccountsSettingsView: View {
     @State private var presentedError: String?
 
     var body: some View {
-        List {
-            Section {
-                ForEach(accounts) { account in
-                    accountRow(account)
-                }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Spacing.xl) {
+                ScreenHeader(title: "Accounts")
 
-                HStack(spacing: Spacing.sm) {
-                    TextField("Add an account", text: $newAccountName)
-                        .textContentType(.organizationName)
-                        .submitLabel(.done)
-                        .onSubmit(addAccount)
-
-                    Button("Add", action: addAccount)
-                        .foregroundStyle(Palette.onAccentFill)
-                        .buttonStyle(.borderedProminent)
-                        .tint(Palette.accentFill)
-                        .disabled(!canAddAccount)
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    SectionHeading(
+                        title: "Accounts",
+                        trailing: AnyView(
+                            Text(accountCountLabel)
+                                .rowDetailTypography()
+                                .foregroundStyle(Palette.inkSecondary)
+                        )
+                    )
+                    GroupedList(
+                        accounts,
+                        footer: AnyView(addAccountRow),
+                        rowContent: accountRow
+                    )
                 }
-            } header: {
-                HStack {
-                    Text("Accounts")
-                        .designSystemSectionHeader()
-                    Spacer()
-                    Text(accountCountLabel)
-                        .rowDetailTypography()
-                        .foregroundStyle(Palette.inkSecondary)
-                        .textCase(nil)
-                }
+                .padding(.horizontal, Spacing.lg)
             }
-            .designSystemRows()
+            .padding(.bottom, Spacing.xl)
         }
-        .designSystemList()
-        .navigationTitle("Accounts")
+        .scrollDismissesKeyboard(.interactively)
+        .background(Palette.background)
+        .foregroundStyle(Palette.ink)
+        .tint(Palette.accent)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .confirmationDialog(
@@ -73,6 +69,38 @@ struct AccountsSettingsView: View {
         } message: {
             Text(presentedError ?? "The account change could not be saved.")
         }
+    }
+
+    private var addAccountRow: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Spacing.sm) {
+                    accountNameField
+                    addAccountButton
+                }
+            } else {
+                HStack(spacing: Spacing.sm) {
+                    accountNameField
+                    addAccountButton
+                }
+            }
+        }
+        .settingsRow()
+    }
+
+    private var accountNameField: some View {
+        TextField("Add an account", text: $newAccountName)
+            .textContentType(.organizationName)
+            .submitLabel(.done)
+            .onSubmit(addAccount)
+    }
+
+    private var addAccountButton: some View {
+        Button("Add", action: addAccount)
+            .foregroundStyle(Palette.onAccentFill)
+            .buttonStyle(.borderedProminent)
+            .tint(Palette.accentFill)
+            .disabled(!canAddAccount)
     }
 
     private func accountRow(_ account: Account) -> some View {

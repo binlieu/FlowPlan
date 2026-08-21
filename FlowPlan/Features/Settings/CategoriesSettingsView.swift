@@ -5,6 +5,7 @@ import FlowPlanDomain
 
 struct CategoriesSettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(ProjectionStore.self) private var projectionStore
 
     @Query private var transactions: [TransactionEntity]
@@ -23,13 +24,24 @@ struct CategoriesSettingsView: View {
     @State private var presentedError: String?
 
     var body: some View {
-        List {
-            categorySection(title: "Income", kind: .income, categories: incomeCategories)
-            categorySection(title: "Expenses", kind: .expense, categories: expenseCategories)
-            categorySection(title: "Savings", kind: .savings, categories: savingsCategories)
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Spacing.xl) {
+                ScreenHeader(title: "Categories")
+
+                Group {
+                    categorySection(title: "Income", kind: .income, categories: incomeCategories)
+                    categorySection(title: "Expenses", kind: .expense, categories: expenseCategories)
+                    categorySection(title: "Savings", kind: .savings, categories: savingsCategories)
+                }
+                .padding(.horizontal, Spacing.lg)
+            }
+            .padding(.bottom, Spacing.xl)
         }
-        .designSystemList()
-        .navigationTitle("Categories")
+        .scrollDismissesKeyboard(.interactively)
+        .background(Palette.background)
+        .foregroundStyle(Palette.ink)
+        .tint(Palette.accent)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
@@ -81,51 +93,84 @@ struct CategoriesSettingsView: View {
         kind: CategoryKind,
         categories: [String]
     ) -> some View {
-        Section {
-            ForEach(categories, id: \.self) { category in
-                HStack {
-                    Text(category)
-                        .foregroundStyle(Palette.ink)
-                    Spacer()
-                    let count = useCount(EditableCategory(kind: kind, originalName: category))
-                    if count > 0 {
-                        Text("\(count) in use")
-                            .captionTypography()
-                            .foregroundStyle(Palette.inkSecondary)
-                    }
-                }
-                .swipeActions(edge: .trailing) {
-                    if category != kind.fallbackName {
-                        Button(role: .destructive) {
-                            categoryPendingDeletion = EditableCategory(
-                                kind: kind,
-                                originalName: category
-                            )
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                                .foregroundStyle(Palette.onAccentFill)
-                        }
-                        .tint(Palette.destructiveFill)
-                    }
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            SectionHeading(title: title)
+            GroupedList(categories) { category in
+                categoryRow(category, kind: kind)
+            }
+        }
+    }
 
-                    if category != kind.fallbackName {
-                        Button {
-                            editingCategory = EditableCategory(kind: kind, originalName: category)
-                            categoryKind = kind
-                            categoryName = category
-                        } label: {
-                            Label("Edit", systemImage: "pencil")
-                                .foregroundStyle(Palette.onAccentFill)
-                        }
-                        .tint(Palette.neutralFill)
+    private func categoryRow(_ category: String, kind: CategoryKind) -> some View {
+        let editableCategory = EditableCategory(kind: kind, originalName: category)
+        let count = useCount(editableCategory)
+
+        return Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    HStack(alignment: .top, spacing: Spacing.sm) {
+                        categoryName(category)
+                        Spacer(minLength: Spacing.sm)
+                        categoryActions(for: editableCategory)
                     }
+                    categoryUseCount(count)
+                }
+            } else {
+                HStack(spacing: Spacing.sm) {
+                    categoryName(category)
+                    Spacer(minLength: Spacing.sm)
+                    categoryUseCount(count)
+                    categoryActions(for: editableCategory)
                 }
             }
-        } header: {
-            Text(title)
-                .designSystemSectionHeader()
         }
-        .designSystemRows()
+        .settingsRow()
+    }
+
+    private func categoryName(_ category: String) -> some View {
+        Text(category)
+            .foregroundStyle(Palette.ink)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder
+    private func categoryUseCount(_ count: Int) -> some View {
+        if count > 0 {
+            Text("\(count) in use")
+                .captionTypography()
+                .foregroundStyle(Palette.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private func categoryActions(for category: EditableCategory) -> some View {
+        if category.name != category.kind.fallbackName {
+            Menu {
+                Button {
+                    beginEditing(category)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+
+                Button(role: .destructive) {
+                    categoryPendingDeletion = category
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Actions for \(category.name)")
+        }
+    }
+
+    private func beginEditing(_ category: EditableCategory) {
+        editingCategory = category
+        categoryKind = category.kind
+        categoryName = category.name
     }
 
     private var incomeCategories: [String] {
@@ -331,37 +376,35 @@ struct CategoriesSettingsView: View {
 
     private var categoryEditor: some View {
         NavigationStack {
-            Form {
-                Section {
-                    Picker("Type", selection: $categoryKind) {
-                        ForEach(CategoryKind.allCases) { kind in
-                            Text(kind.title).tag(kind)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: Spacing.xl) {
+                    ScreenHeader(title: categoryEditorTitle)
+
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        SectionHeading(title: "Category")
+                        GroupedList(0..<2, rowContent: categoryEditorRow)
+
+                        if editingCategory?.originalName != nil {
+                            SettingsSectionFooter(
+                                text: "Changing the type moves this category in the available list. "
+                                    + "Existing records keep their current type; changing the name "
+                                    + "updates those records."
+                            )
+                        } else {
+                            SettingsSectionFooter(
+                                text: "Category names are used by transactions and monthly plans."
+                            )
                         }
                     }
-                    .pickerStyle(.segmented)
-
-                    TextField("Category name", text: $categoryName)
-                        .textInputAutocapitalization(.words)
-                } header: {
-                    Text("Category")
-                        .designSystemSectionHeader()
-                } footer: {
-                    if editingCategory?.originalName != nil {
-                        Text(
-                            "Changing the type moves this category in the available list. "
-                                + "Existing records keep their current type; changing the name "
-                                + "updates those records."
-                        )
-                        .designSystemSectionFooter()
-                    } else {
-                        Text("Category names are used by transactions and monthly plans.")
-                            .designSystemSectionFooter()
-                    }
+                    .padding(.horizontal, Spacing.lg)
                 }
-                .designSystemRows()
+                .padding(.bottom, Spacing.xl)
             }
-            .designSystemForm()
-            .navigationTitle(categoryEditorTitle)
+            .scrollDismissesKeyboard(.interactively)
+            .background(Palette.background)
+            .foregroundStyle(Palette.ink)
+            .tint(Palette.accent)
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -379,6 +422,26 @@ struct CategoriesSettingsView: View {
             }
         }
         .presentationDetents([.medium])
+    }
+
+    @ViewBuilder
+    private func categoryEditorRow(_ row: Int) -> some View {
+        switch row {
+        case 0:
+            Picker("Type", selection: $categoryKind) {
+                ForEach(CategoryKind.allCases) { kind in
+                    Text(kind.title).tag(kind)
+                }
+            }
+            .pickerStyle(.segmented)
+            .settingsRow()
+        case 1:
+            TextField("Category name", text: $categoryName)
+                .textInputAutocapitalization(.words)
+                .settingsRow()
+        default:
+            EmptyView()
+        }
     }
 
     private var deletionConfirmationPresented: Binding<Bool> {
