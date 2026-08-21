@@ -263,7 +263,7 @@ schedule makes both rules visible and testable.
 authoritative breakdown all include only debt payments outside Monthly Bills. Debt-linked expenses
 are excluded from discretionary spending, so they cannot also consume a category budget.
 
-## D-019 — Long transaction titles truncate rather than wrap
+## D-019 — Long transaction titles truncate rather than wrap — SUPERSEDED
 **Decision.** A transaction title that exceeds the row's width truncates with an ellipsis. It does
 not wrap to a second line, and the row's icon and typography are not shrunk to accommodate it.
 
@@ -276,5 +276,12 @@ into the transaction.
 **Consequence.** Do not "fix" this by adding `lineLimit(2)` to `ListRow`, reducing `iconSize`, or
 tightening the `Spacing` tokens. If long titles later prove to matter, the change is a deliberate
 product decision about row layout, not a padding tweak.
+
+**Superseded 2026-08-21.** The premise was wrong. The ~3pt shortfall was not inherent to the row —
+Activity used `.listStyle(.insetGrouped)`, whose own horizontal margins stacked on top of the
+explicit row insets and cost ~16pt per side. Switching to `.plain`, matching Home, restored the
+width and the title now fits on one line. The lesson is that the shortfall was a symptom of a
+container-level inconsistency, and measuring the row in isolation made it look like a typography
+problem.
 
 ---

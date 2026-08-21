@@ -68,7 +68,10 @@ private struct TransactionsContent: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
+        // .plain, matching Home. .insetGrouped adds its own horizontal margins on top of the
+        // explicit row insets, which pushed Activity's content ~16pt further from the edge than
+        // every other tab. GroupedList already draws the grouping, so the style's is redundant.
+        .listStyle(.plain)
         .listRowSpacing(Spacing.none)
         .designSystemList()
         .contentMargins(.top, Spacing.none, for: .scrollContent)
