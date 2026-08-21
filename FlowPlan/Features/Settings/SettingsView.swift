@@ -25,7 +25,6 @@ struct SettingsView: View {
             aboutSection
         }
         .designSystemForm()
-        .contentMargins(.top, Spacing.none, for: .scrollContent)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)

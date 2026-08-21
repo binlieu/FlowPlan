@@ -74,7 +74,6 @@ private struct TransactionsContent: View {
         .listStyle(.plain)
         .listRowSpacing(Spacing.none)
         .designSystemList()
-        .contentMargins(.top, Spacing.none, for: .scrollContent)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
